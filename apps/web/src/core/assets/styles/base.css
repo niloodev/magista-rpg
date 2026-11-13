@@ -1,0 +1,22 @@
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--magista-void-900);
+    color: var(--magista-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 1px solid rgba(236, 44, 102, 0.6);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgba(218, 32, 84, 0.45);
+  }
+}

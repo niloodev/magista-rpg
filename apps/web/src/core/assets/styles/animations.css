@@ -1,0 +1,104 @@
+@keyframes sf0 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(12deg);
+  }
+  50% {
+    transform: translate(3px, -6px) rotate(12deg);
+  }
+}
+@keyframes sf1 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-10deg);
+  }
+  40% {
+    transform: translate(-5px, 4px) rotate(-10deg);
+  }
+}
+@keyframes sf2 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(21deg);
+  }
+  60% {
+    transform: translate(4px, -3px) rotate(21deg);
+  }
+}
+@keyframes sf3 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-15deg);
+  }
+  45% {
+    transform: translate(-3px, 5px) rotate(-15deg);
+  }
+}
+@keyframes sf4 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(5deg);
+  }
+  55% {
+    transform: translate(2px, -4px) rotate(5deg);
+  }
+}
+@keyframes sf5 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-23deg);
+  }
+  35% {
+    transform: translate(-4px, 3px) rotate(-23deg);
+  }
+}
+@keyframes sf6 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-3deg);
+  }
+  50% {
+    transform: translate(5px, -2px) rotate(-3deg);
+  }
+}
+@keyframes sf7 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(17deg);
+  }
+  45% {
+    transform: translate(-2px, 5px) rotate(17deg);
+  }
+}
+
+@keyframes title-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 14px rgba(232, 36, 98, 0.42))
+      drop-shadow(0 0 30px rgba(220, 24, 88, 0.2));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(240, 52, 108, 0.62))
+      drop-shadow(0 0 44px rgba(234, 40, 100, 0.34));
+  }
+}
+
+@keyframes crack-fade {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.84;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

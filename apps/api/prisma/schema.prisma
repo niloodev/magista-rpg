@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountRole {
+  PLAYER
+  GM
+}
+
+model Account {
+  id           String      @id @default(uuid()) @db.Uuid
+  login        String
+  loginKey     String      @unique
+  passwordHash String
+  role         AccountRole @default(PLAYER)
+  character    Character?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("accounts")
+}
+
+model Character {
+  id           String   @id @default(uuid()) @db.Uuid
+  accountId    String   @unique @db.Uuid
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name         String
+  sheet        Json     @default("{}")
+  sheetVersion Int      @default(0)
+  legacy       Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("characters")
+}

@@ -1,0 +1,14 @@
+:root {
+  --magista-glow-panel: 0 0 64px rgba(202, 20, 80, 0.15), inset 0 0 32px rgba(156, 12, 60, 0.08);
+  --magista-glow-card: inset 0 0 15px rgba(228, 42, 99, 0.05);
+  --magista-glow-card-hover:
+    inset 0 0 20px rgba(228, 42, 99, 0.1), 0 0 15px rgba(228, 42, 99, 0.15);
+  --magista-glow-input-focus: 0 0 15px rgba(222, 26, 90, 0.2), inset 0 0 8px rgba(158, 13, 64, 0.1);
+
+  --magista-clip-panel: polygon(0 0, 98% 0, 100% 2%, 100% 100%, 2% 100%, 0 98%);
+  --magista-clip-slant: polygon(1.8% 0%, 100% 0%, 98.2% 100%, 0% 100%);
+
+  --magista-ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --magista-ease-shine: cubic-bezier(0.4, 0, 0.2, 1);
+  --magista-ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}

@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: magista-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-magista}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-magista}
+      POSTGRES_DB: ${POSTGRES_DB:-magista}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - magista-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-magista}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  magista-db:

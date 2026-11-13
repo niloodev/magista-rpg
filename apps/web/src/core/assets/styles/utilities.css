@@ -1,0 +1,103 @@
+@layer components {
+  .magista-input {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(222, 30, 92, 0.15);
+    border-bottom-color: rgba(222, 30, 92, 0.4);
+    color: var(--magista-input-text);
+    border-radius: 0;
+    transition: all 0.3s ease;
+  }
+
+  .magista-input:hover {
+    border-color: rgba(236, 44, 102, 0.3);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .magista-input:focus,
+  .magista-input:focus-within {
+    border-color: rgba(236, 44, 102, 0.6);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: var(--magista-glow-input-focus);
+    outline: none;
+  }
+
+  .magista-input::placeholder {
+    color: var(--magista-placeholder);
+  }
+
+  .magista-input[aria-invalid="true"] {
+    border-color: rgba(240, 72, 116, 0.55);
+  }
+
+  .magista-btn {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    transition: all 0.4s var(--magista-ease-out);
+  }
+
+  .magista-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 60%;
+    height: 100%;
+    transform: skewX(-25deg);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.35) 30%,
+      transparent 45%,
+      rgba(255, 255, 255, 0.2) 60%,
+      transparent 100%
+    );
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  .magista-btn:not(:disabled):hover::before {
+    left: 200%;
+    transition: left 0.7s var(--magista-ease-shine);
+  }
+
+  .magista-btn-slant {
+    clip-path: var(--magista-clip-slant);
+    background: rgba(196, 22, 82, 0.85);
+    color: var(--magista-input-text);
+    border: 1px solid rgba(236, 40, 100, 0.36);
+    box-shadow:
+      0 0 22px rgba(220, 25, 88, 0.2),
+      inset 0 1px 0 rgba(240, 64, 112, 0.14);
+    letter-spacing: 0.3em;
+    transition: all 0.3s var(--magista-ease-out);
+  }
+
+  .magista-btn-slant:not(:disabled):hover {
+    background: rgba(226, 33, 94, 0.96);
+    box-shadow:
+      0 0 36px rgba(236, 42, 102, 0.46),
+      inset 0 1px 0 rgba(240, 66, 114, 0.22);
+    letter-spacing: 0.36em;
+  }
+
+  .magista-btn-slant:not(:disabled):active {
+    transform: scale(0.97) translateY(2px);
+    box-shadow:
+      0 0 12px rgba(236, 42, 102, 0.3),
+      inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    background: rgba(176, 18, 72, 0.95);
+  }
+
+  .magista-btn-cut {
+    --cut: 12px;
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--cut)) 0,
+      100% var(--cut),
+      100% 100%,
+      var(--cut) 100%,
+      0 calc(100% - var(--cut))
+    );
+  }
+}

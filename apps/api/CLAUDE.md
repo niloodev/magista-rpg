@@ -1,0 +1,4 @@
+- Prisma 7: URL do banco vem de `prisma.config.ts` (não do schema); cliente gerado em `src/generated/prisma` (gitignored, `npm run db:generate`); conexão via `@prisma/adapter-pg` em `core/services/database`.
+- Mudou o schema: `npm run db:migrate -- --name <descricao>` e commite a pasta `prisma/migrations`.
+- `routes/` e `realtime/` são entry finos: não validam nem acessam o banco; chamam controllers e traduzem o envelope em status HTTP ou evento.
+- Controllers recebem dependências por `create<X>Controller(deps)` para serem testáveis com Vitest sem banco.

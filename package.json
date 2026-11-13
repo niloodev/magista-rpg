@@ -1,0 +1,37 @@
+{
+  "name": "magista-rpg",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm run dev -w @magista/api\" \"npm run dev -w @magista/web\"",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @magista/api",
+    "db:seed": "npm run db:seed -w @magista/api",
+    "db:studio": "npm run db:studio -w @magista/api"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7",
+    "prettier": "^3.10.1",
+    "typescript": "~5.9.3"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.1": true,
+    "argon2@0.45.2": true,
+    "esbuild@0.28.2": true,
+    "prisma@7.10.1": true
+  }
+}

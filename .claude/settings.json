@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run db:up)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npx prisma format:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)"
+    ]
+  }
+}

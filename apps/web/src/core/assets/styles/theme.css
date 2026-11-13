@@ -1,0 +1,42 @@
+@theme inline {
+  --color-background: var(--magista-background);
+  --color-foreground: var(--magista-foreground);
+  --color-card: var(--magista-card);
+  --color-primary: var(--magista-primary);
+  --color-primary-foreground: var(--magista-primary-foreground);
+  --color-secondary: var(--magista-secondary);
+  --color-muted: var(--magista-muted);
+  --color-muted-foreground: var(--magista-muted-foreground);
+  --color-accent: var(--magista-accent);
+  --color-destructive: var(--magista-destructive);
+  --color-border: var(--magista-border);
+  --color-ring: var(--magista-ring);
+
+  --color-ruby-900: var(--magista-ruby-900);
+  --color-ruby-600: var(--magista-ruby-600);
+  --color-ruby-500: var(--magista-ruby-500);
+  --color-ruby-400: var(--magista-ruby-400);
+  --color-teal-900: var(--magista-teal-900);
+  --color-teal-600: var(--magista-teal-600);
+  --color-teal-500: var(--magista-teal-500);
+  --color-teal-400: var(--magista-teal-400);
+  --color-void-1000: var(--magista-void-1000);
+  --color-void-900: var(--magista-void-900);
+  --color-void-800: var(--magista-void-800);
+  --color-void-700: var(--magista-void-700);
+
+  --color-label: var(--magista-label);
+  --color-ornament: var(--magista-ornament);
+  --color-hint: var(--magista-hint);
+  --color-error: var(--magista-error);
+
+  --font-serif: var(--font-cinzel), "Cinzel", serif;
+  --font-sans: var(--font-raleway), "Raleway", system-ui, sans-serif;
+
+  --radius-sm: 0px;
+  --radius-md: 1px;
+  --radius-lg: 2px;
+
+  --animate-title-pulse: title-pulse 5s ease-in-out infinite;
+  --animate-crack-fade: crack-fade 5.5s ease-in-out infinite;
+}

@@ -1,0 +1,36 @@
+:root {
+  --magista-ruby-900: #5c0b25;
+  --magista-ruby-600: #c41652;
+  --magista-ruby-500: #e42a63;
+  --magista-ruby-400: #f07a9b;
+
+  --magista-teal-900: #134e4a;
+  --magista-teal-600: #0d9488;
+  --magista-teal-500: #14b8a6;
+  --magista-teal-400: #2dd4bf;
+
+  --magista-void-1000: #000000;
+  --magista-void-900: #060203;
+  --magista-void-800: #12040a;
+  --magista-void-700: #1a0610;
+
+  --magista-background: #080305;
+  --magista-foreground: #f0e2e4;
+  --magista-card: #12040a;
+  --magista-primary: #da2054;
+  --magista-primary-foreground: #f0e2e4;
+  --magista-secondary: #3d0a1c;
+  --magista-muted: #200c14;
+  --magista-muted-foreground: #b08898;
+  --magista-accent: #961236;
+  --magista-destructive: #d4183d;
+  --magista-border: rgba(222, 34, 90, 0.22);
+  --magista-ring: rgba(218, 32, 84, 0.5);
+
+  --magista-label: rgba(220, 148, 172, 0.8);
+  --magista-ornament: rgba(210, 130, 160, 0.52);
+  --magista-placeholder: rgba(188, 108, 140, 0.38);
+  --magista-hint: rgba(152, 86, 118, 0.44);
+  --magista-error: rgba(240, 72, 116, 0.92);
+  --magista-input-text: #ede0e2;
+}
