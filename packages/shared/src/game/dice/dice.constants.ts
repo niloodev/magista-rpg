@@ -7,3 +7,5 @@ export const DICE_MAX_TERMS = 20;
 export const DICE_TERM_PATTERN = /^(\d*)d(\d+)$/i;
 
 export const FLAT_TERM_PATTERN = /^\d+$/;
+
+export const D20_SIDES = 20;

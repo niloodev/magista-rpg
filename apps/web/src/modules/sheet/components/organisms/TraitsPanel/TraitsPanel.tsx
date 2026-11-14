@@ -9,7 +9,7 @@ import { SortableList } from "@/shared/components/organisms";
 import { useTraitsPanel } from "./TraitsPanel.hook";
 import { TraitEntry } from "./subcomponents";
 
-export function TraitsPanel({ sheet, onEdit }: SheetSectionProps) {
+export function TraitsPanel({ sheet, onEdit, onPing, pingedId }: SheetSectionProps) {
   const { editor, openCreate, moveTrait, traitName } = useTraitsPanel(onEdit);
   return (
     <Panel variant="inner" className="p-5">
@@ -40,6 +40,8 @@ export function TraitsPanel({ sheet, onEdit }: SheetSectionProps) {
           renderItem={(trait) => (
             <TraitEntry
               trait={trait}
+              pinged={pingedId === trait.id}
+              onPing={() => onPing({ kind: "trait", id: trait.id })}
               onEdit={() => editor.openEdit(trait)}
               onDelete={() => editor.requestDelete(trait)}
             />

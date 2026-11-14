@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { createEmptySheet } from "../../schemas/character/character.utils";
-import { applyLevelUp, blockOutcomes, buildLevelUpSpec, buildRollSpec } from "./rolls";
-import { rollRequestSchema } from "./rolls.schemas";
+import {
+  applyLevelUp,
+  blockOutcomes,
+  buildLevelUpSpec,
+  buildPingSpec,
+  buildRollSpec,
+  rollSpecRows,
+} from "./rolls";
+import { CRITICAL_DAMAGE_NOTE } from "./rolls.constants";
+import { pingRequestSchema, rollRequestSchema } from "./rolls.schemas";
 
 describe("rolls", () => {
   const sheet = createEmptySheet();
@@ -70,5 +78,98 @@ describe("rolls", () => {
         roll: { kind: "initiative" },
       }).success,
     ).toBe(true);
+  });
+
+  describe("ability attacks", () => {
+    const armed = structuredClone(sheet);
+    armed.abilities = [
+      {
+        id: "golpe",
+        name: "Golpe",
+        attackAttribute: "for",
+        damageDice: "2d6",
+        damageFlat: 1,
+        damageAttribute: null,
+        addBaseDamage: false,
+        addProficiency: false,
+        description: "Corte.",
+      },
+    ];
+    const spec = buildRollSpec(armed, { kind: "ability", list: "abilities", id: "golpe" });
+
+    it("marks the attack and damage rows", () => {
+      expect(spec?.rows.map((row) => row.role)).toEqual(["attack", "damage"]);
+    });
+
+    it("rolls damage normally without a natural 20", () => {
+      const rolled = spec && rollSpecRows(spec, () => 2);
+      expect(rolled?.rows[1]).toMatchObject({ label: "Dano", outcome: { total: 5 } });
+      expect(rolled?.rows[1]?.maximized).toBeUndefined();
+      expect(rolled?.notes).toEqual(["Corte."]);
+    });
+
+    it("maximizes damage on a natural 20", () => {
+      const rolled = spec && rollSpecRows(spec, (_min, max) => (max === 20 ? 20 : 1));
+      expect(rolled?.rows[0]?.outcome.terms[0]).toMatchObject({ results: [20] });
+      expect(rolled?.rows[1]).toMatchObject({ maximized: true, outcome: { total: 13 } });
+      expect(rolled?.notes).toEqual([CRITICAL_DAMAGE_NOTE, "Corte."]);
+    });
+
+    it("keeps rolls without an attack row untouched", () => {
+      const baseDamage = buildRollSpec(armed, { kind: "baseDamage" });
+      const rolled = baseDamage && rollSpecRows(baseDamage, () => 20);
+      expect(rolled?.rows[0]?.maximized).toBeUndefined();
+    });
+  });
+
+  describe("pings", () => {
+    const owned = structuredClone(sheet);
+    owned.traits = [{ id: "t1", name: "Visão no escuro", description: "Enxerga no escuro." }];
+    owned.inventory.items = [
+      {
+        id: "i1",
+        name: "Escudo",
+        quantity: 1,
+        armorBonus: 2,
+        weightGrams: 1500,
+        description: "De madeira.",
+      },
+      { id: "i2", name: "", quantity: null, armorBonus: 0, weightGrams: 0, description: "" },
+    ];
+
+    it("shares a trait with its description", () => {
+      expect(buildPingSpec(owned, { kind: "trait", id: "t1" })).toEqual({
+        title: "Visão no escuro",
+        subtitle: "Traço",
+        rows: [],
+        notes: ["Enxerga no escuro."],
+      });
+    });
+
+    it("shares an item with its summary and description", () => {
+      expect(buildPingSpec(owned, { kind: "item", id: "i1" })?.notes).toEqual([
+        "Qtd. 1 · 1,5 kg · CA +2",
+        "De madeira.",
+      ]);
+      expect(buildPingSpec(owned, { kind: "item", id: "i2" })).toMatchObject({
+        title: "Sem nome",
+        notes: ["0 kg"],
+      });
+    });
+
+    it("returns null for missing entries", () => {
+      expect(buildPingSpec(owned, { kind: "trait", id: "i1" })).toBeNull();
+      expect(buildPingSpec(owned, { kind: "item", id: "nope" })).toBeNull();
+    });
+
+    it("validates ping requests", () => {
+      const characterId = "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90";
+      expect(
+        pingRequestSchema.safeParse({ characterId, entry: { kind: "item", id: "i1" } }).success,
+      ).toBe(true);
+      expect(
+        pingRequestSchema.safeParse({ characterId, entry: { kind: "ability", id: "i1" } }).success,
+      ).toBe(false);
+    });
   });
 });

@@ -79,6 +79,7 @@ Valor = mod do atributo + (proficiência se marcada). Teste: `1d20 + valor`.
 Listas com a mesma estrutura: nome, atributo de ataque, dado de dano, dano fixo, atributo de dano, flag "soma Dano Base", flag "soma proficiência no ataque", descrição.
 
 - Ataque = `1d20 [+ mod do atributo de ataque] [+ proficiência]`.
+- **Crítico** (20 natural no dado do Ataque): o Dano sai com o valor **máximo possível** (cada dado somado no maior lado, dado subtraído em 1), marcado como "Máximo" no feed e na animação. Regra em `rollSpecRows` (shared).
 - Dano = `dado [+ Dano Base] [+ dano fixo] [+ mod do atributo de dano]`.
 - Devem ser recalculados quando atributos, nível ou classe mudarem (o Roll20 não fazia isso).
 - Formato de texto das habilidades (guia de estilo): `[Alcance: X, efeito/dano, ATRIBUTO, CD opcional]` seguido de descrição curta.
@@ -94,6 +95,7 @@ Listas com a mesma estrutura: nome, atributo de ataque, dado de dano, dano fixo,
 
 - Item: nome, quantidade, CA (bônus), peso em gramas, descrição. Peso atual = soma dos pesos dos itens, sem multiplicar pela quantidade (decisão do mestre, igual ao Roll20). Peso máximo é manual.
 - Traços: nome + descrição; passivos e narrativos, podem ter limites ("1x por descanso longo").
+- **Mostrar na mesa** (ping): jogador com acesso ou Mestre manda um traço ou item da ficha salva para o histórico de rolagens; a mesa toda vê um cartão com nome, descrição e, no item, Qtd., peso e CA.
 
 ## Alinhamentos e Caminhos
 

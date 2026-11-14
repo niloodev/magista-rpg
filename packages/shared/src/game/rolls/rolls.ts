@@ -2,10 +2,25 @@ import type { ICharacterSheet } from "../../schemas/character/character.types";
 import { ATTRIBUTE_LABELS, SKILLS } from "../catalog/catalog.constants";
 import { D20 } from "../rules/rules.constants";
 import { deriveSheet } from "../rules/rules";
-import { joinExpression } from "../rules/rules.utils";
+import { itemSummary, joinExpression } from "../rules/rules.utils";
 import { LEVEL_MAX } from "../catalog/catalog.constants";
-import { BLOCKS, COUNTER_ATTACK_FUMBLE_BELOW } from "./rolls.constants";
-import type { BlockKey, IRollKind, IRollSpec } from "./rolls.types";
+import { naturalOutcome, rollDiceExpression } from "../dice/dice";
+import type { RandomInt } from "../dice/dice.types";
+import {
+  BLOCKS,
+  COUNTER_ATTACK_FUMBLE_BELOW,
+  CRITICAL_DAMAGE_NOTE,
+  PING_SUBTITLES,
+  UNNAMED_ENTRY,
+} from "./rolls.constants";
+import type {
+  BlockKey,
+  IPingEntry,
+  IRollKind,
+  IRollResultRow,
+  IRollSpec,
+  IRolledSpec,
+} from "./rolls.types";
 
 /**
  * Possible outcomes of a block for this sheet (reductions use the raw CON value, like the Roll20 sheet).
@@ -123,11 +138,11 @@ export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpe
       const expressions = derived[roll.list][roll.id];
       if (!ability || !expressions) return null;
       return {
-        title: ability.name || "Sem nome",
+        title: ability.name || UNNAMED_ENTRY,
         subtitle: roll.list === "abilities" ? "Habilidade" : "Reino Interior",
         rows: [
-          { label: "Ataque", expression: expressions.attack },
-          { label: "Dano", expression: expressions.damage },
+          { label: "Ataque", expression: expressions.attack, role: "attack" },
+          { label: "Dano", expression: expressions.damage, role: "damage" },
         ],
         notes: ability.description ? [ability.description] : [],
       };
@@ -171,4 +186,61 @@ export function applyLevelUp(
   next.resources.health = raise(sheet.resources.health, gains.health);
   next.resources.sanity = raise(sheet.resources.sanity, gains.sanity);
   return next;
+}
+
+/**
+ * Rolls every row of a spec. A natural 20 on an attack row is a critical: damage rows then land on their maximum
+ * (and a note says so). Returns null when any expression is invalid.
+ */
+export function rollSpecRows(spec: IRollSpec, randomInt: RandomInt): IRolledSpec | null {
+  const attacks = new Map<number, IRollResultRow>();
+  for (const [index, row] of spec.rows.entries()) {
+    if (row.role !== "attack") continue;
+    const outcome = rollDiceExpression(row.expression, randomInt);
+    if (!outcome) return null;
+    attacks.set(index, { label: row.label, outcome });
+  }
+  const critical = [...attacks.values()].some((row) => naturalOutcome(row.outcome) === "critical");
+  const rows: IRollResultRow[] = [];
+  for (const [index, row] of spec.rows.entries()) {
+    const attack = attacks.get(index);
+    if (attack) {
+      rows.push(attack);
+      continue;
+    }
+    const maximize = critical && row.role === "damage";
+    const outcome = rollDiceExpression(row.expression, randomInt, { maximize });
+    if (!outcome) return null;
+    rows.push(
+      maximize ? { label: row.label, outcome, maximized: true } : { label: row.label, outcome },
+    );
+  }
+  const maximized = rows.some((row) => row.maximized);
+  return { rows, notes: maximized ? [CRITICAL_DAMAGE_NOTE, ...spec.notes] : spec.notes };
+}
+
+/**
+ * Card shown on the table when someone shares a trait or an inventory item (no dice). Returns null when the entry
+ * does not exist on the sheet.
+ */
+export function buildPingSpec(sheet: ICharacterSheet, entry: IPingEntry): IRollSpec | null {
+  if (entry.kind === "trait") {
+    const trait = sheet.traits.find((candidate) => candidate.id === entry.id);
+    if (!trait) return null;
+    return {
+      title: trait.name || UNNAMED_ENTRY,
+      subtitle: PING_SUBTITLES.trait,
+      rows: [],
+      notes: trait.description ? [trait.description] : [],
+    };
+  }
+  const item = sheet.inventory.items.find((candidate) => candidate.id === entry.id);
+  if (!item) return null;
+  const summary = itemSummary(item);
+  return {
+    title: item.name || UNNAMED_ENTRY,
+    subtitle: PING_SUBTITLES.item,
+    rows: [],
+    notes: item.description ? [summary, item.description] : [summary],
+  };
 }

@@ -43,6 +43,7 @@ import {
   KeyRound,
   ScrollText,
   UserPlus,
+  User,
   Users,
 } from "lucide-react";
 
@@ -91,5 +92,6 @@ export const ICONS = {
   "key-round": KeyRound,
   "scroll-text": ScrollText,
   "user-plus": UserPlus,
+  user: User,
   users: Users,
 } as const;

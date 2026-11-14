@@ -4,6 +4,8 @@ export const LOGIN_MAX_FAILURES = 10;
 
 export const LOGIN_MAX_FAILURES_PER_IP = 30;
 
+export const PASSWORD_CHANGE_MAX_FAILURES = 5;
+
 export const API_WINDOW_MS = 60 * 1000;
 
 export const API_MAX_REQUESTS = 600;

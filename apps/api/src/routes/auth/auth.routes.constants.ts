@@ -6,5 +6,7 @@ export const AUTH_ERROR_STATUS: Record<AuthError, number> = {
   [authErrors.sessionNotFound]: 401,
   [authErrors.quickLoginDisabled]: 404,
   [authErrors.quickLoginMissing]: 404,
+  [authErrors.invalidPasswordChange]: 400,
+  [authErrors.wrongPassword]: 403,
   [authErrors.unexpected]: 500,
 };

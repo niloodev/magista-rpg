@@ -41,7 +41,7 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
     else void joinCharacterRooms(socket);
     socket.emit("roll:history", recentRolls);
     registerPresenceHandlers(server, socket);
-    registerRollHandlers(socket, broadcastRollResult);
+    registerRollHandlers(socket, { onRolled: broadcastRollResult, onPinged: publishToTable });
   });
   io = server;
   return server;
@@ -103,8 +103,13 @@ export function broadcastCharacterUpdate(character: ICharacter, origin: string |
  * history sent to every socket that connects (in memory; persisted history comes with the chat).
  */
 export function broadcastRollResult(roll: IRollResult): void {
-  setTimeout(() => {
-    recentRolls = [roll, ...recentRolls].slice(0, ROLL_HISTORY_LIMIT);
-    io?.to(TABLE_ROOM).emit("roll:result", roll);
-  }, ROLL_REVEAL_DELAY_MS);
+  setTimeout(() => publishToTable(roll), ROLL_REVEAL_DELAY_MS);
+}
+
+/**
+ * Adds an entry to the recent history and shows it to the whole table right away (pings have no animation).
+ */
+export function publishToTable(entry: IRollResult): void {
+  recentRolls = [entry, ...recentRolls].slice(0, ROLL_HISTORY_LIMIT);
+  io?.to(TABLE_ROOM).emit("roll:result", entry);
 }

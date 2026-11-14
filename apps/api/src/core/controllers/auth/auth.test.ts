@@ -19,10 +19,13 @@ function build(
     accounts: {
       findCredentialsByLogin: vi.fn().mockResolvedValue(credentials),
       findById: vi.fn().mockResolvedValue({ account, sessionVersion: 3 }),
+      findCredentialsById: vi.fn().mockResolvedValue(credentials),
       revokeSessions: vi.fn().mockResolvedValue(undefined),
+      updatePassword: vi.fn().mockResolvedValue(4),
       ...overrides,
     },
     verifyPassword: vi.fn().mockResolvedValue(passwordOk),
+    hashPassword: vi.fn().mockResolvedValue("new-hash"),
     verifyAgainstDummy: vi.fn().mockResolvedValue(false),
     signToken: vi.fn().mockReturnValue("token"),
     quickLogins: () => quickLogins,
@@ -138,6 +141,51 @@ describe("auth controller", () => {
     });
     expect(await controller.login({ login: "Zarkov", password: "x" })).toEqual({
       error: authErrors.unexpected,
+    });
+  });
+});
+
+describe("auth controller change password", () => {
+  const input = { currentPassword: "senha-antiga", newPassword: "senha-nova-1" };
+
+  it("stores the new hash and signs a token with the bumped session version", async () => {
+    const { controller, deps } = build();
+    expect(await controller.changePassword("acc-1", input)).toEqual({
+      message: "Senha alterada",
+      payload: { token: "token" },
+    });
+    expect(deps.verifyPassword).toHaveBeenCalledWith("hash", "senha-antiga");
+    expect(deps.accounts.updatePassword).toHaveBeenCalledWith("acc-1", "new-hash");
+    expect(deps.signToken).toHaveBeenCalledWith({ sub: "acc-1", ver: 4 });
+  });
+
+  it("refuses a wrong current password without touching the account", async () => {
+    const { controller, deps } = build({}, false);
+    expect(await controller.changePassword("acc-1", input)).toEqual({
+      error: authErrors.wrongPassword,
+    });
+    expect(deps.accounts.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("refuses short, unchanged or malformed passwords", async () => {
+    const { controller, deps } = build();
+    for (const bad of [
+      { currentPassword: "senha-antiga", newPassword: "curta" },
+      { currentPassword: "senha-nova-1", newPassword: "senha-nova-1" },
+      { newPassword: "senha-nova-1" },
+      null,
+    ]) {
+      expect(await controller.changePassword("acc-1", bad)).toEqual({
+        error: authErrors.invalidPasswordChange,
+      });
+    }
+    expect(deps.verifyPassword).not.toHaveBeenCalled();
+  });
+
+  it("treats a missing account as an expired session", async () => {
+    const { controller } = build({ findCredentialsById: vi.fn().mockResolvedValue(null) });
+    expect(await controller.changePassword("acc-1", input)).toEqual({
+      error: authErrors.sessionNotFound,
     });
   });
 });

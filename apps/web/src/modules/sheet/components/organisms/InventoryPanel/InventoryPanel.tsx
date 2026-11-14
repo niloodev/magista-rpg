@@ -1,8 +1,9 @@
 "use client";
 
+import { formatWeight } from "@magista/shared";
+
 import { ItemForm } from "@/modules/sheet/components/molecules";
 import type { SheetSectionProps } from "@/modules/sheet/sheet.types";
-import { formatWeight } from "@/modules/sheet/sheet.utils";
 import { Button, Icon, Text } from "@/shared/components/atoms";
 import {
   ConfirmDialog,
@@ -18,7 +19,7 @@ import { useInventoryPanel } from "./InventoryPanel.hook";
 import { InventoryEntry } from "./subcomponents";
 
 export function InventoryPanel(props: SheetSectionProps) {
-  const { sheet, derived } = props;
+  const { sheet, derived, onPing, pingedId } = props;
   const { items, maxWeightGrams } = sheet.inventory;
   const { editor, openCreate, current, percent, overweight, moveItem, itemName, setMaxWeight } =
     useInventoryPanel(props);
@@ -92,6 +93,8 @@ export function InventoryPanel(props: SheetSectionProps) {
           renderItem={(item) => (
             <InventoryEntry
               item={item}
+              pinged={pingedId === item.id}
+              onPing={() => onPing({ kind: "item", id: item.id })}
               onEdit={() => editor.openEdit(item)}
               onDelete={() => editor.requestDelete(item)}
             />

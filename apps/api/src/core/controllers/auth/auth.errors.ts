@@ -4,6 +4,9 @@ export const authErrors = {
   sessionNotFound: "Sessão expirada. Entre novamente.",
   quickLoginDisabled: "Rota não encontrada.",
   quickLoginMissing: "Conta de teste não encontrada. Rode o seed (npm run db:seed).",
+  invalidPasswordChange:
+    "A nova senha precisa ter pelo menos 10 caracteres e ser diferente da atual.",
+  wrongPassword: "Senha atual incorreta.",
   unexpected: "Não foi possível acessar a ficha agora. Tente novamente.",
 } as const;
 

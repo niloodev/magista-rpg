@@ -3,9 +3,18 @@ import {
   DICE_MAX_SIDES,
   DICE_MAX_TERMS,
   DICE_TERM_PATTERN,
+  D20_SIDES,
   FLAT_TERM_PATTERN,
 } from "./dice.constants";
-import type { DiceSign, IDiceTerm, IRollOutcome, IRolledTerm, RandomInt } from "./dice.types";
+import type {
+  DiceSign,
+  IDiceTerm,
+  IRollOptions,
+  IRollOutcome,
+  IRolledTerm,
+  NaturalOutcome,
+  RandomInt,
+} from "./dice.types";
 
 /**
  * Parses an expression like "2d6 + 3 - 1d4" into terms, or returns null when invalid.
@@ -45,6 +54,18 @@ export function rollTerms(terms: IDiceTerm[], randomInt: RandomInt): IRolledTerm
 }
 
 /**
+ * Rolls a parsed expression at its highest possible total (critical damage): added dice on their top face,
+ * subtracted dice on 1.
+ */
+export function maximizeTerms(terms: IDiceTerm[]): IRolledTerm[] {
+  return terms.map((term) =>
+    term.kind === "flat"
+      ? term
+      : { ...term, results: Array<number>(term.count).fill(term.sign > 0 ? term.sides : 1) },
+  );
+}
+
+/**
  * Sums rolled terms honoring each term sign.
  */
 export function sumRolledTerms(terms: IRolledTerm[]): number {
@@ -56,11 +77,27 @@ export function sumRolledTerms(terms: IRolledTerm[]): number {
 }
 
 /**
- * Parses and rolls an expression, returning null when the expression is invalid.
+ * Parses and rolls an expression (every die at its highest face with `maximize`), returning null when invalid.
  */
-export function rollDiceExpression(expression: string, randomInt: RandomInt): IRollOutcome | null {
+export function rollDiceExpression(
+  expression: string,
+  randomInt: RandomInt,
+  options: IRollOptions = {},
+): IRollOutcome | null {
   const parsed = parseDiceExpression(expression);
   if (!parsed) return null;
-  const terms = rollTerms(parsed, randomInt);
+  const terms = options.maximize ? maximizeTerms(parsed) : rollTerms(parsed, randomInt);
   return { expression, terms, total: sumRolledTerms(terms) };
+}
+
+/**
+ * Natural 20 (critical) or natural 1 (fumble) on the first single d20 of an outcome.
+ */
+export function naturalOutcome(outcome: IRollOutcome): NaturalOutcome {
+  const d20 = outcome.terms.find(
+    (term) => term.kind === "dice" && term.sides === D20_SIDES && term.count === 1,
+  );
+  if (!d20 || d20.kind !== "dice") return null;
+  if (d20.results[0] === D20_SIDES) return "critical";
+  return d20.results[0] === 1 ? "fumble" : null;
 }

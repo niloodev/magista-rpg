@@ -4,6 +4,7 @@ import {
   deriveSheet,
   isErrorResult,
   type ICharacterUpdatedEvent,
+  type IPingEntry,
   type IRollKind,
   type IRollResult,
 } from "@magista/shared";
@@ -11,12 +12,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CLIENT_ID } from "@/core/services/http";
 import { fetchCharacter, levelUp, saveSheet } from "@/modules/sheet/services";
-import { AUTOSAVE_DEBOUNCE_MS, SHEET_ART_HINT_KEY } from "@/modules/sheet/sheet.constants";
+import {
+  AUTOSAVE_DEBOUNCE_MS,
+  PING_FEEDBACK_MS,
+  SHEET_ART_HINT_KEY,
+} from "@/modules/sheet/sheet.constants";
 import type { SheetTab } from "@/modules/sheet/sheet.types";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
-import { requestRoll } from "@/modules/table/services";
+import { pingEntry, requestRoll } from "@/modules/table/services";
 
 import type { SheetPageProps } from "./SheetPage.types";
 import { saveWithReconcile } from "./SheetPage.utils";
@@ -37,6 +42,7 @@ export function useSheetPage({ characterId }: SheetPageProps) {
   const [rollError, setRollError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SheetTab>("geral");
   const [activeRoll, setActiveRoll] = useState<IRollResult | null>(null);
+  const [pingedId, setPingedId] = useState<string | null>(null);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [levelUpLoading, setLevelUpLoading] = useState(false);
   const [levelUpError, setLevelUpError] = useState<string | null>(null);
@@ -126,6 +132,26 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     [characterId, flush, socket],
   );
 
+  const onPing = useCallback(
+    async (entry: IPingEntry) => {
+      await flush();
+      const result = await pingEntry({ socket, request: { characterId, entry } });
+      if (!result.ok) {
+        setRollError(result.error);
+        return;
+      }
+      setRollError(null);
+      setPingedId(entry.id);
+    },
+    [characterId, flush, socket],
+  );
+
+  useEffect(() => {
+    if (pingedId === null) return;
+    const timer = window.setTimeout(() => setPingedId(null), PING_FEEDBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [pingedId]);
+
   const onLevelUp = useCallback(
     async (addToCurrent: boolean) => {
       setLevelUpLoading(true);
@@ -171,6 +197,8 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     onTabChange: setActiveTab,
     onEdit: editSheet,
     onRoll: (roll: IRollKind) => void onRoll(roll),
+    onPing: (entry: IPingEntry) => void onPing(entry),
+    pingedId,
     onRetrySave: () => void flush(),
   };
 }

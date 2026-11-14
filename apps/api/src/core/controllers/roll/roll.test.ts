@@ -18,6 +18,21 @@ sheet.abilities = [
     addProficiency: false,
     description: "",
   },
+  {
+    id: "golpe",
+    name: "Golpe",
+    attackAttribute: null,
+    damageDice: "2d6",
+    damageFlat: 1,
+    damageAttribute: null,
+    addBaseDamage: false,
+    addProficiency: false,
+    description: "",
+  },
+];
+sheet.traits = [{ id: "t1", name: "Visão no escuro", description: "Enxerga no escuro." }];
+sheet.inventory.items = [
+  { id: "i1", name: "Escudo", quantity: 1, armorBonus: 2, weightGrams: 1500, description: "" },
 ];
 
 const character: ICharacter = {
@@ -121,6 +136,59 @@ describe("roll controller", () => {
   it("rejects malformed requests", async () => {
     expect(await controller.roll(owner, { roll: "x" })).toEqual({
       error: rollErrors.invalidRequest,
+    });
+  });
+
+  it("rolls maximum damage on a natural 20", async () => {
+    const result = await controller.roll(owner, {
+      characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
+      roll: { kind: "ability", list: "abilities", id: "golpe" },
+    });
+    expect(result).toMatchObject({
+      payload: {
+        rows: [{ label: "Ataque" }, { label: "Dano", maximized: true, outcome: { total: 13 } }],
+        notes: ["Crítico: dano máximo"],
+      },
+    });
+  });
+
+  it("shares a trait or an item with the table", async () => {
+    const trait = await controller.ping(owner, {
+      characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
+      entry: { kind: "trait", id: "t1" },
+    });
+    expect(trait).toMatchObject({
+      payload: {
+        kind: "trait",
+        title: "Visão no escuro",
+        subtitle: "Traço",
+        rows: [],
+        notes: ["Enxerga no escuro."],
+        rolledByGm: false,
+      },
+    });
+    const item = await controller.ping(
+      { accountId: "gm", role: "GM" },
+      { characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90", entry: { kind: "item", id: "i1" } },
+    );
+    expect(item).toMatchObject({
+      payload: { kind: "item", notes: ["Qtd. 1 · 1,5 kg · CA +2"], rolledByGm: true },
+    });
+  });
+
+  it("refuses pings for missing entries, other players and malformed requests", async () => {
+    const characterId = "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90";
+    expect(
+      await controller.ping(owner, { characterId, entry: { kind: "item", id: "t1" } }),
+    ).toEqual({ error: rollErrors.entryNotFound });
+    expect(
+      await controller.ping(
+        { accountId: "x", role: "PLAYER" },
+        { characterId, entry: { kind: "trait", id: "t1" } },
+      ),
+    ).toEqual({ error: rollErrors.pingForbidden });
+    expect(await controller.ping(owner, { characterId, entry: { kind: "skill" } })).toEqual({
+      error: rollErrors.invalidPing,
     });
   });
 });

@@ -25,4 +25,8 @@ export const ROLL_ERROR_STATUS: Record<RollError, number> = {
   [rollErrors.maxLevel]: 409,
   [rollErrors.conflict]: 409,
   [rollErrors.unexpected]: 500,
+  [rollErrors.invalidPing]: 400,
+  [rollErrors.entryNotFound]: 404,
+  [rollErrors.pingForbidden]: 403,
+  [rollErrors.unexpectedPing]: 500,
 };

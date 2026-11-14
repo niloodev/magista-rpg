@@ -19,6 +19,7 @@ export interface ILevelUpPayload {
 
 export interface IRollController {
   roll: (viewer: IViewer, input: unknown) => Promise<ControllerResult<IRollResult, RollError>>;
+  ping: (viewer: IViewer, input: unknown) => Promise<ControllerResult<IRollResult, RollError>>;
   levelUp: (
     viewer: IViewer,
     characterId: string,

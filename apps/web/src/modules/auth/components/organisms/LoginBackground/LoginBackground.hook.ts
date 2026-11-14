@@ -2,20 +2,23 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import { usePrefersReducedMotion } from "@/shared/hooks";
+
 import {
   AUTO_DRIFT_AMPLITUDE,
   AUTO_DRIFT_STEP,
   PARALLAX_LERP,
   PARALLAX_SPEEDS,
-  REDUCED_MOTION_QUERY,
 } from "./LoginBackground.constants";
 import type { LayerRefSetter, ParallaxPoint } from "./LoginBackground.types";
 import { toCursorLight, toLayerTransform } from "./LoginBackground.utils";
 
 /**
  * Drives the login parallax: eases every layer toward the cursor, with an idle drift until the mouse moves.
+ * Off with reduced motion or the performance mode.
  */
 export function useLoginBackground() {
+  const reducedMotion = usePrefersReducedMotion();
   const layers = useRef<(HTMLDivElement | null)[]>([]);
   const lightRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,7 +31,7 @@ export function useLoginBackground() {
   );
 
   useEffect(() => {
-    if (window.matchMedia(REDUCED_MOTION_QUERY).matches) return;
+    if (reducedMotion) return;
     const target: ParallaxPoint = { x: 0, y: 0 };
     const current: ParallaxPoint = { x: 0, y: 0 };
     let frame = 0;
@@ -64,7 +67,7 @@ export function useLoginBackground() {
       cancelAnimationFrame(frame);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, []);
+  }, [reducedMotion]);
 
   return { layerRef, lightRef };
 }

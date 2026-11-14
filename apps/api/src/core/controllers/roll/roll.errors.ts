@@ -7,6 +7,10 @@ export const rollErrors = {
   maxLevel: "O personagem já está no nível máximo.",
   conflict: "A ficha mudou durante a subida de nível. Tente de novo.",
   unexpected: "Não foi possível rolar agora. Tente novamente.",
+  invalidPing: "Não foi possível mostrar isso na mesa.",
+  entryNotFound: "Personagem, traço ou item não encontrado.",
+  pingForbidden: "Você não pode mostrar itens deste personagem.",
+  unexpectedPing: "Não foi possível mostrar na mesa agora. Tente novamente.",
 } as const;
 
 type RollErrorKey = keyof typeof rollErrors;

@@ -10,6 +10,10 @@ export interface ILoginPayload {
   token: string;
 }
 
+export interface IChangePasswordPayload {
+  token: string;
+}
+
 export interface IAuthenticatedViewer {
   accountId: string;
   role: AccountRole;
@@ -17,8 +21,16 @@ export interface IAuthenticatedViewer {
 }
 
 export interface IAuthControllerDeps {
-  accounts: Pick<IAccountModels, "findCredentialsByLogin" | "findById" | "revokeSessions">;
+  accounts: Pick<
+    IAccountModels,
+    | "findCredentialsByLogin"
+    | "findById"
+    | "findCredentialsById"
+    | "revokeSessions"
+    | "updatePassword"
+  >;
   verifyPassword: (hash: string, password: string) => Promise<boolean>;
+  hashPassword: (password: string) => Promise<string>;
   verifyAgainstDummy: (password: string) => Promise<false>;
   signToken: (payload: ISessionTokenPayload) => string;
   quickLogins: () => Record<AccountRole, string> | null;
@@ -34,4 +46,8 @@ export interface IAuthController {
     clientIp: string | undefined,
   ) => Promise<ControllerResult<ILoginPayload, AuthError>>;
   logout: (accountId: string) => Promise<ControllerResult<null, AuthError>>;
+  changePassword: (
+    accountId: string,
+    input: unknown,
+  ) => Promise<ControllerResult<IChangePasswordPayload, AuthError>>;
 }

@@ -3,6 +3,7 @@ import { expect, test, type BrowserContext } from "@playwright/test";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { dismissRoll, loginAs, openSheet } from "../support/session";
+import { ability, readSheet, writeLists } from "../support/sheet";
 
 async function forceNaturalTwenty(context: BrowserContext): Promise<void> {
   await context.routeWebSocket(/socket\.io/, (ws) => {
@@ -23,6 +24,8 @@ async function forceNaturalTwenty(context: BrowserContext): Promise<void> {
       if (d20) {
         row.outcome.total += 20 - d20.results[0];
         d20.results[0] = 20;
+        for (const damage of roll.rows.slice(1))
+          if (damage.label === "Dano") damage.maximized = true;
       }
       ws.send(head + JSON.stringify(data));
     });
@@ -73,9 +76,36 @@ test.describe("rolagens", () => {
       "[class*='rays-spin'], .magista-spark, [class*='gold-shimmer'], [class*='gold-sweep']";
     await expect(page.locator(lighting)).toHaveCount(0);
     await expect(page.getByTestId("critical-label")).toHaveCSS("color", "rgb(253, 230, 138)");
-    await dismissRoll(page);
+    const overlay = page.locator("[data-state]").filter({ has: page.getByText("Crítico!") });
+    await expect(overlay).toHaveAttribute("data-state", "open");
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-state", "closing");
+    await expect(overlay).toHaveCount(0);
     const card = page.locator("aside ol > li").first();
     await expect(card).toContainText("Crítico", { timeout: 8000 });
     await expect(card.locator(lighting)).toHaveCount(0);
+  });
+
+  test("no crítico o dano da habilidade sai marcado como máximo", async ({ browser }) => {
+    const { abilities } = (await readSheet()).sheet;
+    await writeLists({
+      abilities: [{ ...ability("crit-ability", "Golpe certeiro"), damageDice: "2d6" }],
+    });
+    try {
+      const context = await browser.newContext();
+      await forceNaturalTwenty(context);
+      const page = await context.newPage();
+      await loginAs(page, PLAYER);
+      await openSheet(page, e2eState().playerCharacterId);
+      await page.getByRole("tab", { name: "Habilidades" }).click();
+      await page.getByRole("button", { name: "Rolar Golpe certeiro" }).click();
+      await expect(page.getByText("Crítico!", { exact: true })).toBeVisible({ timeout: 8000 });
+      await expect(page.getByText("Máximo", { exact: true }).first()).toBeVisible();
+      await dismissRoll(page);
+      const card = page.locator("aside ol > li").first();
+      await expect(card).toContainText("Máximo", { timeout: 8000 });
+    } finally {
+      await writeLists({ abilities });
+    }
   });
 });

@@ -48,13 +48,6 @@ export function createTrait(): ISheetTrait {
 }
 
 /**
- * Formats grams as kilograms with Brazilian decimals ("1,5 kg").
- */
-export function formatWeight(grams: number): string {
-  return `${(grams / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg`;
-}
-
-/**
  * Formats a modifier with an explicit plus sign when positive.
  */
 export function formatSigned(value: number): string {

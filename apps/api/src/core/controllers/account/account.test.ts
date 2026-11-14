@@ -12,7 +12,7 @@ function build(account: unknown = found) {
   const deps = {
     accounts: {
       findCredentialsByLogin: vi.fn().mockResolvedValue(account),
-      updatePassword: vi.fn().mockResolvedValue(undefined),
+      updatePassword: vi.fn().mockResolvedValue(1),
       listAccounts: vi.fn().mockResolvedValue([found.account]),
       createAccount: vi
         .fn()

@@ -61,6 +61,11 @@
     transition: left 0.7s var(--magista-ease-shine);
   }
 
+  .magista-btn-cut:focus-visible,
+  .magista-btn-slant:focus-visible {
+    outline-offset: -4px;
+  }
+
   .magista-btn-slant {
     clip-path: var(--magista-clip-slant);
     background: rgba(196, 22, 82, 0.85);

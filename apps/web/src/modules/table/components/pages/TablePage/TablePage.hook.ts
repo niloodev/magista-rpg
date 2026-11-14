@@ -12,7 +12,7 @@ import { presenceLoadingRows } from "@/modules/table/table.utils";
 import { TABLE_LOGOUT_REDIRECT_PATH } from "./TablePage.constants";
 
 /**
- * Exposes identity, live presence, rolls and the logout action (the character library loads itself).
+ * Exposes identity, live presence, rolls, the profile dialog and the logout action (the character library loads itself).
  * Remembers how many people were online (skeleton hint), and forgets every hint on logout.
  */
 export function useTablePage() {
@@ -21,6 +21,7 @@ export function useTablePage() {
   const setSession = useApp((state) => state.setSession);
   const { connection, members, rolls, rollsLoaded } = useApp((state) => state.table);
   const [leaving, setLeaving] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const presenceHint = useSkeletonHint(PRESENCE_HINT_KEY);
   const { setHint, clearHints } = useSkeletonHintActions();
 
@@ -53,5 +54,8 @@ export function useTablePage() {
     rollsLoading: !rollsLoaded && connection !== "disconnected",
     leaving,
     onLogout,
+    profileOpen,
+    onOpenProfile: () => setProfileOpen(true),
+    onCloseProfile: () => setProfileOpen(false),
   };
 }

@@ -4,7 +4,6 @@ import {
   createAbility,
   createItem,
   formatSigned,
-  formatWeight,
   portraitOf,
   validateAbility,
   validateItem,
@@ -12,9 +11,7 @@ import {
 } from "./sheet.utils";
 
 describe("sheet utils", () => {
-  it("formats weights and signed modifiers", () => {
-    expect(formatWeight(1500)).toBe("1,5 kg");
-    expect(formatWeight(0)).toBe("0 kg");
+  it("formats signed modifiers", () => {
     expect(formatSigned(3)).toBe("+3");
     expect(formatSigned(0)).toBe("0");
     expect(formatSigned(-2)).toBe("-2");

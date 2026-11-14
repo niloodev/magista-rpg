@@ -40,7 +40,10 @@ describe("dica do feed", () => {
       ...(flat ? [{ kind: "flat", value: flat, sign: 1 }] : []),
     ],
   });
-  const roll = (rows: { label: string; outcome: unknown }[], notes: string[]) =>
+  const roll = (
+    rows: { label: string; outcome: unknown; maximized?: boolean }[],
+    notes: string[],
+  ) =>
     ({
       rows,
       notes,
@@ -94,14 +97,43 @@ describe("dica do feed", () => {
           short: [1, 600],
           long: [],
         },
+        {
+          name: 10,
+          title: 16,
+          subtitle: 0,
+          byGm: false,
+          critical: false,
+          levelUp: false,
+          rows: [],
+          short: [],
+          long: [],
+        },
       ],
     });
   });
 
-  it("separa notas curtas das longas", () => {
-    expect(splitNotes(["curta", "a\nb", "y".repeat(161)])).toEqual({
+  it("reserva o selo de dano máximo e mantém cartões sem dados (traços e itens)", () => {
+    const hint = feedHint([
+      roll(
+        [
+          { label: "Ataque", outcome: outcome([20], 20) },
+          { label: "Dano", outcome: outcome([6, 6], 6), maximized: true },
+        ],
+        [],
+      ),
+      roll([], ["Qtd. 1 · 1,5 kg"]),
+    ]);
+    expect(hint.c[0]?.[0]).toEqual([
+      [11, 1, 0, 10],
+      [8, 2, 0, 6],
+    ]);
+    expect(parseFeedHint(hint)?.cards[1]).toMatchObject({ rows: [], short: [15] });
+  });
+
+  it("separa notas curtas das longas (e manda negrito para o texto rico)", () => {
+    expect(splitNotes(["curta", "a\nb", "y".repeat(161), "**1x** por descanso"])).toEqual({
       short: ["curta"],
-      long: ["a\nb", "y".repeat(161)],
+      long: ["a\nb", "y".repeat(161), "**1x** por descanso"],
     });
   });
 });

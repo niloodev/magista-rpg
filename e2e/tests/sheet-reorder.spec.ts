@@ -1,53 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { apiAs, payloadOf } from "../support/api";
 import { dragTo, pressKeys } from "../support/drag";
-import { GM, PLAYER } from "../support/env";
+import { PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
-
-interface StoredSheet {
-  sheet: Record<string, unknown> & {
-    traits: { id: string; name: string }[];
-    abilities: { id: string; name: string }[];
-    innerRealm: { id: string; name: string }[];
-    inventory: { maxWeightGrams: number | null; items: { id: string; name: string }[] };
-  };
-  updatedAt: string;
-}
-
-const ability = (id: string, name: string) => ({
-  id,
-  name,
-  attackAttribute: null,
-  damageDice: "",
-  damageFlat: 0,
-  damageAttribute: null,
-  addBaseDamage: false,
-  addProficiency: false,
-  description: "",
-});
-
-async function readSheet(): Promise<StoredSheet> {
-  const gm = await apiAs(GM);
-  const result = await payloadOf<StoredSheet>(
-    await gm.get(`/characters/${e2eState().playerCharacterId}`),
-  );
-  await gm.dispose();
-  return result;
-}
-
-async function writeLists(lists: Partial<StoredSheet["sheet"]>) {
-  const gm = await apiAs(GM);
-  const current = await payloadOf<StoredSheet>(
-    await gm.get(`/characters/${e2eState().playerCharacterId}`),
-  );
-  const response = await gm.put(`/characters/${e2eState().playerCharacterId}/sheet`, {
-    data: { sheet: { ...current.sheet, ...lists }, baseUpdatedAt: current.updatedAt },
-  });
-  if (!response.ok()) throw new Error(`Falha ao preparar a ficha: ${await response.text()}`);
-  await gm.dispose();
-}
+import { ability, readSheet, writeLists } from "../support/sheet";
 
 const names = (list: { name: string }[]) => list.map((entry) => entry.name);
 
@@ -96,8 +53,17 @@ test.describe("reordenar listas da ficha com arrastar e soltar", () => {
   test("traços: teclado pela alça reordena e salva sozinho", async ({ page }) => {
     await page.locator("#sheet-tab-tracos").click();
     const handle = page.getByRole("button", { name: "Reordenar Traço A" });
+    const announcer = page.locator("[id^='DndLiveRegion']");
     await handle.focus();
-    await pressKeys(page, ["Space", "ArrowDown", "ArrowDown", "Space"]);
+    await page.keyboard.press("Space");
+    await expect(announcer).toContainText("posição 1 de 3");
+    for (const position of [2, 3]) {
+      await expect(async () => {
+        await page.keyboard.press("ArrowDown");
+        await expect(announcer).toContainText(`posição ${position} de 3`, { timeout: 500 });
+      }).toPass();
+    }
+    await page.keyboard.press("Space");
     await expect(page.getByRole("list", { name: "Traços" }).getByRole("heading")).toHaveText([
       "Traço B",
       "Traço C",

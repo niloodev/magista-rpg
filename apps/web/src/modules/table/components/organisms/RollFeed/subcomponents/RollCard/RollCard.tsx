@@ -42,7 +42,7 @@ export function RollCard({ roll }: RollCardProps) {
       </div>
       <div className="relative space-y-3 p-3">
         <p
-          className={`flex items-center gap-2 font-sans text-[15px] font-bold tracking-wide ${critical ? "text-gold-300" : roll.kind === "levelUp" ? "text-teal-300" : "text-accent-text"}`}
+          className={`flex min-w-0 items-center gap-2 font-sans text-[15px] font-bold tracking-wide ${critical ? "text-gold-300" : roll.kind === "levelUp" ? "text-teal-300" : "text-accent-text"}`}
         >
           <Icon name={KIND_ICONS[roll.kind]} size={16} />
           <span className="truncate">{roll.title}</span>

@@ -1,4 +1,10 @@
-import type { IRollOutcome, IRollResult, IRollResultRow } from "@magista/shared";
+import {
+  D20_SIDES,
+  naturalOutcome,
+  type IRollOutcome,
+  type IRollResult,
+  type IRollResultRow,
+} from "@magista/shared";
 
 import {
   FEED_FLAG_BY_GM,
@@ -11,24 +17,21 @@ import {
   FEED_HINT_MAX_ROWS,
   PRESENCE_HINT_MAX,
   ROLL_FEED_LIMIT,
+  MAXIMIZED_LABEL,
   NATURAL_LABELS,
   SHORT_NOTE_MAX_LENGTH,
 } from "./table.constants";
-import type {
-  ConnectionStatus,
-  DieChip,
-  FeedRowShape,
-  IFeedShape,
-  NaturalOutcome,
-} from "./table.types";
+import type { ConnectionStatus, DieChip, FeedRowShape, IFeedShape } from "./table.types";
 
 /**
- * Short notes go in a list; long or multi-line notes go in an expandable text.
+ * Short notes go in a list; long, multi-line or **bold** notes go in an expandable (rich) text.
  */
 export function splitNotes(notes: string[]) {
+  const isShort = (note: string) =>
+    note.length <= SHORT_NOTE_MAX_LENGTH && !note.includes("\n") && !note.includes("**");
   return {
-    short: notes.filter((note) => note.length <= SHORT_NOTE_MAX_LENGTH && !note.includes("\n")),
-    long: notes.filter((note) => note.length > SHORT_NOTE_MAX_LENGTH || note.includes("\n")),
+    short: notes.filter(isShort),
+    long: notes.filter((note) => !isShort(note)),
   };
 }
 
@@ -73,12 +76,11 @@ export function feedHint(rolls: IRollResult[]): {
       const notes = splitNotes(roll.notes);
       const rows = roll.rows.slice(0, FEED_HINT_MAX_ROWS).map((row): FeedRowShape => {
         const modifier = flatModifier(row.outcome);
-        const natural = naturalOutcome(row.outcome);
         return [
           Math.min(`${row.label} ${row.outcome.expression}`.length, FEED_HINT_MAX_NOTE),
           Math.min(toDieChips(row.outcome).length, FEED_HINT_MAX_CHIPS),
           modifier === 0 ? 0 : `+ ${Math.abs(modifier)}`.length,
-          natural ? NATURAL_LABELS[natural].length : 0,
+          rowBadge(row)?.length ?? 0,
         ];
       });
       const flags =
@@ -125,8 +127,7 @@ export function parseFeedHint(value: unknown): IFeedShape | null {
           })),
         short: lengths(short),
         long: lengths(long),
-      }))
-      .filter((card) => card.rows.length > 0),
+      })),
   };
 }
 
@@ -140,9 +141,9 @@ export function toDieChips(outcome: IRollOutcome): DieChip[] {
           value,
           sides: term.sides,
           natural:
-            term.sides === 20 && value === 20
+            term.sides === D20_SIDES && value === D20_SIDES
               ? "critical"
-              : term.sides === 20 && value === 1
+              : term.sides === D20_SIDES && value === 1
                 ? "fumble"
                 : null,
         }))
@@ -161,26 +162,17 @@ export function flatModifier(outcome: IRollOutcome): number {
 }
 
 /**
- * Flags a natural 20 or natural 1 on the first single d20 of the outcome.
- */
-export function naturalOutcome(outcome: IRollOutcome): NaturalOutcome {
-  const d20 = outcome.terms.find(
-    (term) => term.kind === "dice" && term.sides === 20 && term.count === 1,
-  );
-  if (!d20 || d20.kind !== "dice") return null;
-  if (d20.results[0] === 20) return "critical";
-  if (d20.results[0] === 1) return "fumble";
-  return null;
-}
-
-/**
  * True when any row of the roll has a natural 20 on a single d20.
  */
 export function hasCritical(rows: IRollResultRow[]): boolean {
-  return rows.some((row) =>
-    row.outcome.terms.some(
-      (term) =>
-        term.kind === "dice" && term.sides === 20 && term.count === 1 && term.results[0] === 20,
-    ),
-  );
+  return rows.some((row) => naturalOutcome(row.outcome) === "critical");
+}
+
+/**
+ * Label shown after the dice of a row: its natural 20/1, or "Máximo" for damage maximized by a critical.
+ */
+export function rowBadge(row: IRollResultRow): string | null {
+  const natural = naturalOutcome(row.outcome);
+  if (natural) return NATURAL_LABELS[natural];
+  return row.maximized ? MAXIMIZED_LABEL : null;
 }

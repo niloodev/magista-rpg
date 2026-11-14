@@ -34,6 +34,13 @@ test.describe("acessibilidade (axe, WCAG 2.1 AA)", () => {
     expect(await violations(page), "modal").toEqual([]);
   });
 
+  test("perfil aberto na mesa", async ({ page }) => {
+    await loginAs(page, PLAYER);
+    await page.getByRole("button", { name: "Perfil" }).click();
+    await expect(page.getByRole("dialog", { name: "Perfil" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+
   test("abas navegáveis pelo teclado", async ({ page }) => {
     await loginAs(page, PLAYER);
     await openSheet(page, e2eState().playerCharacterId);

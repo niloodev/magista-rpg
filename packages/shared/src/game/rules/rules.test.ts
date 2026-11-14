@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createEmptySheet } from "../../schemas/character/character.utils";
 import { attributeModifier, baseDamageFor, deriveSheet, proficiencyForLevel } from "./rules";
-import { joinExpression } from "./rules.utils";
+import { formatWeight, joinExpression } from "./rules.utils";
 
 describe("rules", () => {
   it("truncates modifiers toward zero like Roll20", () => {
@@ -67,5 +67,10 @@ describe("rules", () => {
       attack: "1d20 + 3 + 5",
       damage: "1d12 + 1d8 + 11 + 2 + 3",
     });
+  });
+
+  it("formats weights in kilograms", () => {
+    expect(formatWeight(1500)).toBe("1,5 kg");
+    expect(formatWeight(0)).toBe("0 kg");
   });
 });

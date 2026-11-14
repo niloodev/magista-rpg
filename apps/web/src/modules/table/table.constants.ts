@@ -24,6 +24,8 @@ export const FEED_HINT_MAX_CHIPS = 40;
 
 export const NATURAL_LABELS = { critical: "20 natural", fumble: "1 natural" } as const;
 
+export const MAXIMIZED_LABEL = "Máximo";
+
 export const ROLLED_BY_GM_LABEL = "rolado pelo Mestre";
 
 export const FEED_FLAG_BY_GM = 1;
@@ -41,3 +43,11 @@ export const ROLL_CARD_STYLES = {
 } as const;
 
 export const FEED_FLAG_LEVEL_UP = 4;
+
+export const TABLE_OFFLINE_ERROR = "Sem conexão com a mesa. Aguarde reconectar.";
+
+export const TABLE_ACK_TIMEOUT_MS = 8000;
+
+export const SERVER_DISCONNECT_REASON = "io server disconnect";
+
+export const SESSION_RECHECK_DELAY_MS = 1500;
