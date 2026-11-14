@@ -51,7 +51,7 @@ test.describe("autenticação", () => {
     await expect(page.locator("a[href^='/ficha/']").first()).toBeVisible();
     await page.context().clearCookies();
     await page.goto("/login");
-    await page.getByRole("button", { name: "Entrar como personagem" }).click();
+    await page.getByRole("button", { name: "Entrar como Jogador" }).click();
     await page.waitForURL(/\/(mesa|ficha)/);
     await expect(page.getByText(PLAYER.login).first()).toBeVisible();
   });

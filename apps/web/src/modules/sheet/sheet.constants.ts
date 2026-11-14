@@ -66,3 +66,5 @@ export const BLOCK_ICONS: Record<BlockKey, IconName> = {
 export const OPENING_PIPS = 4;
 
 export const SHEET_ART_HINT_KEY = "a";
+
+export const PING_FEEDBACK_MS = 2500;

@@ -1,3 +1,14 @@
+@custom-variant lite {
+  &:where([data-perf="low"], [data-perf="low"] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:where(:root:not([data-perf="full"]), :root:not([data-perf="full"]) *) {
+      @slot;
+    }
+  }
+}
+
 @theme inline {
   --color-background: var(--magista-background);
   --color-foreground: var(--magista-foreground);
@@ -53,6 +64,9 @@
   --animate-pop-in: pop-in 0.35s var(--magista-ease-pop) both;
   --animate-slide-down-in: slide-down-in 0.5s ease-out both;
   --animate-overlay-in: overlay-in 0.3s ease-out both;
+  --animate-overlay-out: overlay-out var(--dice-out-ms, 260ms) ease-in both;
+  --animate-dice-in: dice-in 0.42s var(--magista-ease-pop) both;
+  --animate-dice-out: dice-out var(--dice-out-ms, 260ms) ease-in both;
   --animate-crit-slam: crit-slam 0.7s var(--magista-ease-pop) both;
   --animate-skeleton-pulse: skeleton-pulse 1.6s ease-in-out infinite;
 }

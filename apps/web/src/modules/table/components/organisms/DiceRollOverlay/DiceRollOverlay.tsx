@@ -1,9 +1,9 @@
 "use client";
 
-import { HEXAGON } from "@/modules/table/table.constants";
+import { HEXAGON, MAXIMIZED_LABEL } from "@/modules/table/table.constants";
 import { Icon } from "@/shared/components/atoms";
 
-import { FUMBLE_LABEL, HEX_THEMES } from "./DiceRollOverlay.constants";
+import { EXIT_DURATION_STYLE, FUMBLE_LABEL, HEX_THEMES } from "./DiceRollOverlay.constants";
 import { useDiceRollOverlay } from "./DiceRollOverlay.hook";
 import type { DiceRollOverlayProps } from "./DiceRollOverlay.types";
 
@@ -18,15 +18,19 @@ export function DiceRollOverlay(props: DiceRollOverlayProps) {
   const theme = HEX_THEMES[critical ? "gold" : "ruby"];
   return (
     <div
-      className={`animate-overlay-in fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-300 ${leaving ? "opacity-0" : "opacity-100"}`}
+      data-state={leaving ? "closing" : "open"}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={EXIT_DURATION_STYLE}
     >
       <button
         type="button"
         aria-label="Fechar rolagem"
         onClick={close}
-        className="absolute inset-0 cursor-default bg-black/85 backdrop-blur-md"
+        className={`absolute inset-0 cursor-default bg-black/85 backdrop-blur-md lite:bg-black/95 ${leaving ? "animate-overlay-out" : "animate-overlay-in"}`}
       />
-      <div className="pointer-events-none relative flex flex-col items-center">
+      <div
+        className={`pointer-events-none relative flex flex-col items-center ${leaving ? "animate-dice-out" : "animate-dice-in"}`}
+      >
         <p
           className={`mb-6 text-center font-serif text-2xl tracking-[0.12em] uppercase transition-colors duration-500 ${critical ? "text-gold-300" : "text-accent-text drop-shadow-[0_0_12px_rgba(228,42,99,0.6)]"}`}
         >
@@ -61,14 +65,14 @@ export function DiceRollOverlay(props: DiceRollOverlayProps) {
             />
             {rolling && (
               <div className="animate-pulse-breath absolute inset-0 flex items-center justify-center">
-                <div className="h-24 w-24 rounded-full bg-primary/30 blur-xl" />
+                <div className="h-24 w-24 rounded-full bg-primary/30 blur-xl lite:hidden" />
               </div>
             )}
             {revealed && !critical && (
               <>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div
-                    className={`h-24 w-24 animate-pulse rounded-full blur-2xl ${HEX_THEMES.ruby.glow}`}
+                    className={`h-24 w-24 animate-pulse rounded-full blur-2xl lite:hidden ${HEX_THEMES.ruby.glow}`}
                   />
                 </div>
                 <div
@@ -139,12 +143,23 @@ export function DiceRollOverlay(props: DiceRollOverlayProps) {
               {secondary.map((row) => (
                 <div
                   key={row.label}
-                  className="border border-teal-500/50 bg-black/70 px-4 py-2 text-center"
+                  className={`border bg-black/70 px-4 py-2 text-center ${row.maximized ? "border-gold-400/70" : "border-teal-500/50"}`}
                 >
-                  <p className="font-sans text-sm text-teal-200">
+                  <p
+                    className={`font-sans text-sm ${row.maximized ? "text-gold-200" : "text-teal-200"}`}
+                  >
                     {row.label} ({row.outcome.expression})
                   </p>
-                  <p className="font-serif text-3xl text-white">{row.outcome.total}</p>
+                  <p
+                    className={`font-serif text-3xl ${row.maximized ? "text-gold-300" : "text-white"}`}
+                  >
+                    {row.outcome.total}
+                  </p>
+                  {row.maximized && (
+                    <p className="font-sans text-xs font-bold tracking-wider text-gold-300 uppercase">
+                      {MAXIMIZED_LABEL}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -154,13 +169,13 @@ export function DiceRollOverlay(props: DiceRollOverlayProps) {
       <button
         type="button"
         onClick={close}
-        className="absolute top-4 right-4 flex h-11 items-center gap-2 border border-white/15 bg-black/60 px-4 font-sans text-sm text-muted-strong hover:text-foreground"
+        className={`absolute top-4 right-4 flex h-11 items-center gap-2 border border-white/15 bg-black/60 px-4 font-sans text-sm text-muted-strong hover:text-foreground ${leaving ? "animate-overlay-out" : "animate-overlay-in"}`}
       >
         <Icon name="x" size={16} /> Fechar (Esc)
       </button>
       <p className="sr-only" aria-live="assertive">
         {revealed
-          ? `${critical ? "Crítico! 20 natural. " : ""}${roll.title}: ${roll.rows.map((row) => `${row.label} ${row.outcome.total}`).join(", ")}`
+          ? `${critical ? "Crítico! 20 natural. " : ""}${roll.title}: ${roll.rows.map((row) => `${row.label} ${row.outcome.total}${row.maximized ? " (máximo)" : ""}`).join(", ")}`
           : ""}
       </p>
     </div>

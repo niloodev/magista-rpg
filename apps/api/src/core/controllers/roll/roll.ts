@@ -3,14 +3,15 @@ import { randomInt, randomUUID } from "node:crypto";
 import {
   applyLevelUp,
   buildLevelUpSpec,
+  buildPingSpec,
   buildRollSpec,
   characterIdSchema,
   levelUpInputSchema,
-  rollDiceExpression,
+  pingRequestSchema,
   rollRequestSchema,
+  rollSpecRows,
   type ICharacter,
   type IRollResult,
-  type IRollResultRow,
   type IRollSpec,
   type RollResultKind,
 } from "@magista/shared";
@@ -33,12 +34,8 @@ export function createRollController(deps: IRollControllerDeps): IRollController
     character: ICharacter,
     viewer: IViewer,
   ): IRollResult | null => {
-    const rows: IRollResultRow[] = [];
-    for (const row of spec.rows) {
-      const outcome = rollDiceExpression(row.expression, deps.randomInt);
-      if (!outcome) return null;
-      rows.push({ label: row.label, outcome });
-    }
+    const rolled = rollSpecRows(spec, deps.randomInt);
+    if (!rolled) return null;
     return {
       id: deps.createId(),
       kind,
@@ -48,8 +45,8 @@ export function createRollController(deps: IRollControllerDeps): IRollController
       rolledByGm: viewer.role === "GM",
       title: spec.title,
       subtitle: spec.subtitle,
-      rows,
-      notes: spec.notes,
+      rows: rolled.rows,
+      notes: rolled.notes,
       createdAt: deps.now().toISOString(),
     };
   };
@@ -70,6 +67,28 @@ export function createRollController(deps: IRollControllerDeps): IRollController
     } catch (error) {
       console.error("roll failed:", error);
       return { error: rollErrors.unexpected };
+    }
+  };
+
+  const ping: IRollController["ping"] = async (viewer, input) => {
+    const parsed = pingRequestSchema.safeParse(input);
+    if (!parsed.success) return { error: rollErrors.invalidPing };
+    try {
+      const character = await deps.characters.findById(parsed.data.characterId);
+      if (!character)
+        return {
+          error: viewer.role === "GM" ? rollErrors.entryNotFound : rollErrors.pingForbidden,
+        };
+      if (!(await canAccessCharacter(viewer, character.id, deps.characters)))
+        return { error: rollErrors.pingForbidden };
+      const spec = buildPingSpec(character.sheet, parsed.data.entry);
+      if (!spec) return { error: rollErrors.entryNotFound };
+      const result = rollSpec(spec, parsed.data.entry.kind, character, viewer);
+      if (!result) return { error: rollErrors.unexpectedPing };
+      return { message: "Mostrado na mesa", payload: result };
+    } catch (error) {
+      console.error("ping failed:", error);
+      return { error: rollErrors.unexpectedPing };
     }
   };
 
@@ -100,7 +119,7 @@ export function createRollController(deps: IRollControllerDeps): IRollController
     }
   };
 
-  return { roll, levelUp };
+  return { roll, ping, levelUp };
 }
 
 /**

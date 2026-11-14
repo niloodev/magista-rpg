@@ -1,18 +1,23 @@
-import { HEXAGON } from "@/modules/table/table.constants";
-import { flatModifier, naturalOutcome, toDieChips } from "@/modules/table/table.utils";
+import { naturalOutcome } from "@magista/shared";
 
-import { NATURAL_STYLES, TOTAL_STYLES } from "./RollRow.constants";
+import { HEXAGON } from "@/modules/table/table.constants";
+import { flatModifier, rowBadge, toDieChips } from "@/modules/table/table.utils";
+
+import { MAXIMIZED_STYLE, NATURAL_STYLES, TOTAL_STYLES } from "./RollRow.constants";
 import type { RollRowProps } from "./RollRow.types";
 
 export function RollRow({ row, primary }: RollRowProps) {
   const natural = naturalOutcome(row.outcome);
   const modifier = flatModifier(row.outcome);
+  const badge = rowBadge(row);
   const totalStyle =
     natural === "critical"
       ? TOTAL_STYLES.critical
       : primary
         ? TOTAL_STYLES.primary
-        : TOTAL_STYLES.secondary;
+        : row.maximized
+          ? TOTAL_STYLES.maximized
+          : TOTAL_STYLES.secondary;
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
@@ -34,11 +39,11 @@ export function RollRow({ row, primary }: RollRowProps) {
               {modifier > 0 ? "+" : "-"} {Math.abs(modifier)}
             </span>
           )}
-          {natural && (
+          {badge && (
             <span
-              className={`ml-1 font-sans text-xs font-bold tracking-wider uppercase ${NATURAL_STYLES[natural].text}`}
+              className={`ml-1 font-sans text-xs font-bold tracking-wider uppercase ${natural ? NATURAL_STYLES[natural].text : MAXIMIZED_STYLE}`}
             >
-              {NATURAL_STYLES[natural].label}
+              {badge}
             </span>
           )}
         </div>

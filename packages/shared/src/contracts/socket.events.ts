@@ -1,4 +1,4 @@
-import type { IRollRequest, IRollResult } from "../game/rolls/rolls.types";
+import type { IPingRequest, IRollRequest, IRollResult } from "../game/rolls/rolls.types";
 import type { AccountRole } from "../schemas/account";
 import type { ICharacter } from "../schemas/character";
 import type { ControllerResult } from "./envelope";
@@ -33,6 +33,10 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   "roll:request": (
     request: IRollRequest,
+    ack: (result: ControllerResult<IRollResult>) => void,
+  ) => void;
+  "sheet:ping": (
+    request: IPingRequest,
     ack: (result: ControllerResult<IRollResult>) => void,
   ) => void;
 }

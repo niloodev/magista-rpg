@@ -26,6 +26,16 @@ const findById: IAccountModels["findById"] = async (id) => {
   };
 };
 
+const findCredentialsById: IAccountModels["findCredentialsById"] = async (id) => {
+  const row = await getDatabase().account.findUnique({ where: { id } });
+  if (!row) return null;
+  return {
+    account: toAccount(row),
+    sessionVersion: row.sessionVersion,
+    passwordHash: row.passwordHash,
+  };
+};
+
 const listAccounts: IAccountModels["listAccounts"] = async () => {
   const rows = await getDatabase().account.findMany({
     orderBy: [{ role: "desc" }, { loginKey: "asc" }],
@@ -59,10 +69,11 @@ const upsertAccount: IAccountModels["upsertAccount"] = async ({ login, passwordH
 };
 
 const updatePassword: IAccountModels["updatePassword"] = async (id, passwordHash) => {
-  await getDatabase().account.update({
+  const row = await getDatabase().account.update({
     where: { id },
     data: { passwordHash, sessionVersion: { increment: 1 } },
   });
+  return row.sessionVersion;
 };
 
 const revokeSessions: IAccountModels["revokeSessions"] = async (id) => {
@@ -72,6 +83,7 @@ const revokeSessions: IAccountModels["revokeSessions"] = async (id) => {
 export const accountModels: IAccountModels = {
   findCredentialsByLogin,
   findById,
+  findCredentialsById,
   listAccounts,
   countPlayersByIds,
   createAccount,

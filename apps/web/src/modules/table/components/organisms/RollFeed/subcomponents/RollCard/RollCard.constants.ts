@@ -13,4 +13,6 @@ export const KIND_ICONS: Record<RollResultKind, IconName> = {
   counterAttack: "sword",
   ability: "sword",
   levelUp: "chevrons-up",
+  trait: "scroll-text",
+  item: "package-search",
 };

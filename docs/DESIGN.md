@@ -33,12 +33,24 @@ Validado com axe-core (WCAG 2.1 AA + best practices): 0 violações no login e e
 - **Foco**: `:focus-visible` global com contorno de 2px `--magista-ruby-400`. Não remover outline.
 - **Semântica**: um `h1` por página; `SectionHeader` renderiza `h2`, itens de lista `h3`. Abas com `Tabs`/`TabPanel` (ARIA tablist, setas, Home/End). Barras de recurso com `role="meter"`. Resultados de rolagem em `aria-live`. Botões só com ícone sempre com `aria-label` ou texto `sr-only`.
 - **Criar, editar e excluir sempre via modal**: `Modal` (dialog nativo com `showModal()`: prende o foco, Esc fecha, devolve o foco a quem abriu; foca o primeiro campo ou `[data-autofocus]`). Formulários usam `EditorModal` + `useEntryEditor` (`modules/sheet/hooks`): editam um rascunho, só aplicam ao salvar, validam (erro no campo com `role="alert"` e foco no primeiro inválido) e Enter salva. Exclusão sempre confirmada por `ConfirmDialog` (foco inicial em Cancelar). Nunca usar `alert`/`confirm` do navegador. Valores rápidos (atributos, Vida, Sanidade, Aberturas, carga máxima) continuam editáveis direto na ficha.
-- **Movimento**: tudo respeita `prefers-reduced-motion`.
+- **Movimento**: tudo respeita `prefers-reduced-motion` e o **modo performance** (ver abaixo).
 - **Descrições longas**: `ExpandableText` (RichText com `**negrito**`, parágrafos e "Mostrar mais").
 
 ## Crítico (20 natural)
 
-Tema dourado sólido (`--magista-gold-*`, `text-gold-*`), **sem efeitos de iluminação** (nada de raios, faíscas, brilho pulsante, shimmer ou varredura de luz; foram removidos por ficarem com aspecto bugado). Na animação: hexágono com borda dourada, total em `text-gold-300` com entrada `crit-slam`, texto "Crítico! · 20 natural". No feed: cartão com borda e fundo dourados, selo "Crítico" e hexágono dourado. Subida de nível usa variante teal no feed.
+Tema dourado sólido (`--magista-gold-*`, `text-gold-*`), **sem efeitos de iluminação** (nada de raios, faíscas, brilho pulsante, shimmer ou varredura de luz; foram removidos por ficarem com aspecto bugado). Na animação: hexágono com borda dourada, total em `text-gold-300` com entrada `crit-slam`, texto "Crítico! · 20 natural". No feed: cartão com borda e fundo dourados, selo "Crítico" e hexágono dourado. O Dano de um ataque crítico sai no máximo e ganha o rótulo dourado "Máximo" (feed e animação). Subida de nível usa variante teal no feed.
+
+## Modo performance
+
+Para PCs sem placa de vídeo forte. Ligado no Perfil (por aparelho, cookie `magista-perf` = `low`/`full`) ou, sem escolha salva, pelo `prefers-reduced-motion` do sistema. A checkbox mostra o modo em vigor; marcar ou desmarcar grava a escolha explícita (desmarcar com o sistema pedindo movimento reduzido grava `full`, e a escolha passa a valer sobre o sistema neste aparelho). O modo leve (`core/assets/styles/performance.css`): animações e transições no mínimo, sem `backdrop-filter`, sem os brilhos de painel e card (`--magista-glow-*`), sem a varredura dos botões, sem parallax e sem os brilhos ambientes do login. Casos pontuais usam a variante Tailwind `lite:` (ex.: `lite:hidden` nos círculos desfocados da rolagem).
+
+## Perfil
+
+Botão "Perfil" (`secondary sm`, ícone `user`) ao lado de "Sair" no cabeçalho da `/mesa` (o skeleton tem o mesmo par de botões). Abre um `Modal` com três seções em caixas `bg-black/30`: Conta (login e papel), Trocar senha (atual, nova, confirmar; erro no campo, erro do servidor em `role="alert"` com foco de volta na senha atual, sucesso em `role="status"` teal) e Desempenho (checkbox "Modo performance" com dica).
+
+## Acesso rápido (login de teste)
+
+Abaixo do formulário, título "Acesso rápido (teste)" entre dois fios, e dois botões `secondary sm` lado a lado com ícone (`crown` Mestre, `user` Jogador) e rótulo curto; o nome acessível completo ("Entrar como Mestre") vem de um prefixo `sr-only`.
 
 ## Retratos
 
@@ -52,8 +64,9 @@ Cabeçalho (identidade) → barra de resumo fixa a partir de `md` (Vida e Sanida
 
 - Keyframes em `animations.css`: `sf0..sf7` (estilhaços flutuando 2 a 6px), `title-pulse` (logo, 5s, via `drop-shadow`), `crack-fade` (rachaduras, 5.5s).
 - Parallax do login (`LoginBackground.hook.ts`): 4 camadas com velocidades `[5, 11, 20, 34]`px, lerp 0.055, deriva automática até o primeiro movimento do mouse, luz radial seguindo o cursor.
-- `prefers-reduced-motion` desliga parallax e reduz animações.
+- `prefers-reduced-motion` (ou o modo performance) desliga parallax e reduz animações.
 - Dice Roll Popup do protótipo implementado em `modules/table/components/organisms/DiceRollOverlay`: hexágono, fase Rolling (números girando a cada 50ms + runa flutuando, 1800ms), Adding (dados + modificador, 1200ms) e Result (total com brilho, 2600ms, outras linhas como Dano abaixo, 20/1 natural destacado). Esc ou clique fecham. Keyframes `pulse-breath`, `float-rune`, `flash-out`, `pop-in`, `slide-down-in`. Com movimento reduzido abre direto no resultado.
+- Entrada e saída da rolagem: o backdrop só faz fade (`overlay-in`/`overlay-out`) e o conteúdo entra com `dice-in` (sobe 16px e cresce de 0,9, 420ms, `--magista-ease-pop`) e sai com `dice-out` (desce 8px e encolhe para 0,96, 260ms); o root marca `data-state="open" | "closing"` e só desmonta depois da saída (`FADE_OUT_MS`, a mesma duração passada ao CSS por `--dice-out-ms`). Só `transform` e `opacity` animam.
 - Futuras: menu de dados (opacity 0 → 1 + translateY 8 → 0 em 300ms).
 
 ## Biblioteca de fichas e listas reordenáveis
@@ -61,6 +74,7 @@ Cabeçalho (identidade) → barra de resumo fixa a partir de `md` (Vida e Sanida
 - **Árvore do Mestre** (`modules/library/.../LibraryTree`): linhas compactas. Pasta (`FolderRow`) tem uma **aba** em cima (corte diagonal teal); aberta, o conteúdo fica num corpo com borda teal logo abaixo, indentado, como uma pasta aberta. Ficha (`CharacterRow`): token, nome (Cinzel, cor fixa, sem mudar no hover), classe · nível, selos teal das contas com acesso e menu de ações (`ActionMenu`, padrão WAI-ARIA menu).
 - **Arrastar**: alça (`grip-vertical`) para teclado; com o mouse a linha inteira arrasta. No meio de uma pasta o item entra (realce teal), nas bordas aparece a linha de inserção (`DropIndicator`) antes/depois; segurar sobre pasta fechada a abre. A linha "Todas as fichas" no topo vira zona "solte aqui para tirar da pasta". Pelo teclado as setas pulam entre essas posições. A prévia (`DragPreview`) vai num portal no `body` (o `backdrop-blur` dos painéis desalinharia elementos `fixed`). Movimento travado no eixo vertical.
 - **Listas da ficha** (habilidades, Reino Interior, inventário, traços): `SortableList` com alça "Reordenar X" à esquerda de cada item, teclado (espaço, setas, espaço; Esc cancela) e anúncios em português.
+- **Mostrar na mesa**: traços e itens têm o botão ghost "Mostrar" (`PingButton`, ícone `send`; vira "Na mesa" com `check` teal por alguns segundos). O cartão no feed usa a moldura normal, ícone do tipo, subtítulo "Traço" ou "Item" e as notas (resumo do item e descrição), sem linhas de dados.
 - Jogador e resultados de busca: lista plana de `CharacterRow` (a busca mostra o caminho da pasta).
 
 ## Carregamento (skeletons)

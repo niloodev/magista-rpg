@@ -1,6 +1,7 @@
 import { isErrorResult, type ControllerResult, type IRollResult } from "@magista/shared";
 
-import { ROLL_OFFLINE_ERROR, ROLL_TIMEOUT_MS } from "./requestRoll.constants";
+import { TABLE_ACK_TIMEOUT_MS, TABLE_OFFLINE_ERROR } from "@/modules/table/table.constants";
+
 import type { RequestRollInput, RequestRollResult } from "./requestRoll.types";
 
 /**
@@ -10,15 +11,15 @@ export async function requestRoll({
   socket,
   request,
 }: RequestRollInput): Promise<RequestRollResult> {
-  if (!socket?.connected) return { ok: false, error: ROLL_OFFLINE_ERROR };
+  if (!socket?.connected) return { ok: false, error: TABLE_OFFLINE_ERROR };
   try {
     const result: ControllerResult<IRollResult> = await socket
-      .timeout(ROLL_TIMEOUT_MS)
+      .timeout(TABLE_ACK_TIMEOUT_MS)
       .emitWithAck("roll:request", request);
     return isErrorResult(result)
       ? { ok: false, error: result.error }
       : { ok: true, roll: result.payload };
   } catch {
-    return { ok: false, error: ROLL_OFFLINE_ERROR };
+    return { ok: false, error: TABLE_OFFLINE_ERROR };
   }
 }

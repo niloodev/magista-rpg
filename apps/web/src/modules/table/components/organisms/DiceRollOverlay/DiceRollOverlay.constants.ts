@@ -1,6 +1,10 @@
+import type { CSSProperties } from "react";
+
 export const SPIN_INTERVAL_MS = 50;
 
-export const FADE_OUT_MS = 300;
+export const FADE_OUT_MS = 260;
+
+export const EXIT_DURATION_STYLE = { "--dice-out-ms": `${FADE_OUT_MS}ms` } as CSSProperties;
 
 export const FUMBLE_LABEL = "1 natural";
 

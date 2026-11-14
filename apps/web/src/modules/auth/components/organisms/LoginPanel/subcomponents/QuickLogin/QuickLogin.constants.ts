@@ -1,5 +1,6 @@
 export const QUICK_LOGIN_COPY = {
   title: "Acesso rápido (teste)",
-  gm: "Entrar como Mestre",
-  player: "Entrar como personagem",
+  prefix: "Entrar como ",
+  gm: "Mestre",
+  player: "Jogador",
 } as const;

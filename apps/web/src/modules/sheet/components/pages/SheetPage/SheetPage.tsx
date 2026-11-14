@@ -51,6 +51,8 @@ export function SheetPage(props: SheetPageProps) {
     onTabChange,
     onEdit,
     onRoll,
+    onPing,
+    pingedId,
     onRetrySave,
   } = useSheetPage(props);
 
@@ -67,7 +69,7 @@ export function SheetPage(props: SheetPageProps) {
 
   if (!character || !derived) return <SheetSkeleton gm={isGm} />;
 
-  const section = { sheet: character.sheet, derived, onEdit, onRoll, isGm };
+  const section = { sheet: character.sheet, derived, onEdit, onRoll, onPing, pingedId, isGm };
   const isActive = (key: string) => activeTab === key;
 
   return (

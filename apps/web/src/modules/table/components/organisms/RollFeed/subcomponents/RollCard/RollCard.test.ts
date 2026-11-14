@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   flatModifier,
   hasCritical,
-  naturalOutcome,
+  rowBadge,
   splitNotes,
   toDieChips,
 } from "@/modules/table/table.utils";
@@ -31,7 +31,9 @@ describe("roll feed utils", () => {
     expect(toDieChips(row([20]).outcome)).toEqual([{ value: 20, sides: 20, natural: "critical" }]);
     expect(toDieChips(row([1, 6], 6).outcome).map((chip) => chip.natural)).toEqual([null, null]);
     expect(flatModifier(row([5]).outcome)).toBe(-1);
-    expect(naturalOutcome(row([1]).outcome)).toBe("fumble");
+    expect(rowBadge(row([1]))).toBe("1 natural");
+    expect(rowBadge({ ...row([6], 6), maximized: true })).toBe("Máximo");
+    expect(rowBadge(row([3], 6))).toBeNull();
   });
 
   it("separates long descriptions from short notes", () => {

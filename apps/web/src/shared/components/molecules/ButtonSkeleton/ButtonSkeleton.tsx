@@ -14,6 +14,7 @@ export function ButtonSkeleton({
   iconSize = 14,
   disabled = false,
   className,
+  labelClassName,
 }: ButtonSkeletonProps) {
   return (
     <span
@@ -21,7 +22,7 @@ export function ButtonSkeleton({
       className={`magista-btn pointer-events-none inline-flex shrink-0 items-center justify-center font-serif uppercase select-none ${BUTTON_SHAPES.cut} ${BUTTON_SIZES[size]} ${BUTTON_VARIANTS[variant]} ${disabled ? "opacity-70" : ""} ${className ?? ""}`}
     >
       {icon && <Icon name={icon} size={iconSize} />}
-      {label}
+      {labelClassName ? <span className={labelClassName}>{label}</span> : label}
     </span>
   );
 }

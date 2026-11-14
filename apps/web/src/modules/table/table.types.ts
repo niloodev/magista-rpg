@@ -1,3 +1,5 @@
+import type { NaturalOutcome } from "@magista/shared";
+
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export interface IFeedRowShape {
@@ -23,8 +25,6 @@ export interface IFeedShape {
   count: number;
   cards: IFeedCardShape[];
 }
-
-export type NaturalOutcome = "critical" | "fumble" | null;
 
 export interface DieChip {
   value: number;

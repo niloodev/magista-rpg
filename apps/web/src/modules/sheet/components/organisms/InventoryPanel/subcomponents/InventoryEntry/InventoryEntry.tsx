@@ -1,10 +1,12 @@
-import { formatWeight } from "@/modules/sheet/sheet.utils";
+import { itemSummary } from "@magista/shared";
+
+import { PingButton } from "@/modules/sheet/components/atoms";
 import { Button, Icon } from "@/shared/components/atoms";
 import { ExpandableText } from "@/shared/components/molecules";
 
 import type { InventoryEntryProps } from "./InventoryEntry.types";
 
-export function InventoryEntry({ item, onEdit, onDelete }: InventoryEntryProps) {
+export function InventoryEntry({ item, pinged, onPing, onEdit, onDelete }: InventoryEntryProps) {
   const title = item.name || "Sem nome";
   return (
     <div className="min-w-0 flex-1 border border-white/10 bg-black/40 p-4 transition-colors hover:border-primary/40">
@@ -17,19 +19,10 @@ export function InventoryEntry({ item, onEdit, onDelete }: InventoryEntryProps) 
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-sans text-base font-semibold text-foreground">{title}</h3>
-          <p className="font-sans text-sm text-muted-strong">
-            {item.quantity !== null && <span>Qtd. {item.quantity} · </span>}
-            {formatWeight(item.weightGrams)}
-            {item.armorBonus !== 0 && (
-              <span>
-                {" "}
-                · CA {item.armorBonus > 0 ? "+" : ""}
-                {item.armorBonus}
-              </span>
-            )}
-          </p>
+          <p className="font-sans text-sm text-muted-strong">{itemSummary(item)}</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
+          <PingButton title={title} sent={pinged} onPing={onPing} />
           <Button
             variant="ghost"
             size="sm"
@@ -37,7 +30,7 @@ export function InventoryEntry({ item, onEdit, onDelete }: InventoryEntryProps) 
             icon={<Icon name="pen-line" size={14} />}
             aria-label={`Editar ${title}`}
           >
-            Editar
+            <span className="max-sm:sr-only">Editar</span>
           </Button>
           <Button
             variant="ghost"

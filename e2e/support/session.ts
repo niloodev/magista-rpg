@@ -17,11 +17,13 @@ export async function loginAs(
 }
 
 /**
- * Opens a character sheet and waits for the live table connection.
+ * Opens a character sheet and waits for the live table connection and for the sheet itself (no skeleton left),
+ * so clicks never land on the inert loading copy.
  */
 export async function openSheet(page: Page, characterId: string): Promise<void> {
   await page.goto(`/ficha/${characterId}`);
   await expect(page.getByText("Mesa conectada")).toBeVisible();
+  await expect(page.locator("[data-skeleton-region]")).toHaveCount(0);
 }
 
 /**

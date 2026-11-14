@@ -1,10 +1,22 @@
 import { isErrorResult } from "@magista/shared";
 import { Router, type CookieOptions, type Response } from "express";
 
-import { isQuickLoginEnabled, login, logout, quickLogin } from "@/core/controllers/auth";
+import {
+  changePassword,
+  isQuickLoginEnabled,
+  login,
+  logout,
+  quickLogin,
+} from "@/core/controllers/auth";
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from "@/core/services/auth";
 import { getEnv } from "@/core/services/env";
-import { loginIpRateLimit, loginRateLimit, requireAuth, type IAuthLocals } from "@/middlewares";
+import {
+  loginIpRateLimit,
+  loginRateLimit,
+  passwordChangeRateLimit,
+  requireAuth,
+  type IAuthLocals,
+} from "@/middlewares";
 import { disconnectAccount } from "@/realtime";
 
 import { AUTH_ERROR_STATUS } from "./auth.routes.constants";
@@ -60,3 +72,21 @@ authRoutes.post("/logout", requireAuth, async (_req, res: AuthedResponse) => {
   }
   res.json(result);
 });
+
+authRoutes.put(
+  "/password",
+  requireAuth,
+  passwordChangeRateLimit,
+  async (req, res: AuthedResponse) => {
+    const { accountId, session } = res.locals.auth;
+    const result = await changePassword(accountId, req.body);
+    res.set("Cache-Control", "no-store");
+    if (isErrorResult(result)) {
+      res.status(AUTH_ERROR_STATUS[result.error]).json(result);
+      return;
+    }
+    disconnectAccount(accountId);
+    res.cookie(SESSION_COOKIE_NAME, result.payload.token, sessionCookieOptions());
+    res.json({ message: result.message, payload: session });
+  },
+);

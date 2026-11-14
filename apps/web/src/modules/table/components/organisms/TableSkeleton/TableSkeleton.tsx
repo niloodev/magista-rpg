@@ -23,7 +23,7 @@ export function TableSkeleton({ known = false, gm = false, loginLength = 10 }: T
       <SkeletonRegion label={TABLE_SKELETON_LABEL}>
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
           <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
-            <div>
+            <div className="min-w-0 break-words">
               <Text variant="micro">
                 {known ? (
                   gm ? (
@@ -41,9 +41,24 @@ export function TableSkeleton({ known = false, gm = false, loginLength = 10 }: T
                 <Skeleton shape="glyphs">{skeletonSample(loginLength)}</Skeleton>
               </p>
             </div>
-            <ButtonSkeleton label="Sair" size="sm" icon="log-out" iconSize={12} />
+            <div className="flex shrink-0 gap-2">
+              <ButtonSkeleton
+                label="Perfil"
+                size="sm"
+                icon="user"
+                iconSize={12}
+                labelClassName="max-sm:sr-only"
+              />
+              <ButtonSkeleton
+                label="Sair"
+                size="sm"
+                icon="log-out"
+                iconSize={12}
+                labelClassName="max-sm:sr-only"
+              />
+            </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div className="flex flex-col gap-6">
               <CharacterLibrarySkeleton known={known} gm={gm} />
               <PresencePanel

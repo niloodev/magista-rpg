@@ -8,4 +8,5 @@ export interface ButtonSkeletonProps {
   iconSize?: number;
   disabled?: boolean;
   className?: string;
+  labelClassName?: string;
 }

@@ -1,4 +1,4 @@
-import type { ICharacterSheet, IDerivedSheet, IRollKind } from "@magista/shared";
+import type { ICharacterSheet, IDerivedSheet, IPingEntry, IRollKind } from "@magista/shared";
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -8,11 +8,15 @@ export type SheetEditor = (mutator: SheetMutator) => void;
 
 export type RollHandler = (roll: IRollKind) => void;
 
+export type PingHandler = (entry: IPingEntry) => void;
+
 export interface SheetSectionProps {
   sheet: ICharacterSheet;
   derived: IDerivedSheet;
   onEdit: SheetEditor;
   onRoll: RollHandler;
+  onPing: PingHandler;
+  pingedId: string | null;
   isGm: boolean;
 }
 

@@ -1,5 +1,7 @@
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { ipKeyGenerator, rateLimit } from "express-rate-limit";
+
+import type { IAuthLocals } from "@/middlewares/requireAuth";
 
 import {
   API_MAX_REQUESTS,
@@ -7,6 +9,7 @@ import {
   LOGIN_MAX_FAILURES,
   LOGIN_MAX_FAILURES_PER_IP,
   LOGIN_WINDOW_MS,
+  PASSWORD_CHANGE_MAX_FAILURES,
   RATE_LIMIT_ERROR,
 } from "./rateLimit.constants";
 
@@ -41,6 +44,21 @@ export const loginIpRateLimit = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
+  message: { error: RATE_LIMIT_ERROR },
+});
+
+/**
+ * Guess guard for the current password on password changes: failed attempts per signed-in account
+ * (runs after requireAuth).
+ */
+export const passwordChangeRateLimit = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  limit: PASSWORD_CHANGE_MAX_FAILURES,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req: Request, res: Response) =>
+    (res as Response<unknown, IAuthLocals>).locals.auth?.accountId ?? ipKeyGenerator(req.ip ?? ""),
   message: { error: RATE_LIMIT_ERROR },
 });
 

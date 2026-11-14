@@ -1,7 +1,16 @@
-import { loginInputSchema, quickLoginInputSchema } from "@magista/shared";
+import {
+  changePasswordInputSchema,
+  loginInputSchema,
+  quickLoginInputSchema,
+} from "@magista/shared";
 
 import { accountModels } from "@/core/models/account";
-import { signSessionToken, verifyAgainstDummy, verifyPassword } from "@/core/services/auth";
+import {
+  hashPassword,
+  signSessionToken,
+  verifyAgainstDummy,
+  verifyPassword,
+} from "@/core/services/auth";
 import { getEnv } from "@/core/services/env";
 
 import { authErrors } from "./auth.errors";
@@ -10,7 +19,8 @@ import { isLoopbackAddress } from "./auth.utils";
 
 /**
  * Builds the auth controller over injectable dependencies (models and crypto).
- * Sessions carry the account's sessionVersion: logout and password changes bump it, revoking every issued token.
+ * Sessions carry the account's sessionVersion: logout and password changes bump it, revoking every issued token
+ * (a password change hands back a token with the new version, so only the tab that changed it stays signed in).
  * `quickLogin` signs in as a seed account by role without a password; it only works when `quickLogins` returns
  * the logins (DEV_QUICK_LOGIN on, never in production) and the request comes from this machine (loopback).
  */
@@ -83,7 +93,30 @@ export function createAuthController(deps: IAuthControllerDeps): IAuthController
     }
   };
 
-  return { login, quickLogin, authenticate, logout };
+  const changePassword: IAuthController["changePassword"] = async (accountId, input) => {
+    const parsed = changePasswordInputSchema.safeParse(input);
+    if (!parsed.success) return { error: authErrors.invalidPasswordChange };
+    try {
+      const credentials = await deps.accounts.findCredentialsById(accountId);
+      if (!credentials) return { error: authErrors.sessionNotFound };
+      const valid = await deps.verifyPassword(
+        credentials.passwordHash,
+        parsed.data.currentPassword,
+      );
+      if (!valid) return { error: authErrors.wrongPassword };
+      const sessionVersion = await deps.accounts.updatePassword(
+        accountId,
+        await deps.hashPassword(parsed.data.newPassword),
+      );
+      const token = deps.signToken({ sub: accountId, ver: sessionVersion });
+      return { message: "Senha alterada", payload: { token } };
+    } catch (error) {
+      console.error("changePassword failed:", error);
+      return { error: authErrors.unexpected };
+    }
+  };
+
+  return { login, quickLogin, authenticate, logout, changePassword };
 }
 
 /**
@@ -97,6 +130,7 @@ export function isQuickLoginEnabled(): boolean {
 export const authController = createAuthController({
   accounts: accountModels,
   verifyPassword,
+  hashPassword,
   verifyAgainstDummy,
   signToken: signSessionToken,
   quickLogins: () => {
@@ -106,4 +140,4 @@ export const authController = createAuthController({
   },
 });
 
-export const { login, quickLogin, authenticate, logout } = authController;
+export const { login, quickLogin, authenticate, logout, changePassword } = authController;

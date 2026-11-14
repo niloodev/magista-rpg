@@ -15,3 +15,9 @@ export interface IRollOutcome {
 }
 
 export type RandomInt = (min: number, max: number) => number;
+
+export interface IRollOptions {
+  maximize?: boolean;
+}
+
+export type NaturalOutcome = "critical" | "fumble" | null;

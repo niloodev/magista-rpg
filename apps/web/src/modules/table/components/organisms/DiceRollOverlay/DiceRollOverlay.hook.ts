@@ -1,11 +1,13 @@
 "use client";
 
-import { ROLL_PHASES_MS } from "@magista/shared";
+import { naturalOutcome, ROLL_PHASES_MS } from "@magista/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { prefersReducedMotion } from "@/shared/hooks";
 
 import { FADE_OUT_MS, SPIN_INTERVAL_MS } from "./DiceRollOverlay.constants";
 import type { DicePhase, DiceRollOverlayProps } from "./DiceRollOverlay.types";
-import { diceRange, naturalOf, prefersReducedMotion, splitOutcome } from "./DiceRollOverlay.utils";
+import { diceRange, splitOutcome } from "./DiceRollOverlay.utils";
 
 /**
  * Drives the prototype's three-phase roll animation: spinning numbers, dice plus modifier, final result.
@@ -23,8 +25,8 @@ export function useDiceRollOverlay({ roll, onClose }: DiceRollOverlayProps) {
   const close = useCallback(() => {
     if (closeTimer.current !== null) return;
     setLeaving(true);
-    closeTimer.current = window.setTimeout(onClose, FADE_OUT_MS);
-  }, [onClose]);
+    closeTimer.current = window.setTimeout(onClose, reducedMotion ? 0 : FADE_OUT_MS);
+  }, [onClose, reducedMotion]);
 
   useEffect(
     () => () => {
@@ -77,7 +79,7 @@ export function useDiceRollOverlay({ roll, onClose }: DiceRollOverlayProps) {
     secondary: roll.rows.slice(1),
     dice: split.dice,
     modifier: split.modifier,
-    natural: primary ? naturalOf(primary.outcome) : null,
+    natural: primary ? naturalOutcome(primary.outcome) : null,
     close,
   };
 }

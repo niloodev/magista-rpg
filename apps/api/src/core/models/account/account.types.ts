@@ -18,10 +18,11 @@ export interface ICreateAccountInput {
 export interface IAccountModels {
   findCredentialsByLogin: (login: string) => Promise<IAccountCredentials | null>;
   findById: (id: string) => Promise<IAccountSession | null>;
+  findCredentialsById: (id: string) => Promise<IAccountCredentials | null>;
   listAccounts: () => Promise<IAccount[]>;
   countPlayersByIds: (ids: string[]) => Promise<number>;
   createAccount: (input: ICreateAccountInput) => Promise<IAccount | null>;
   upsertAccount: (input: ICreateAccountInput) => Promise<IAccount>;
-  updatePassword: (id: string, passwordHash: string) => Promise<void>;
+  updatePassword: (id: string, passwordHash: string) => Promise<number>;
   revokeSessions: (id: string) => Promise<void>;
 }

@@ -18,6 +18,12 @@ export const BLOCKS = {
 
 export const COUNTER_ATTACK_FUMBLE_BELOW = 5;
 
+export const CRITICAL_DAMAGE_NOTE = "Crítico: dano máximo";
+
+export const PING_SUBTITLES = { trait: "Traço", item: "Item" } as const;
+
+export const UNNAMED_ENTRY = "Sem nome";
+
 export const ROLL_PHASES_MS = {
   rolling: 1800,
   adding: 1200,

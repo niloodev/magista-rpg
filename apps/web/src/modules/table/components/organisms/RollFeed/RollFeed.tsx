@@ -55,7 +55,8 @@ export function RollFeed(props: RollFeedProps) {
           </span>
           <p className="font-sans text-[15px] text-muted-strong">Nenhuma rolagem ainda.</p>
           <p className="font-sans text-sm text-muted-strong/80">
-            Clique em um atributo, perícia, bloqueio ou habilidade para rolar.
+            Clique em um atributo, perícia, bloqueio ou habilidade para rolar, ou mostre um traço ou
+            item na mesa.
           </p>
         </div>
       ) : (

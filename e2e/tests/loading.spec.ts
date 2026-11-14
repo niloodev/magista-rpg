@@ -6,7 +6,8 @@ import { e2eState } from "../support/fixtures";
 import { settleAnimations } from "../support/animations";
 import { sectionBoxes } from "../support/geometry";
 import { holdApi } from "../support/hold";
-import { loginAs } from "../support/session";
+import { loginAs, openSheet } from "../support/session";
+import { readSheet, writeLists } from "../support/sheet";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"];
 
@@ -184,6 +185,45 @@ test.describe("skeletons de carregamento", () => {
       }
     }
   }
+
+  test("cartão de traço ou item no feed tem skeleton com as medidas do cartão pronto", async ({
+    page,
+  }) => {
+    const current = await readSheet();
+    await writeLists({
+      traits: [
+        {
+          id: "hint-trait",
+          name: "Faro aguçado",
+          description:
+            "Sente cheiros de longe e reconhece criaturas pelo rastro, mesmo depois de horas, desde que o vento esteja a favor.",
+        },
+      ],
+    });
+    try {
+      await loginAs(page, PLAYER);
+      await openSheet(page, e2eState().playerCharacterId);
+      await page.getByRole("tab", { name: "Traços" }).click();
+      await page.getByRole("button", { name: "Mostrar Faro aguçado na mesa" }).click();
+      await page.goto("/mesa");
+      await expect(page.locator("main .max-h-\\[75vh\\] ol > li").first()).toContainText(
+        "Faro aguçado",
+      );
+      const release = await holdApi(page, /^\/auth\/me$/);
+      await page.reload();
+      await expect(page.locator("[data-skeleton-region]").first()).toBeVisible();
+      await settleAnimations(page);
+      const skeleton = await sectionBoxes(page, { feedCards: TABLE_SECTIONS.feedCards });
+      await release();
+      await expect(page.locator("[data-skeleton-region]")).toHaveCount(0);
+      await expect(page.getByText("Conectado", { exact: true })).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await settleAnimations(page);
+      expect(await sectionBoxes(page, { feedCards: TABLE_SECTIONS.feedCards })).toEqual(skeleton);
+    } finally {
+      await writeLists({ traits: current.sheet.traits });
+    }
+  });
 
   test("sair apaga as dicas do aparelho, para a próxima conta não ver o formato da anterior", async ({
     page,

@@ -1,0 +1,39 @@
+:root[data-perf="low"] {
+  --magista-glow-panel: none;
+  --magista-glow-card: none;
+  --magista-glow-card-hover: none;
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    backdrop-filter: none !important;
+  }
+
+  .magista-btn::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-perf="full"]) {
+    --magista-glow-panel: none;
+    --magista-glow-card: none;
+    --magista-glow-card-hover: none;
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      backdrop-filter: none !important;
+    }
+
+    .magista-btn::before {
+      display: none;
+    }
+  }
+}

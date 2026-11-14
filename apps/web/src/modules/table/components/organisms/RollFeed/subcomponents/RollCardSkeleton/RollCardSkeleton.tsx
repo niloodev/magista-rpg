@@ -4,6 +4,7 @@ import {
   NATURAL_LABELS,
   ROLL_CARD_STYLES,
   ROLLED_BY_GM_LABEL,
+  SHORT_NOTE_MAX_LENGTH,
 } from "@/modules/table/table.constants";
 import { Icon, Skeleton, skeletonSample } from "@/shared/components/atoms";
 import { AvatarSkeleton } from "@/shared/components/molecules";
@@ -90,7 +91,7 @@ export function RollCardSkeleton({ card }: RollCardSkeletonProps) {
           <ul className="space-y-1 border-t border-white/10 pt-2">
             {card.short.map((length, note) => (
               <li key={note} className="font-sans text-[13px] leading-snug">
-                <Skeleton shape="glyphs">{skeletonSample(length)}</Skeleton>
+                <Skeleton shape="glyphs">{skeletonSample(length, SHORT_NOTE_MAX_LENGTH)}</Skeleton>
               </li>
             ))}
           </ul>

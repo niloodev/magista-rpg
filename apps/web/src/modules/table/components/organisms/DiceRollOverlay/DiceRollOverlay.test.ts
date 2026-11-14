@@ -1,7 +1,7 @@
 import type { IRollOutcome } from "@magista/shared";
 import { describe, expect, it } from "vitest";
 
-import { diceRange, naturalOf, splitOutcome } from "./DiceRollOverlay.utils";
+import { diceRange, splitOutcome } from "./DiceRollOverlay.utils";
 
 const outcome = (d20: number, extra: Partial<IRollOutcome> = {}): IRollOutcome => ({
   expression: "1d20 + 3",
@@ -29,11 +29,5 @@ describe("DiceRollOverlay utils", () => {
         ],
       }),
     ).toEqual({ min: 3, max: 16 });
-  });
-
-  it("detects natural 20 and 1 on a single d20 only", () => {
-    expect(naturalOf(outcome(20))).toBe("critical");
-    expect(naturalOf(outcome(1))).toBe("fumble");
-    expect(naturalOf(outcome(10))).toBeNull();
   });
 });

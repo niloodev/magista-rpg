@@ -2,21 +2,24 @@
 
 import { useSyncExternalStore } from "react";
 
-const QUERY = "(prefers-reduced-motion: reduce)";
+import { PERF_MODE_ATTRIBUTE, REDUCED_MOTION_QUERY } from "./usePrefersReducedMotion.constants";
+import { prefersReducedMotion } from "./usePrefersReducedMotion.utils";
 
 function subscribe(onChange: () => void) {
-  const media = window.matchMedia(QUERY);
+  const media = window.matchMedia(REDUCED_MOTION_QUERY);
+  const observer = new MutationObserver(onChange);
   media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
+  observer.observe(document.documentElement, { attributeFilter: [PERF_MODE_ATTRIBUTE] });
+  return () => {
+    media.removeEventListener("change", onChange);
+    observer.disconnect();
+  };
 }
 
 /**
- * True when the user asked the system for reduced motion (false during server rendering).
+ * True when motion should be reduced: the performance mode is on, or the system asks for it and the user did not
+ * choose the full mode (false during server rendering). Follows changes live.
  */
 export function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(QUERY).matches,
-    () => false,
-  );
+  return useSyncExternalStore(subscribe, prefersReducedMotion, () => false);
 }
