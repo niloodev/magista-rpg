@@ -1,11 +1,14 @@
 # Domínio: regras do Magista
 
-Extraído da ficha Roll20 atual (`/home/ezeq/froggie-projects/magista/index.html`) e das notas de classes. Base adaptada de D&D 5e. Ao implementar, estas regras viram funções puras em `packages/shared` com testes.
+Extraído da ficha Roll20 atual (`/home/ezeq/froggie-projects/magista/index.html`) e das notas de classes. Base adaptada de D&D 5e.
+
+Implementação (fonte da verdade no código): `packages/shared/src/game/` com `catalog` (classes, perícias, tabelas), `rules` (`deriveSheet` calcula todos os valores derivados), `dice` (parser e rolagem) e `rolls` (`buildRollSpec`, um tipo de rolagem por botão da ficha). O schema da ficha é `characterSheetSchema` (versão 1) em `packages/shared/src/schemas/character`. Valores derivados nunca são salvos. A importação dos 7 personagens reais conferiu CA, proficiência, Dano Base, deslocamento, dado de vida, peso, mods, CDs e as 21 perícias com o Roll20, sem diferenças.
 
 ## Acesso
 
-- **Jogador** (`PLAYER`): entra com nome do personagem + senha; tem exatamente um personagem. Não existe criação de ficha pelo jogador.
-- **Mestre** (`GM`): conta própria; cria contas/personagens e vê todas as fichas e o chat.
+- **Jogador** (`PLAYER`): entra com o login da conta + senha (contas importadas usam o nome do personagem como login). Pode ter **várias fichas**: abre, edita e rola com as que o Mestre liberou para a conta. Vê suas fichas em lista, com busca. Não cria nem exclui fichas.
+- **Mestre** (`GM`): conta própria; vê todas as fichas e o chat. Na biblioteca de fichas (`/mesa`) organiza tudo em **pastas aninhadas** (árvore com drag and drop: reordenar, mover para dentro de pastas, tirar para a raiz), cria e exclui fichas, cria contas de jogador e libera o **acesso** de cada ficha para uma ou mais contas (acesso N:N, tabela `character_access`).
+- Ordem manual: pastas e fichas guardam `position` dentro da pasta-pai; as listas da ficha (habilidades, Reino Interior, inventário, traços) também podem ser reordenadas por drag and drop pelo jogador e pelo Mestre.
 
 ## Atributos
 
@@ -39,7 +42,7 @@ Sem Classe, Arcanista, Vanguardista, Caçador, Médium, Rúnico, Liturgista, Fad
 | Trilhador    | 10      | 12m / 14m                | 6 + 1d3      | DES, SAB                       |
 
 - **CA** = CA base da classe + soma da CA dos itens do inventário.
-- **Dado de Vida** = valor da tabela ± mod de CON. Vida e Sanidade (atual/máx) são editadas à mão.
+- **Dado de Vida** = valor da tabela ± mod de CON. Vida e Sanidade **atuais** são editadas por jogador e Mestre (nunca acima do máximo para o jogador); os **máximos** só pelo Mestre, normalmente pela subida de nível.
 - **Dado de Sanidade** = `13 + 1d7 + mod SAB`.
 - **Iniciativa** = `1d20 + mod DES` (vai para a ordem de turno).
 
@@ -55,6 +58,11 @@ Sem Classe, Arcanista, Vanguardista, Caçador, Médium, Rúnico, Liturgista, Fad
 | Fadador                    | 1d4+2 (níveis 1 a 3) |       |       | 1d6+2 (4 a 6) |        |        | 1d8+2 (7 a 9)  |        |        | 1d10+2 (10 a 12) |        |         |
 | Executor                   | 2d8                  | 2d10  | 2d12  | 3d8           | 3d10   | 3d12   | 4d8            | 4d10   | 4d12   | 5d8              | 5d10   | 5d12    |
 | Trilhador                  | 1d8+4 (níveis 1 a 6) |       |       |               |        |        | 1d8+5 (7 a 12) |        |        |                  |        |         |
+
+## Subida de nível (só o Mestre)
+
+- Feita pelo modal "Subir de nível" da ficha (botão bloqueado para jogadores). O servidor rola **Dado de Vida** (tabela da classe ± mod CON) e **Dado de Sanidade** (`13 + 1d7 + mod SAB`), soma os resultados na Vida máxima e na Sanidade máxima (e opcionalmente nas atuais) e sobe o nível em 1 (máximo 99). Regras em `buildLevelUpSpec` / `applyLevelUp` (shared), endpoint `POST /characters/:id/level-up`.
+- **Campos só do Mestre**: classe, nível, Vida máxima e Sanidade máxima. O servidor recusa (403) qualquer salvamento de jogador que altere esses campos (`touchesGmOnlyFields`).
 
 ## Perícias (21)
 

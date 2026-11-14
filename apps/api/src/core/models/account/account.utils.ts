@@ -1,6 +1,6 @@
-import type { IAccount, ICharacterSummary } from "@magista/shared";
+import type { IAccount } from "@magista/shared";
 
-import type { Account, Character } from "@/generated/prisma/client";
+import type { Account } from "@/generated/prisma/client";
 
 /**
  * Normalizes a login so lookups ignore case and surrounding spaces.
@@ -17,8 +17,8 @@ export function toAccount(row: Account): IAccount {
 }
 
 /**
- * Maps an optional database character row to its summary DTO.
+ * True for the database error raised when a unique column (the login) already has the value.
  */
-export function toCharacterSummary(row: Character | null): ICharacterSummary | null {
-  return row ? { id: row.id, name: row.name } : null;
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }

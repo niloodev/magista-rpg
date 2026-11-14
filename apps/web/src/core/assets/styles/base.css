@@ -10,10 +10,34 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  button:focus-visible,
-  a:focus-visible {
-    outline: 1px solid rgba(236, 44, 102, 0.6);
+  :focus-visible {
+    outline: 2px solid var(--magista-ruby-400);
     outline-offset: 2px;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--magista-ruby-400);
+    outline-offset: 1px;
+  }
+
+  .sr-only-focusable:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(218, 32, 84, 0.55) rgba(255, 255, 255, 0.04);
+  }
+
+  *:hover {
+    scrollbar-color: rgba(245, 138, 168, 0.75) rgba(255, 255, 255, 0.06);
   }
 
   ::selection {

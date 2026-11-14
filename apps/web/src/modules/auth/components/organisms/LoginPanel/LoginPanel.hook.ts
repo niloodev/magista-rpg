@@ -1,15 +1,22 @@
 "use client";
 
+import type { AccountRole } from "@magista/shared";
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
-import { LOGIN_EMPTY_FIELDS, login } from "@/modules/auth/services";
+import {
+  LOGIN_EMPTY_FIELDS,
+  QUICK_LOGIN_ENABLED,
+  login,
+  quickLogin,
+} from "@/modules/auth/services";
 import { useApp } from "@/modules/shell/store";
 
 import { LOGIN_REDIRECT_PATH } from "./LoginPanel.constants";
 
 /**
  * Holds the login form state and submits it to the auth service.
+ * When NEXT_PUBLIC_DEV_QUICK_LOGIN is on, also exposes the development shortcut to enter as the seed GM or player.
  */
 export function useLoginPanel() {
   const router = useRouter();
@@ -41,5 +48,28 @@ export function useLoginPanel() {
     setSubmitting(false);
   };
 
-  return { character, password, error, submitting, onCharacterChange, onPasswordChange, onSubmit };
+  const onQuickLogin = async (role: AccountRole) => {
+    setError("");
+    setSubmitting(true);
+    const result = await quickLogin(role, { setSession });
+    if (result.ok) {
+      router.replace(LOGIN_REDIRECT_PATH);
+      return;
+    }
+    setError(result.error);
+    setSubmitting(false);
+  };
+
+  return {
+    character,
+    password,
+    error,
+    submitting,
+    quickLoginEnabled: QUICK_LOGIN_ENABLED,
+    onCharacterChange,
+    onPasswordChange,
+    onSubmit,
+    onQuickGm: () => void onQuickLogin("GM"),
+    onQuickPlayer: () => void onQuickLogin("PLAYER"),
+  };
 }

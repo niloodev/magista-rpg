@@ -1,8 +1,8 @@
 import { isErrorResult, loginInputSchema, type ILoginInput, type ISession } from "@magista/shared";
 
 import { apiRequest } from "@/core/services/http";
+import type { ServiceResult } from "@/shared/types";
 
-import type { ServiceResult } from "../services.types";
 import { LOGIN_EMPTY_FIELDS } from "./login.constants";
 import type { LoginDeps } from "./login.types";
 

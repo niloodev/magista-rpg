@@ -20,6 +20,11 @@
   --color-teal-600: var(--magista-teal-600);
   --color-teal-500: var(--magista-teal-500);
   --color-teal-400: var(--magista-teal-400);
+  --color-gold-200: var(--magista-gold-200);
+  --color-gold-300: var(--magista-gold-300);
+  --color-gold-400: var(--magista-gold-400);
+  --color-gold-500: var(--magista-gold-500);
+  --color-gold-700: var(--magista-gold-700);
   --color-void-1000: var(--magista-void-1000);
   --color-void-900: var(--magista-void-900);
   --color-void-800: var(--magista-void-800);
@@ -28,6 +33,8 @@
   --color-label: var(--magista-label);
   --color-ornament: var(--magista-ornament);
   --color-hint: var(--magista-hint);
+  --color-accent-text: var(--magista-accent-text);
+  --color-muted-strong: var(--magista-muted-strong);
   --color-error: var(--magista-error);
 
   --font-serif: var(--font-cinzel), "Cinzel", serif;
@@ -39,4 +46,13 @@
 
   --animate-title-pulse: title-pulse 5s ease-in-out infinite;
   --animate-crack-fade: crack-fade 5.5s ease-in-out infinite;
+  --animate-roll-in: roll-in 0.35s var(--magista-ease-pop) both;
+  --animate-pulse-breath: pulse-breath 1.5s ease-in-out infinite;
+  --animate-float-rune: float-rune 2s ease-in-out infinite;
+  --animate-flash-out: flash-out 1s ease-out forwards;
+  --animate-pop-in: pop-in 0.35s var(--magista-ease-pop) both;
+  --animate-slide-down-in: slide-down-in 0.5s ease-out both;
+  --animate-overlay-in: overlay-in 0.3s ease-out both;
+  --animate-crit-slam: crit-slam 0.7s var(--magista-ease-pop) both;
+  --animate-skeleton-pulse: skeleton-pulse 1.6s ease-in-out infinite;
 }

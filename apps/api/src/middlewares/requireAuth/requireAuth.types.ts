@@ -1,5 +1,5 @@
-import type { ISessionTokenPayload } from "@/core/services/auth";
+import type { IAuthenticatedViewer } from "@/core/controllers/auth";
 
 export interface IAuthLocals {
-  auth: ISessionTokenPayload;
+  auth: IAuthenticatedViewer;
 }

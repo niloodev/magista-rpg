@@ -5,3 +5,5 @@ coverage
 package-lock.json
 apps/api/src/generated
 apps/web/AGENTS.md
+e2e/test-results
+e2e/playwright-report

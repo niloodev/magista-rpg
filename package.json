@@ -7,7 +7,8 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "e2e"
   ],
   "scripts": {
     "dev": "concurrently -n api,web -c magenta,cyan \"npm run dev -w @magista/api\" \"npm run dev -w @magista/web\"",
@@ -21,7 +22,10 @@
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w @magista/api",
     "db:seed": "npm run db:seed -w @magista/api",
-    "db:studio": "npm run db:studio -w @magista/api"
+    "db:studio": "npm run db:studio -w @magista/api",
+    "import:roll20": "npm run import:roll20 -w @magista/api --",
+    "account:password": "npm run account:password -w @magista/api --",
+    "test:e2e": "npm run e2e -w @magista/e2e"
   },
   "devDependencies": {
     "concurrently": "^10.0.7",

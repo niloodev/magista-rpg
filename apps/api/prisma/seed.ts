@@ -1,5 +1,5 @@
 import { upsertAccount } from "../src/core/models/account";
-import { upsertCharacter } from "../src/core/models/character";
+import { characterModels } from "../src/core/models/character";
 import { hashPassword } from "../src/core/services/auth";
 import { disconnectDatabase } from "../src/core/services/database";
 
@@ -24,7 +24,12 @@ async function seed(): Promise<void> {
     passwordHash: await hashPassword(readSeedVar("SEED_PLAYER_PASSWORD")),
     role: "PLAYER",
   });
-  await upsertCharacter({ accountId: player.id, name: playerLogin });
+  const current = await characterModels.findByAccountAndName(player.id, playerLogin);
+  await characterModels.upsertCharacter({
+    id: current?.id,
+    accountIds: [player.id],
+    name: playerLogin,
+  });
   console.log(`Jogador pronto: ${playerLogin}`);
 }
 

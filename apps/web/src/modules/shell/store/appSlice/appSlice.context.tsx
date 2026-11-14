@@ -23,3 +23,12 @@ export function useApp<T>(selector: (state: AppStore) => T): T {
   if (!store) throw new Error("useApp precisa estar dentro de AppStoreProvider");
   return useStore(store, selector);
 }
+
+/**
+ * Returns the raw store API (getState/subscribe) for imperative reads inside callbacks.
+ */
+export function useAppStoreApi(): AppStoreApi {
+  const store = useContext(AppStoreContext);
+  if (!store) throw new Error("useAppStoreApi precisa estar dentro de AppStoreProvider");
+  return store;
+}

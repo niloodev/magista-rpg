@@ -13,28 +13,60 @@ enum AccountRole {
 }
 
 model Account {
-  id           String      @id @default(uuid()) @db.Uuid
-  login        String
-  loginKey     String      @unique
-  passwordHash String
-  role         AccountRole @default(PLAYER)
-  character    Character?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String            @id @default(uuid()) @db.Uuid
+  login          String
+  loginKey       String            @unique
+  passwordHash   String
+  role           AccountRole       @default(PLAYER)
+  sessionVersion Int               @default(0)
+  access         CharacterAccess[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@map("accounts")
 }
 
 model Character {
-  id           String   @id @default(uuid()) @db.Uuid
-  accountId    String   @unique @db.Uuid
-  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id           String            @id @default(uuid()) @db.Uuid
   name         String
-  sheet        Json     @default("{}")
-  sheetVersion Int      @default(0)
+  folderId     String?           @db.Uuid
+  folder       CharacterFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  position     Int               @default(0)
+  access       CharacterAccess[]
+  avatarUrl    String?
+  tokenUrl     String?
+  sheet        Json              @default("{}")
+  sheetVersion Int               @default(0)
   legacy       Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@map("characters")
+}
+
+model CharacterFolder {
+  id         String            @id @default(uuid()) @db.Uuid
+  name       String
+  parentId   String?           @db.Uuid
+  parent     CharacterFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children   CharacterFolder[] @relation("FolderTree")
+  characters Character[]
+  position   Int               @default(0)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([parentId])
+  @@map("character_folders")
+}
+
+model CharacterAccess {
+  characterId String    @db.Uuid
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  accountId   String    @db.Uuid
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([characterId, accountId])
+  @@index([accountId])
+  @@map("character_access")
 }

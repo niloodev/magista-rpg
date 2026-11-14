@@ -7,34 +7,45 @@ Os personagens serão importados como JSON exportado do Roll20 (nenhum export ex
 - Nenhum dado do Roll20 pode ser descartado; o que não tiver campo ainda fica só em `legacy`.
 - Campos derivados no Roll20 (`*Mod`, `*CD`, `ca`, `danoBase`, `desloc`, perícias...) não são importados: são recalculados pelas regras de `docs/DOMAIN.md`.
 
-## Mapa de campos (fonte: `index.html` da ficha)
+## Importador
 
-| Roll20                                                                                                                                    | Tipo                                                                                                    | Destino proposto em `sheet`                                                                                        |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `name`                                                                                                                                    | texto (máx 20)                                                                                          | `Character.name`                                                                                                   |
-| `class`                                                                                                                                   | select (10 classes, padrão "Sem Classe")                                                                | `identity.class`                                                                                                   |
-| `level`                                                                                                                                   | número 1 a 99 (vazio = 1)                                                                               | `identity.level`                                                                                                   |
-| `alignment`                                                                                                                               | select (`-`, Arcana, Anima, Lux, Nox, Onírico, Entropia, Vodu, Bênção, `Morte`=Anátema, `Vida`=Talismã) | `identity.alignment` (normalizar `Morte`/`Vida`)                                                                   |
-| `variant`                                                                                                                                 | texto                                                                                                   | `identity.alignmentNote`                                                                                           |
-| `for`,`con`,`des`,`int`,`sab`,`car`                                                                                                       | número (vazio = 10)                                                                                     | `attributes.<k>.value`                                                                                             |
-| `<k>PR`                                                                                                                                   | checkbox `"proficiente"`                                                                                | `attributes.<k>.proficient`                                                                                        |
-| `aberturas`                                                                                                                               | número ≥ 0                                                                                              | `combat.openings`                                                                                                  |
-| `deslocBonus`                                                                                                                             | checkbox `"1"`                                                                                          | `combat.movementBonus`                                                                                             |
-| `hp` / `maxHp`                                                                                                                            | número                                                                                                  | `resources.health.{current,max}`                                                                                   |
-| `sn` / `maxSn`                                                                                                                            | número                                                                                                  | `resources.sanity.{current,max}`                                                                                   |
-| `<pericia>Prof` (21)                                                                                                                      | checkbox `"proficiente"`                                                                                | `skills.<pericia>.proficient`                                                                                      |
-| `pesoMaximo`                                                                                                                              | número (g)                                                                                              | `inventory.maxWeight`                                                                                              |
-| `repeating_habs` (`habname`, `habmodS`, `habdado`, `habdamage`, `habhitmodS`, `habbasedamage`="base", `habproficiency`="prof", `habdesc`) | lista                                                                                                   | `abilities[]` `{name, attackAttr, damageDice, damageFlat, damageAttr, addBaseDamage, addProficiency, description}` |
-| `repeating_reino` (mesmos campos com prefixo `reino`)                                                                                     | lista                                                                                                   | `innerRealm[]` (mesmo formato)                                                                                     |
-| `repeating_inventory` (`invname`, `invquant`, `invca`, `invpeso`, `invdesc`)                                                              | lista                                                                                                   | `inventory.items[]` `{name, quantity, armorBonus, weightGrams, description}`                                       |
-| `repeating_tracos` (`traconame`, `tracodesc`)                                                                                             | lista                                                                                                   | `traits[]` `{name, description}`                                                                                   |
+`npm run import:roll20 -- "<pasta>" [--force]` (entry `apps/api/src/cli/importRoll20`, regra em `core/controllers/importer` e conversão pura em `core/services/roll20`, com testes).
 
-Valores `habmodS`/`habhitmodS` vêm como `"-"`, `"forMod"`, `"conMod"`... → mapear para `null` ou a chave do atributo.
+- Cada subpasta precisa de `character.json`; `avatar.*` e `token.*` são copiados para `MEDIA_DIR`.
+- Conta nova: login = nome do personagem, senha gerada e mostrada uma única vez. Conta existente: senha nunca é alterada.
+- A ficha importada recebe acesso da conta (`character_access`). Se a conta já tem uma ficha liberada com o mesmo nome, ela é pulada (ou sobrescrita com `--force`); senão uma nova ficha é criada na raiz da biblioteca.
+- Personagem já existente é ignorado, a menos que `--force` (sobrescreve a ficha, mantém a conta).
+- Nome igual ao de uma conta de Mestre é recusado.
+
+## Mapa de campos (export do Roll20 → `characterSheetSchema` v1)
+
+| Roll20                          | Tipo                  | Destino em `sheet`                                                                                                               |
+| ------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                          | texto                 | `Character.name` (e login da conta)                                                                                              |
+| `class`                         | select                | `identity.class` (slug: "Caçador" → `cacador`; ausente → `sem-classe`)                                                           |
+| `level`                         | número                | `identity.level` (1 a 99, vazio → 1)                                                                                             |
+| `alignment`                     | select                | `identity.alignment` (`Morte` → `anatema`, `Vida` → `talisma`, `-` → null)                                                       |
+| `variant`                       | texto                 | `identity.alignmentNote`                                                                                                         |
+| `for` ... `car`                 | número (vazio = null) | `attributes.<k>.value`                                                                                                           |
+| `<k>PR`                         | `"proficiente"`       | `attributes.<k>.proficient`                                                                                                      |
+| `<pericia>Prof` (21)            | `"proficiente"`       | `skills.<pericia>.proficient`                                                                                                    |
+| `hp` / `maxHp`, `sn` / `maxSn`  | número                | `resources.health`, `resources.sanity` `{current, max}`                                                                          |
+| `aberturas`                     | número                | `combat.openings` (mínimo 0)                                                                                                     |
+| `deslocBonus`                   | `"1"`                 | `combat.movementBonus`                                                                                                           |
+| `pesoMaximo`                    | número (g)            | `inventory.maxWeightGrams`                                                                                                       |
+| `repeating_habs_<id>_hab*`      | lista                 | `abilities[]` `{id, name, attackAttribute, damageDice, damageFlat, damageAttribute, addBaseDamage, addProficiency, description}` |
+| `repeating_reino_<id>_reino*`   | lista                 | `innerRealm[]` (mesmo formato)                                                                                                   |
+| `repeating_inventory_<id>_inv*` | lista                 | `inventory.items[]` `{id, name, quantity, armorBonus, weightGrams, description}`                                                 |
+| `repeating_tracos_<id>_traco*`  | lista                 | `traits[]` `{id, name, description}`                                                                                             |
+
+- `id` das linhas preserva o id da linha no Roll20; a ordem respeita `_reporder_repeating_<secao>` quando existe.
+- `habmodS`/`habhitmodS` (`"forMod"`, `"-"`...) viram a chave do atributo ou null.
+- Ignorados por serem derivados: `*Mod`, `*ModS`, `*CD`, `ca`, `caBonus`, `prof`, `profText`, `danoBase`, `desloc`, `dadoDeVida`, `pesoAtual`, valores das perícias, `habattackvalue`, `habdamagevalue` (o Roll20 guardava alguns desatualizados).
+- O JSON inteiro fica em `Character.legacy`.
 
 ## Quirks da ficha Roll20
 
-Mantidos de propósito: 2 (`trunc`) e 8 (peso ignora quantidade). Os demais são bugs a corrigir na nova ficha.
-
+Mantidos de propósito: 2 (`trunc`) e 8 (peso ignora quantidade). Os demais foram corrigidos na ficha v1: Aberturas funcionam, tudo é recalculado a cada mudança por `deriveSheet`, ataque/dano são montados na hora da rolagem.
 
 1. Botões de gastar Aberturas nunca funcionaram (`roll_*` não dispara `clicked:`).
 2. Modificador usa `trunc` em vez de `floor`.

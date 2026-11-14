@@ -7,14 +7,26 @@ import { FormField, Panel, PasswordField } from "@/shared/components/molecules";
 
 import { LOGIN_COPY } from "./LoginPanel.constants";
 import { useLoginPanel } from "./LoginPanel.hook";
+import { QuickLogin } from "./subcomponents";
 
 export function LoginPanel() {
-  const { character, password, error, submitting, onCharacterChange, onPasswordChange, onSubmit } =
-    useLoginPanel();
+  const {
+    character,
+    password,
+    error,
+    submitting,
+    quickLoginEnabled,
+    onCharacterChange,
+    onPasswordChange,
+    onSubmit,
+    onQuickGm,
+    onQuickPlayer,
+  } = useLoginPanel();
 
   return (
     <Panel variant="glass" brackets className="w-full">
       <div className="relative z-10 px-9 pt-10 pb-8">
+        <h1 className="sr-only">Magista: acesso à ficha do jogador</h1>
         <div className="-mt-2 flex justify-center">
           <Image
             src="/logo.webp"
@@ -29,7 +41,7 @@ export function LoginPanel() {
         <Divider label={LOGIN_COPY.ornament} className="mt-1 mb-7" />
 
         <form onSubmit={onSubmit} noValidate className="space-y-5">
-          <FormField id="login-character" label={LOGIN_COPY.characterLabel}>
+          <FormField id="login-character" label={LOGIN_COPY.characterLabel} variant="login">
             <Input
               id="login-character"
               name="login"
@@ -41,7 +53,7 @@ export function LoginPanel() {
             />
           </FormField>
 
-          <FormField id="login-password" label={LOGIN_COPY.passwordLabel}>
+          <FormField id="login-password" label={LOGIN_COPY.passwordLabel} variant="login">
             <PasswordField
               id="login-password"
               name="password"
@@ -70,6 +82,10 @@ export function LoginPanel() {
             {LOGIN_COPY.submit}
           </Button>
         </form>
+
+        {quickLoginEnabled && (
+          <QuickLogin disabled={submitting} onGm={onQuickGm} onPlayer={onQuickPlayer} />
+        )}
 
         <Text variant="hint" className="mt-7 text-center">
           {LOGIN_COPY.footer[0]}

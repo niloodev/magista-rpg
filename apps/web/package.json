@@ -8,9 +8,13 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/utilities": "3.2.2",
     "@magista/shared": "*",
     "lucide-react": "^1.72.0",
     "next": "^16.4.6",
@@ -27,6 +31,7 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.0",
     "eslint-config-next": "^16.4.6",
-    "tailwindcss": "^4.3.5"
+    "tailwindcss": "^4.3.5",
+    "vitest": "^5.1.0"
   }
 }

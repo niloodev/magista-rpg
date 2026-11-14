@@ -12,7 +12,25 @@
       "Bash(npx prisma validate:*)",
       "Bash(npx prisma format:*)",
       "Bash(docker compose ps:*)",
-      "Bash(docker compose logs:*)"
+      "Bash(docker compose logs:*)",
+      "Bash(.claude/hooks/review-gate.sh --mark)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(./.claude/hooks/review-gate.sh --mark)",
+      "Bash(/home/ezeq/froggie-projects/magista-rpg/.claude/hooks/review-gate.sh --mark)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-gate.sh",
+            "timeout": 30,
+            "statusMessage": "Verificando se a demanda precisa de revisão..."
+          }
+        ]
+      }
     ]
   }
 }

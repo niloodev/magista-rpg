@@ -2,14 +2,11 @@ export const LOGIN_REDIRECT_PATH = "/mesa";
 
 export const LOGIN_COPY = {
   ornament: "FICHA DO JOGADOR",
-  characterLabel: "Personagem",
-  characterPlaceholder: "Nome do seu personagem",
+  characterLabel: "Conta",
+  characterPlaceholder: "Login da sua conta",
   passwordLabel: "Senha",
   passwordPlaceholder: "••••••••",
   submit: "Acessar Ficha",
   submitting: "Verificando...",
-  footer: [
-    "Acesso exclusivo a jogadores cadastrados.",
-    "Não há criação de fichas nesta plataforma.",
-  ],
+  footer: ["Acesso exclusivo a jogadores cadastrados.", "As fichas são liberadas pelo Mestre."],
 } as const;

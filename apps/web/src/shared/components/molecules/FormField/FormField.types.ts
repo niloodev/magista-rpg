@@ -5,4 +5,7 @@ export interface FormFieldProps {
   label: string;
   children: ReactNode;
   className?: string;
+  variant?: "login" | "sheet";
+  error?: string;
+  hint?: string;
 }

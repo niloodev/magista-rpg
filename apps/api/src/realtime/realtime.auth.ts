@@ -1,7 +1,7 @@
 import { isErrorResult } from "@magista/shared";
 import { parse } from "cookie";
 
-import { getSession } from "@/core/controllers/auth";
+import { authenticate } from "@/core/controllers/auth";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/core/services/auth";
 
 import type { RealtimeSocket } from "./realtime.types";
@@ -20,17 +20,12 @@ export async function authenticateSocket(
     next(new Error("unauthorized"));
     return;
   }
-  const result = await getSession(payload.sub);
+  const result = await authenticate(payload);
   if (isErrorResult(result)) {
     next(new Error("unauthorized"));
     return;
   }
-  const { account, character } = result.payload;
-  socket.data.member = {
-    accountId: account.id,
-    login: account.login,
-    role: account.role,
-    characterName: character?.name ?? null,
-  };
+  const { account } = result.payload.session;
+  socket.data.member = { accountId: account.id, login: account.login, role: account.role };
   next();
 }

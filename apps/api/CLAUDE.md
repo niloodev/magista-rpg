@@ -2,3 +2,5 @@
 - Mudou o schema: `npm run db:migrate -- --name <descricao>` e commite a pasta `prisma/migrations`.
 - `routes/` e `realtime/` são entry finos: não validam nem acessam o banco; chamam controllers e traduzem o envelope em status HTTP ou evento.
 - Controllers recebem dependências por `create<X>Controller(deps)` para serem testáveis com Vitest sem banco.
+- Autenticação: `requireAuth` valida o JWT e chama `auth.authenticate`, que confere o `sessionVersion` no banco e entrega `res.locals.auth = { accountId, role, session }`. Nunca use o papel vindo do token.
+- Permissão é checada no controller (`canAccessCharacter`, `role === "GM"`), nunca só na tela.

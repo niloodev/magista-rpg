@@ -1,0 +1,1 @@
+export const DEFAULT_COLLAPSED_HEIGHT = 112;
