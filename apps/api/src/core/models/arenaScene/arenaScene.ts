@@ -120,8 +120,12 @@ const findBoards: IArenaSceneModels["findBoards"] = async (ids) => {
   return new Map(rows.map((row) => [row.id, resolveBoard(row)]));
 };
 
+/**
+ * The live scene. Uses `findFirst`, not `findUnique`: Prisma batches concurrent `findUnique` calls into an
+ * `in` filter, which a boolean key does not accept, so two tables loading the Arena at once would fail.
+ */
 const findActiveSceneId: IArenaSceneModels["findActiveSceneId"] = async () => {
-  const row = await getDatabase().arenaState.findUnique({
+  const row = await getDatabase().arenaState.findFirst({
     where: { singleton: true },
     select: { activeSceneId: true },
   });

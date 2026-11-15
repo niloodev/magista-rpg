@@ -87,7 +87,7 @@ A Arena não monta `SheetPage`, então o `sheetSlice` (uma ficha por contexto) f
 - `modules/arena/services/arenaRenderer`: classe imperativa com `sync(scene, tokens, selection, previews)`; camadas `map`, `tokens`, `fx` e `ui`.
 - Câmera: arrastar no vazio, botão do meio ou espaço para mover; roda e pinça para zoom limitado; "Ajustar mapa"; câmera lembrada por cena no `localStorage`.
 - Token: avatar em círculo, anel rubi (meus), teal (outros), dourado (selecionado), tracejado e translúcido quando oculto, nome em Cinzel. Arraste emite a prévia e solta com `arena:move`; movimentos alheios chegam interpolados.
-- Mapas maiores que `MAX_TEXTURE_SIZE` (4096 em placas antigas) são reduzidos com `createImageBitmap` e o sprite é escalado; coordenadas seguem no espaço original.
+- Mapas maiores que `min(MAX_TEXTURE_SIZE, 8192)` (`ARENA_MAP_TEXTURE_MAX`: uma textura de 16384 px ocuparia cerca de 1 GB de memória de vídeo) são reduzidos com `createImageBitmap` e o sprite é esticado no tabuleiro. Texturas de retrato que nenhum token usa mais são liberadas, e uma falha de carregamento pode ser tentada de novo.
 - Render sob demanda: o ticker para quando nada anima.
 - Sem WebGL: estado amigável explicando o problema, nunca tela preta.
 

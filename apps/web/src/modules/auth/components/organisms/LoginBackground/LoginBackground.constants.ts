@@ -5,3 +5,6 @@ export const PARALLAX_LERP = 0.055;
 export const AUTO_DRIFT_STEP = 0.004;
 
 export const AUTO_DRIFT_AMPLITUDE = { x: 0.24, y: 0.16, yFrequency: 0.62 } as const;
+
+/** Distance to the cursor (in viewport fractions) under which the parallax stops animating. */
+export const PARALLAX_SETTLE = 0.0005;

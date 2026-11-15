@@ -31,6 +31,9 @@ export const ARENA_LITE_FRAME_MS = 33;
 
 export const ARENA_TOKEN_TEXTURE_SIZE = 256;
 
+/** Largest side of the map texture on the GPU (a 16384 px texture would take about 1 GB of video memory). */
+export const ARENA_MAP_TEXTURE_MAX = 8192;
+
 export const ARENA_CLICK_SLOP = 4;
 
 export const ARENA_CAMERA_STORAGE_PREFIX = "magista-arena-camera:";

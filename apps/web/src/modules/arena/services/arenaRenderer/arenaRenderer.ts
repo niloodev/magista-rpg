@@ -31,6 +31,7 @@ import {
   ARENA_LITE_FRAME_MS,
   ARENA_SETTLE_DISTANCE,
   ARENA_TOKEN_LERP,
+  ARENA_MAP_TEXTURE_MAX,
   ARENA_TOKEN_TEXTURE_SIZE,
   ARENA_WHEEL_SENSITIVITY,
 } from "./arenaRenderer.constants";
@@ -114,16 +115,26 @@ interface IPanState {
 async function loadTexture(url: string, maxSize: number): Promise<ILoadedTexture<Texture>> {
   const blob = await fetchMediaBlob(url);
   const original = await createImageBitmap(blob);
-  const target = fitTextureSize(original.width, original.height, maxSize);
-  const bitmap = target.scaled
-    ? await createImageBitmap(blob, {
-        resizeWidth: target.width,
-        resizeHeight: target.height,
-        resizeQuality: "high",
-      })
-    : original;
-  if (bitmap !== original) original.close();
-  return { texture: Texture.from(bitmap, true), width: original.width, height: original.height };
+  const { width, height } = original;
+  const target = fitTextureSize(width, height, maxSize);
+  if (!target.scaled) {
+    try {
+      return { texture: Texture.from(original, true), width, height };
+    } catch (error) {
+      original.close();
+      throw error;
+    }
+  }
+  try {
+    const bitmap = await createImageBitmap(blob, {
+      resizeWidth: target.width,
+      resizeHeight: target.height,
+      resizeQuality: "high",
+    });
+    return { texture: Texture.from(bitmap, true), width, height };
+  } finally {
+    original.close();
+  }
 }
 
 /**
@@ -233,7 +244,8 @@ export class ArenaRenderer implements IArenaRenderer {
     canvas.setAttribute("aria-hidden", "true");
     host.appendChild(canvas);
     const gl = "gl" in app.renderer ? (app.renderer.gl as WebGLRenderingContext) : null;
-    const maxTexture = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : 4096;
+    const gpuMax = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : ARENA_MAP_TEXTURE_MAX;
+    const maxTexture = Math.min(gpuMax, ARENA_MAP_TEXTURE_MAX);
     return new ArenaRenderer(app, host, options, maxTexture);
   }
 
@@ -329,14 +341,20 @@ export class ArenaRenderer implements IArenaRenderer {
       if (!this.drag?.offsets.has(data.id)) view.target = { x: data.x, y: data.y };
       if (!existing) view.display = { ...view.target };
       this.drawToken(view);
-      this.tokenLayer.addChild(view.container);
+      if (!existing) this.tokenLayer.addChild(view.container);
     }
+    list.forEach((data, index) => {
+      const view = this.tokens.get(data.id);
+      if (view && this.tokenLayer.getChildAt(index) !== view.container)
+        this.tokenLayer.setChildIndex(view.container, index);
+    });
     for (const [id, view] of this.tokens) {
       if (seen.has(id)) continue;
       view.container.destroy({ children: true });
       this.tokens.delete(id);
       this.drag?.offsets.delete(id);
     }
+    this.prunePortraits();
     for (const id of this.drag?.offsets.keys() ?? []) {
       const dragged = this.tokens.get(id);
       if (dragged) this.tokenLayer.addChild(dragged.container);
@@ -559,6 +577,20 @@ export class ArenaRenderer implements IArenaRenderer {
     return view;
   }
 
+  /**
+   * Frees the portrait textures no token on the board uses anymore (another scene, a replaced image), so the
+   * GPU memory follows the tokens on screen instead of growing for the whole session.
+   */
+  private prunePortraits(): void {
+    const used = new Set<string>();
+    for (const view of this.tokens.values()) if (view.data.imageUrl) used.add(view.data.imageUrl);
+    for (const [url, pending] of this.portraits) {
+      if (used.has(url)) continue;
+      this.portraits.delete(url);
+      void pending.then((texture) => texture?.destroy(true));
+    }
+  }
+
   private resetPortrait(view: ITokenView): void {
     view.portrait?.destroy();
     view.portrait = null;
@@ -571,9 +603,13 @@ export class ArenaRenderer implements IArenaRenderer {
     if (!url) return;
     let pending = this.portraits.get(url);
     if (!pending) {
-      pending = loadTexture(url, ARENA_TOKEN_TEXTURE_SIZE)
+      const loading: Promise<Texture | null> = loadTexture(url, ARENA_TOKEN_TEXTURE_SIZE)
         .then((loaded) => loaded.texture)
-        .catch(() => null);
+        .catch(() => {
+          if (this.portraits.get(url) === loading) this.portraits.delete(url);
+          return null;
+        });
+      pending = loading;
       this.portraits.set(url, pending);
     }
     const texture = await pending;

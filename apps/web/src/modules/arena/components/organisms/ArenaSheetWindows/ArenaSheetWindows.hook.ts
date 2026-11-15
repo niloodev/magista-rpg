@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { openPopout } from "@/core/services/windows";
@@ -34,6 +34,7 @@ export function useArenaSheetWindows({ panels, onDock }: ArenaSheetWindowsProps)
   const characters = useApp((state) => state.library.characters);
   const [rects, setRects] = useState<Record<string, IWindowRect>>({});
   const [drop, setDrop] = useState<{ id: string; side: ArenaDockSide } | null>(null);
+  const savedRects = useRef(new Map<string, IWindowRect | null>());
 
   const windows = useMemo<IArenaSheetWindow[]>(
     () =>
@@ -57,7 +58,8 @@ export function useArenaSheetWindows({ panels, onDock }: ArenaSheetWindowsProps)
       const current = rects[id];
       if (current) return current;
       const viewport = { width: window.innerWidth, height: window.innerHeight };
-      const saved = readSavedRect(id);
+      if (!savedRects.current.has(id)) savedRects.current.set(id, readSavedRect(id));
+      const saved = savedRects.current.get(id) ?? null;
       return saved
         ? clampWindowRect(saved, viewport, WINDOW_MIN_SIZE, ARENA_SHEET_WINDOW_LAYOUT.minTop)
         : defaultSheetWindowRect(index, panels, viewport);
@@ -78,6 +80,7 @@ export function useArenaSheetWindows({ panels, onDock }: ArenaSheetWindowsProps)
   const dock = useCallback(
     (id: string, side: ArenaDockSide) => {
       setRects((current) => omitRect(current, id));
+      savedRects.current.delete(id);
       try {
         window.localStorage.removeItem(sheetWindowKey(id));
       } catch {
@@ -92,7 +95,9 @@ export function useArenaSheetWindows({ panels, onDock }: ArenaSheetWindowsProps)
     (id: string, point: { x: number; y: number }, done: boolean) => {
       const side = dockZoneAt(point.x, window.innerWidth, panels);
       if (!done) {
-        setDrop(side ? { id, side } : null);
+        setDrop((current) =>
+          current?.id === id && current.side === side ? current : side ? { id, side } : null,
+        );
         return;
       }
       setDrop(null);

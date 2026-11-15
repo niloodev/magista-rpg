@@ -11,10 +11,11 @@ import {
   PARALLAX_SPEEDS,
 } from "./LoginBackground.constants";
 import type { LayerRefSetter, ParallaxPoint } from "./LoginBackground.types";
-import { toCursorLight, toLayerTransform } from "./LoginBackground.utils";
+import { isSettled, toCursorLight, toLayerTransform } from "./LoginBackground.utils";
 
 /**
  * Drives the login parallax: eases every layer toward the cursor, with an idle drift until the mouse moves.
+ * Once the layers reach the cursor the loop stops (no repaint every frame) and the next mouse move restarts it.
  * Off with reduced motion or the performance mode.
  */
 export function useLoginBackground() {
@@ -52,13 +53,14 @@ export function useLoginBackground() {
           element.style.transform = toLayerTransform(current, speed);
       });
       if (lightRef.current) lightRef.current.style.background = toCursorLight(current);
-      frame = requestAnimationFrame(tick);
+      frame = hasMouse && isSettled(current, target) ? 0 : requestAnimationFrame(tick);
     };
 
     const onMouseMove = (event: MouseEvent) => {
       hasMouse = true;
       target.x = (event.clientX - window.innerWidth / 2) / window.innerWidth;
       target.y = (event.clientY - window.innerHeight / 2) / window.innerHeight;
+      if (!frame) frame = requestAnimationFrame(tick);
     };
 
     window.addEventListener("mousemove", onMouseMove);
