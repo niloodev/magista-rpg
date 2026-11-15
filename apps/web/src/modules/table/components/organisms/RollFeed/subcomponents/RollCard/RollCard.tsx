@@ -3,12 +3,12 @@ import {
   CRITICAL_BADGE_LABEL,
   ROLL_CARD_STYLES,
   ROLLED_BY_GM_LABEL,
+  ROLL_KIND_ICONS,
 } from "@/modules/table/table.constants";
 import { hasCritical, splitNotes } from "@/modules/table/table.utils";
 import { Avatar, Icon } from "@/shared/components/atoms";
 import { ExpandableText } from "@/shared/components/molecules";
 
-import { KIND_ICONS } from "./RollCard.constants";
 import type { RollCardProps } from "./RollCard.types";
 import { formatTime } from "./RollCard.utils";
 import { RollRow } from "./subcomponents";
@@ -28,7 +28,7 @@ export function RollCard({ roll }: RollCardProps) {
             {roll.characterName}
           </p>
           {roll.rolledByGm && (
-            <p className="font-sans text-xs text-teal-300">{ROLLED_BY_GM_LABEL}</p>
+            <p className="truncate font-sans text-xs text-teal-300">{ROLLED_BY_GM_LABEL}</p>
           )}
         </div>
         {critical && (
@@ -44,7 +44,7 @@ export function RollCard({ roll }: RollCardProps) {
         <p
           className={`flex min-w-0 items-center gap-2 font-sans text-[15px] font-bold tracking-wide ${critical ? "text-gold-300" : roll.kind === "levelUp" ? "text-teal-300" : "text-accent-text"}`}
         >
-          <Icon name={KIND_ICONS[roll.kind]} size={16} />
+          <Icon name={ROLL_KIND_ICONS[roll.kind]} size={16} />
           <span className="truncate">{roll.title}</span>
           <span className="shrink-0 font-normal text-xs tracking-wider text-muted-strong uppercase">
             {roll.subtitle}

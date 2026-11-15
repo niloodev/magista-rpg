@@ -44,3 +44,10 @@
     background: rgba(218, 32, 84, 0.45);
   }
 }
+
+@layer base {
+  :where(button, select, input, textarea, [role="button"]):disabled,
+  :where([aria-disabled="true"]) {
+    cursor: default;
+  }
+}

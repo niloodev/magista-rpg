@@ -1,7 +1,12 @@
 import type { z } from "zod";
 
 import type {
+  arenaFolderSchema,
+  arenaLibrarySchema,
   arenaSceneSchema,
+  createArenaFolderInputSchema,
+  moveArenaLibraryItemInputSchema,
+  renameArenaFolderInputSchema,
   arenaTokenSchema,
   arenaViewSchema,
   createArenaSceneInputSchema,
@@ -17,11 +22,21 @@ import type {
 
 export type IArenaScene = z.infer<typeof arenaSceneSchema>;
 
+export type IArenaFolder = z.infer<typeof arenaFolderSchema>;
+
+export type IArenaLibrary = z.infer<typeof arenaLibrarySchema>;
+
+export type ICreateArenaFolderInput = z.input<typeof createArenaFolderInputSchema>;
+
+export type IRenameArenaFolderInput = z.infer<typeof renameArenaFolderInputSchema>;
+
+export type IMoveArenaLibraryItemInput = z.infer<typeof moveArenaLibraryItemInputSchema>;
+
 export type IArenaToken = z.infer<typeof arenaTokenSchema>;
 
 export type IArenaView = z.infer<typeof arenaViewSchema>;
 
-export type ICreateArenaSceneInput = z.infer<typeof createArenaSceneInputSchema>;
+export type ICreateArenaSceneInput = z.input<typeof createArenaSceneInputSchema>;
 
 export type IRenameArenaSceneInput = z.infer<typeof renameArenaSceneInputSchema>;
 
@@ -60,4 +75,6 @@ export interface IArenaTokenRemovedEvent {
 /** Something in the Arena changed: refetch the view (and the GM, the scene list). `sceneId` null means any scene. */
 export interface IArenaSceneEvent {
   sceneId: string | null;
+  /** Only the GM scene library changed (folders, order); the Arena view itself is the same. */
+  libraryOnly?: boolean;
 }

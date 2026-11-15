@@ -11,7 +11,7 @@ import { useRouteSkeleton } from "./RouteSkeleton.hook";
  */
 export function RouteSkeleton() {
   const { arena, sheet, sheetWindow, known, gm, loginLength } = useRouteSkeleton();
-  if (arena) return <ArenaSkeleton />;
+  if (arena) return <ArenaSkeleton gm={known && gm} />;
   return sheet ? (
     <SheetSkeleton gm={gm} variant={sheetWindow ? "window" : "page"} />
   ) : (

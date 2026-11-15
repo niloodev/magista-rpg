@@ -28,6 +28,21 @@ export interface IArenaHint {
   known: boolean;
   tray: number;
   nameLength: number;
+  /** Width of each side panel on the last visit (0 when it was closed). */
+  sidebarWidth: number;
+  rollsWidth: number;
+  /** Sidebar tab open on the last visit. */
+  tab: ArenaSidebarTab;
+}
+
+export type ArenaSidebarTab = "characters" | "scenes";
+
+export interface IArenaSidebarState {
+  open: boolean;
+  tab: ArenaSidebarTab;
+  rollsOpen: boolean;
+  width: number;
+  rollsWidth: number;
 }
 
 export interface IPendingNudge {

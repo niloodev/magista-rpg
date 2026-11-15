@@ -18,4 +18,5 @@ export interface CharacterRowListProps {
   label: string;
   items: ICharacterRowItem[];
   emptyText: string;
+  onOpen?: (characterId: string) => void;
 }

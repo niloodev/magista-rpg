@@ -146,6 +146,8 @@ export class ArenaRenderer implements IArenaRenderer {
   private readonly selectionFrame = new Graphics();
   private readonly handles: Graphics[] = [];
   private resizable = false;
+  private insetRight = 0;
+  private insetLeft = 0;
   private resize: IResizeState | null = null;
   private selection = new Set<string>();
   private drag: IDragState | null = null;
@@ -261,10 +263,7 @@ export class ArenaRenderer implements IArenaRenderer {
       this.bounds = ARENA_EMPTY_BOUNDS;
       this.mapLayer.addChild(this.drawEmptyGround());
     }
-    if (sceneChanged)
-      this.camera =
-        this.storedCamera() ??
-        fitCamera(this.bounds, this.viewport(), this.options.insetTop, this.options.insetBottom);
+    if (sceneChanged) this.camera = this.storedCamera() ?? this.fittedCamera();
     this.applyCamera();
     this.options.callbacks.onSceneReady(this.bounds);
   };
@@ -309,6 +308,11 @@ export class ArenaRenderer implements IArenaRenderer {
     this.invalidate();
   }
 
+  setSideInsets = (left: number, right: number): void => {
+    this.insetLeft = left;
+    this.insetRight = right;
+  };
+
   setResizable = (resizable: boolean): void => {
     if (this.resizable === resizable) return;
     this.resizable = resizable;
@@ -322,19 +326,21 @@ export class ArenaRenderer implements IArenaRenderer {
   };
 
   fitToMap = (): void => {
-    this.camera = fitCamera(
-      this.bounds,
-      this.viewport(),
-      this.options.insetTop,
-      this.options.insetBottom,
-    );
+    this.camera = this.fittedCamera();
     this.applyCamera();
   };
 
   centerOn = (tokenId: string): void => {
     const view = this.tokens.get(tokenId);
     if (!view) return;
-    this.camera = centerCamera(this.camera, view.target, this.viewport(), this.options.insetTop);
+    this.camera = centerCamera(
+      this.camera,
+      view.target,
+      this.viewport(),
+      this.options.insetTop,
+      this.insetRight,
+      this.insetLeft,
+    );
     this.applyCamera();
   };
 
@@ -363,6 +369,17 @@ export class ArenaRenderer implements IArenaRenderer {
     this.portraits.clear();
     this.app.destroy({ removeView: true });
   };
+
+  private fittedCamera(): IArenaCamera {
+    return fitCamera(
+      this.bounds,
+      this.viewport(),
+      this.options.insetTop,
+      this.options.insetBottom,
+      this.insetRight,
+      this.insetLeft,
+    );
+  }
 
   private viewport() {
     return { width: this.app.screen.width, height: this.app.screen.height };

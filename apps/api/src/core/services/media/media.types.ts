@@ -29,6 +29,8 @@ export interface ICharacterImageStore {
 }
 
 export interface IArenaImageStore {
+  /** Pixel size from the image header, or null when unreadable. */
+  sizeOf: (body: Buffer) => { width: number; height: number } | null;
   /** Stores a scene map and returns its new key, or null when the bytes are not a supported image. */
   storeMap: (sceneId: string, body: Buffer) => Promise<string | null>;
   /** Stores a token image and returns its new key, or null when the bytes are not a supported image. */

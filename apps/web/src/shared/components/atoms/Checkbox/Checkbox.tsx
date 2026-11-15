@@ -12,14 +12,14 @@ export function Checkbox({
 }: CheckboxProps) {
   return (
     <label
-      className={`group inline-flex min-h-8 cursor-pointer items-center gap-2 ${className ?? ""}`}
+      className={`group/checkbox inline-flex min-h-8 cursor-pointer items-center gap-2 has-disabled:cursor-default ${className ?? ""}`}
     >
       <span className="relative inline-flex h-5 w-5 shrink-0">
         <input
           type="checkbox"
           checked={checked}
           onChange={(event) => onCheckedChange(event.target.checked)}
-          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
           {...props}
         />
         <span
@@ -30,7 +30,7 @@ export function Checkbox({
         </span>
       </span>
       {label && (
-        <span className="font-sans text-xs font-semibold tracking-wider text-muted-strong uppercase transition-colors group-hover:text-foreground">
+        <span className="font-sans text-xs font-semibold tracking-wider text-muted-strong uppercase transition-colors group-has-enabled/checkbox:group-hover/checkbox:text-foreground">
           {label}
         </span>
       )}

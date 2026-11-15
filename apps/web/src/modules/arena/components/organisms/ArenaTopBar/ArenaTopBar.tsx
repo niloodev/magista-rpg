@@ -5,6 +5,7 @@ import {
   ARENA_BACK_PATH,
   ARENA_BACK_PREFIX,
   ARENA_MEMBERS_LABEL,
+  ARENA_PREVIEW_TEXTS,
   ARENA_TITLE,
 } from "@/modules/arena/arena.constants";
 import { Button, Icon, Text } from "@/shared/components/atoms";
@@ -13,7 +14,16 @@ import { ArenaConnectionStatus } from "../../molecules";
 import { ARENA_BACK_LINK_CLASSES, ARENA_TOP_BAR_CLASSES } from "./ArenaTopBar.constants";
 import type { ArenaTopBarProps } from "./ArenaTopBar.types";
 
-export function ArenaTopBar({ sceneName, status, memberCount, onOpenProfile }: ArenaTopBarProps) {
+export function ArenaTopBar({
+  sceneName,
+  status,
+  latencyMs,
+  memberCount,
+  broadcast,
+  onGoLive,
+  onBackToLive,
+  onOpenProfile,
+}: ArenaTopBarProps) {
   return (
     <header className={ARENA_TOP_BAR_CLASSES}>
       <Link href={ARENA_BACK_PATH} className={ARENA_BACK_LINK_CLASSES}>
@@ -32,7 +42,38 @@ export function ArenaTopBar({ sceneName, status, memberCount, onOpenProfile }: A
           {sceneName ?? ARENA_TITLE}
         </h1>
       </div>
-      <ArenaConnectionStatus status={status} />
+      {broadcast?.live && (
+        <span className="flex shrink-0 items-center gap-1.5 border border-teal-500/50 bg-teal-900/30 px-2.5 py-1 font-sans text-xs font-semibold tracking-[0.12em] text-teal-200 uppercase">
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-teal-400" />
+          {ARENA_PREVIEW_TEXTS.live}
+        </span>
+      )}
+      {broadcast && !broadcast.live && (
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            title={ARENA_PREVIEW_TEXTS.previewHint}
+            className="flex items-center gap-1.5 border border-gold-400/60 bg-gold-700/20 px-2.5 py-1 font-sans text-xs font-semibold tracking-[0.12em] text-gold-200 uppercase"
+          >
+            <Icon name="eye" size={13} aria-hidden="true" />
+            {ARENA_PREVIEW_TEXTS.preview}
+            <span className="sr-only">: {ARENA_PREVIEW_TEXTS.previewHint}</span>
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onGoLive}
+            icon={<Icon name="zap" size={12} />}
+          >
+            {ARENA_PREVIEW_TEXTS.goLive}
+          </Button>
+          {broadcast.hasLive && (
+            <Button variant="ghost" size="sm" onClick={onBackToLive}>
+              {ARENA_PREVIEW_TEXTS.backToLive}
+            </Button>
+          )}
+        </div>
+      )}
+      <ArenaConnectionStatus status={status} latencyMs={latencyMs} />
       <span className="flex shrink-0 items-center gap-1.5 font-sans text-sm text-muted-strong">
         <Icon name="users" size={16} aria-hidden="true" />
         <span className="sr-only">{ARENA_MEMBERS_LABEL(memberCount)}</span>

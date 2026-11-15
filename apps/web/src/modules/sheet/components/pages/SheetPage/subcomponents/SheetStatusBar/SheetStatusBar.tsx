@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { SAVE_STATUS_LABELS } from "@/modules/sheet/sheet.constants";
 import { PopoutButton } from "@/modules/shell/components";
+import { LatencyBadge } from "@/modules/table/components/molecules";
 import { CONNECTION_LABELS } from "@/modules/table/table.constants";
 import { Icon } from "@/shared/components/atoms";
 
@@ -14,6 +15,7 @@ export function SheetStatusBar({
   saveStatus,
   saveError,
   connection,
+  latencyMs,
   rollError,
   onRetrySave,
 }: SheetStatusBarProps) {
@@ -28,9 +30,10 @@ export function SheetStatusBar({
         </Link>
       )}
       {variant === "window" && <span className="sr-only">Ficha de {characterName} em janela</span>}
-      <span className="flex items-center gap-2" aria-live="polite">
+      <span className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full ${CONNECTION_LABELS[connection].dot}`} />
-        {CONNECTION_LABELS[connection].label}
+        <span aria-live="polite">{CONNECTION_LABELS[connection].label}</span>
+        <LatencyBadge latencyMs={connection === "connected" ? latencyMs : null} />
       </span>
       <span aria-live="polite" className={saveStatus === "error" ? "text-error" : ""}>
         {saveStatus === "error"

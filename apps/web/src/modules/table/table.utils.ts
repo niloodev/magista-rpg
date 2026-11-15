@@ -20,6 +20,8 @@ import {
   MAXIMIZED_LABEL,
   NATURAL_LABELS,
   SHORT_NOTE_MAX_LENGTH,
+  LATENCY_MAX_SHOWN_MS,
+  LATENCY_TONES,
 } from "./table.constants";
 import type { ConnectionStatus, DieChip, FeedRowShape, IFeedShape } from "./table.types";
 
@@ -175,4 +177,19 @@ export function rowBadge(row: IRollResultRow): string | null {
   const natural = naturalOutcome(row.outcome);
   if (natural) return NATURAL_LABELS[natural];
   return row.maximized ? MAXIMIZED_LABEL : null;
+}
+
+/**
+ * Text color of the ping badge: teal when fast, gold when slow, red when very slow.
+ */
+export function latencyTone(latencyMs: number): string {
+  return (LATENCY_TONES.find((tone) => latencyMs <= tone.upTo) ?? LATENCY_TONES[0]).className;
+}
+
+/**
+ * Text of the ping badge ("42 ms", "999+ ms" when slower), or null while unknown.
+ */
+export function latencyText(latencyMs: number | null): string | null {
+  if (latencyMs === null) return null;
+  return latencyMs > LATENCY_MAX_SHOWN_MS ? `${LATENCY_MAX_SHOWN_MS}+ ms` : `${latencyMs} ms`;
 }

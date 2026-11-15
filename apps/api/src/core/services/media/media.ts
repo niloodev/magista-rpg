@@ -27,6 +27,7 @@ import {
   characterMediaPrefix,
   detectImageType,
   mediaKeyFor,
+  readImageSize,
 } from "./media.utils";
 
 let client: S3Client | null = null;
@@ -149,6 +150,7 @@ export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore 
     return key;
   };
   return {
+    sizeOf: readImageSize,
     storeMap: (sceneId, body) => store(body, (type) => arenaMapKeyFor(sceneId, type)),
     storeToken: (tokenId, body) => store(body, (type) => arenaTokenKeyFor(tokenId, type)),
     remove: (key) => storage.deleteObject(key),

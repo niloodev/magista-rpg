@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyMove,
+  applyTreeMove,
   charactersIn,
+  countLeavesDeep,
   countCharactersDeep,
   dropPositionFor,
   moveForDrop,
+  moveForTreeDrop,
   folderPathLabel,
   fromDragId,
   libraryShape,
@@ -165,6 +168,49 @@ describe("library utils", () => {
       parentId: "f2",
       index: 0,
     });
+  });
+});
+
+describe("generic folder tree (scenes)", () => {
+  const scene = (id: string, folderId: string | null, position: number) => ({
+    id,
+    name: id,
+    folderId,
+    position,
+  });
+  const tree = {
+    folders,
+    leaves: [scene("s1", null, 0), scene("s2", null, 1), scene("s3", "f2", 0)],
+  };
+
+  it("lets scenes go only inside folders or next to other scenes", () => {
+    expect(dropPositionFor("scene", "scene", 0.2)).toBe("before");
+    expect(dropPositionFor("scene", "folder", 0.05)).toBe("inside");
+    expect(dropPositionFor("scene", "character", 0.5)).toBeNull();
+  });
+
+  it("builds and applies scene moves with the scene kind", () => {
+    const move = moveForTreeDrop(
+      tree,
+      { kind: "scene", id: "s3" },
+      { kind: "scene", id: "s1" },
+      "after",
+    );
+    expect(move).toEqual({ kind: "scene", id: "s3", parentId: null, index: 1 });
+    const moved = applyTreeMove(tree, move!);
+    const root = moved.leaves
+      .filter((leaf) => leaf.folderId === null)
+      .sort((a, b) => a.position - b.position)
+      .map((leaf) => leaf.id);
+    expect(root).toEqual(["s1", "s3", "s2"]);
+    expect(
+      moveForTreeDrop(tree, { kind: "scene", id: "s1" }, { kind: "character", id: "a" }, "before"),
+    ).toBeNull();
+  });
+
+  it("counts scenes deep inside a folder", () => {
+    expect(countLeavesDeep(tree, "f1")).toBe(1);
+    expect(countLeavesDeep(tree, "f3")).toBe(0);
   });
 });
 

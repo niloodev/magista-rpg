@@ -15,6 +15,8 @@ export interface TabsProps<K extends string> {
   onChange: (key: K) => void;
   label: string;
   idPrefix: string;
+  /** Smaller tabs for narrow panels (sidebars). */
+  dense?: boolean;
 }
 
 export interface TabPanelProps {

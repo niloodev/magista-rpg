@@ -1,12 +1,18 @@
 "use client";
 
 import {
+  ARENA_PANEL_TOGGLE_POSITION,
   ARENA_BACK_LABEL,
+  ARENA_ROLLS_TEXTS,
+  ARENA_SIDEBAR_TEXTS,
   ARENA_SKELETON_LABEL,
   ARENA_TITLE,
+  SCENE_TEXTS,
 } from "@/modules/arena/arena.constants";
+import { CharacterLibrarySkeleton } from "@/modules/library/components/organisms";
+import { RollFeed } from "@/modules/table/components/organisms";
 import { Icon, Skeleton, skeletonSample, Text } from "@/shared/components/atoms";
-import { ButtonSkeleton, SkeletonRegion } from "@/shared/components/molecules";
+import { ButtonSkeleton, SkeletonRegion, Tabs } from "@/shared/components/molecules";
 
 import {
   ARENA_TRAY_BUTTON_CLASSES,
@@ -14,19 +20,29 @@ import {
   ARENA_TRAY_LIST_CLASSES,
   ArenaConnectionStatus,
   ArenaMapPlaceholder,
+  ArenaPanelToggle,
   ArenaZoomControls,
+  SceneLibrarySkeleton,
 } from "../../molecules";
 import { ArenaMobileNotice } from "../ArenaMobileNotice";
+import { ARENA_ROLLS_PANEL_CLASSES } from "../ArenaRollsPanel";
+import { ARENA_SIDEBAR_CLASSES, ARENA_SIDEBAR_TABS } from "../ArenaSidebar";
 import { ARENA_BACK_LINK_CLASSES, ARENA_TOP_BAR_CLASSES } from "../ArenaTopBar";
+import { ARENA_SKELETON_TABS_PREFIX, HUD_GAP } from "./ArenaSkeleton.constants";
 import { useArenaSkeleton } from "./ArenaSkeleton.hook";
+import type { ArenaSkeletonProps } from "./ArenaSkeleton.types";
+import { ignoreTab } from "./ArenaSkeleton.utils";
 
 /**
  * Placeholder of `ArenaPage` while the session or the Arena loads: the same top bar (fixed labels real, scene
  * name and head count shaped by the last visit), the map area, the token tray and the zoom controls, nothing
  * focusable. Below 1024px the CSS shows the "Jogue no PC" notice instead, already in the server HTML.
  */
-export function ArenaSkeleton() {
-  const { trayRows, noScene, nameLength, people } = useArenaSkeleton();
+export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
+  const { trayRows, noScene, nameLength, people, sidebarWidth, rollsWidth, tab, known } =
+    useArenaSkeleton();
+  const tabs = gm ? ARENA_SIDEBAR_TABS : ARENA_SIDEBAR_TABS.filter((item) => item.key !== "scenes");
+  const activeTab = gm ? tab : "characters";
   return (
     <>
       <div className="lg:hidden">
@@ -38,7 +54,13 @@ export function ArenaSkeleton() {
       >
         <h1 className="sr-only">{ARENA_TITLE}</h1>
         <SkeletonRegion label={ARENA_SKELETON_LABEL} className="absolute inset-0">
-          {!noScene && <ArenaMapPlaceholder className="absolute inset-0" />}
+          {!noScene && (
+            <ArenaMapPlaceholder
+              className="absolute inset-0"
+              insetLeft={rollsWidth}
+              insetRight={sidebarWidth}
+            />
+          )}
           <div aria-hidden="true" className="arena-vignette pointer-events-none absolute inset-0" />
           <div aria-hidden="true" className={ARENA_TOP_BAR_CLASSES}>
             <span className={ARENA_BACK_LINK_CLASSES}>
@@ -76,7 +98,11 @@ export function ArenaSkeleton() {
             />
           </div>
           {!noScene && trayRows.length > 0 && (
-            <div aria-hidden="true" className={`absolute bottom-4 left-4 ${ARENA_TRAY_CLASSES}`}>
+            <div
+              aria-hidden="true"
+              className={`absolute bottom-4 ${ARENA_TRAY_CLASSES}`}
+              style={{ left: rollsWidth + HUD_GAP }}
+            >
               <ul className={ARENA_TRAY_LIST_CLASSES}>
                 {trayRows.map((row) => (
                   <li key={row} className={`shrink-0 ${ARENA_TRAY_BUTTON_CLASSES}`}>
@@ -87,8 +113,84 @@ export function ArenaSkeleton() {
             </div>
           )}
           {!noScene && (
-            <div inert className="absolute right-4 bottom-4">
+            <div inert className="absolute bottom-4" style={{ right: sidebarWidth + HUD_GAP }}>
               <ArenaZoomControls />
+            </div>
+          )}
+          {rollsWidth > 0 && (
+            <div
+              aria-hidden="true"
+              className={ARENA_ROLLS_PANEL_CLASSES}
+              style={{ width: rollsWidth }}
+            >
+              <RollFeed
+                rolls={[]}
+                loading
+                nested
+                className="h-full min-w-0 flex-1 border-0 bg-transparent"
+              />
+            </div>
+          )}
+          <div inert>
+            <ArenaPanelToggle
+              side="left"
+              open={rollsWidth > 0}
+              label={ARENA_ROLLS_TEXTS.close}
+              onToggle={ignoreTab}
+              className={ARENA_PANEL_TOGGLE_POSITION}
+              style={{ left: rollsWidth }}
+            />
+            <ArenaPanelToggle
+              side="right"
+              open={sidebarWidth > 0}
+              label={ARENA_SIDEBAR_TEXTS.close}
+              onToggle={ignoreTab}
+              className={ARENA_PANEL_TOGGLE_POSITION}
+              style={{ right: sidebarWidth }}
+            />
+          </div>
+          {sidebarWidth > 0 && (
+            <div
+              aria-hidden="true"
+              className={ARENA_SIDEBAR_CLASSES}
+              style={{ width: sidebarWidth }}
+            >
+              <div inert className="flex items-stretch">
+                <div className="min-w-0 flex-1">
+                  <Tabs
+                    items={tabs}
+                    active={activeTab}
+                    onChange={ignoreTab}
+                    label={ARENA_SIDEBAR_TEXTS.tabs}
+                    idPrefix={ARENA_SKELETON_TABS_PREFIX}
+                    dense
+                  />
+                </div>
+              </div>
+              <div inert className="min-h-0 flex-1 overflow-hidden p-4">
+                {activeTab === "scenes" ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex gap-2">
+                      <ButtonSkeleton
+                        label={SCENE_TEXTS.newScene}
+                        variant="primary"
+                        size="sm"
+                        icon="map"
+                        className="flex-1"
+                      />
+                      <ButtonSkeleton
+                        label={SCENE_TEXTS.newFolder}
+                        size="sm"
+                        icon="folder-plus"
+                        className="flex-1"
+                      />
+                    </div>
+                    <SceneLibrarySkeleton announce={false} />
+                  </div>
+                ) : (
+                  <CharacterLibrarySkeleton known={known} gm={gm} variant="sidebar" />
+                )}
+              </div>
             </div>
           )}
         </SkeletonRegion>

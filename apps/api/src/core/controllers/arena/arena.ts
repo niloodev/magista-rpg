@@ -1,9 +1,16 @@
 import {
   ARENA_MAP_MAX_BYTES,
+  ARENA_MAP_MAX_PIXELS,
+  ARENA_MAP_MAX_SIDE,
   ARENA_TOKEN_IMAGE_MAX_BYTES,
+  ARENA_TOKEN_IMAGE_MAX_SIDE,
   arenaIdSchema,
   canControlToken,
+  createArenaFolderInputSchema,
   createArenaSceneInputSchema,
+  isSameOrDescendant,
+  moveArenaLibraryItemInputSchema,
+  renameArenaFolderInputSchema,
   createArenaTokenInputSchema,
   deleteArenaTokensInputSchema,
   moveArenaTokensInputSchema,
@@ -14,6 +21,7 @@ import {
 } from "@magista/shared";
 
 import { arenaSceneModels } from "@/core/models/arenaScene";
+import { arenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import { arenaTokenModels } from "@/core/models/arenaToken";
 import { characterModels } from "@/core/models/character";
 import { arenaImages } from "@/core/services/media";
@@ -30,6 +38,7 @@ import { sceneAudience, tokenAudience } from "./arena.utils";
  */
 export function createArenaController({
   scenes,
+  folders,
   tokens,
   characters,
   images,
@@ -78,9 +87,10 @@ export function createArenaController({
             .filter((id): id is string => id !== null && accessible.includes(id)),
         ),
       ];
+      const shownScene = scene && viewer.role !== "GM" ? { ...scene, folderId: null } : scene;
       return {
         message: "Arena carregada",
-        payload: { activeSceneId, scene, tokens: list, controllableCharacterIds },
+        payload: { activeSceneId, scene: shownScene, tokens: list, controllableCharacterIds },
       };
     } catch (error) {
       return failed("getView", error);
@@ -100,10 +110,90 @@ export function createArenaController({
     if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     const parsed = createArenaSceneInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidName };
+    const { name, folderId } = parsed.data;
     try {
-      return { message: "Cena criada", payload: await scenes.create(parsed.data.name) };
+      if (folderId && !(await folders.findById(folderId)))
+        return { error: arenaErrors.folderNotFound };
+      return { message: "Cena criada", payload: await scenes.create(name, folderId) };
     } catch (error) {
       return failed("createScene", error);
+    }
+  };
+
+  const listLibrary: IArenaController["listLibrary"] = async (viewer) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    try {
+      const [sceneList, folderList] = await Promise.all([scenes.list(), folders.list()]);
+      return { message: "Cenas carregadas", payload: { scenes: sceneList, folders: folderList } };
+    } catch (error) {
+      return failed("listLibrary", error);
+    }
+  };
+
+  const createFolder: IArenaController["createFolder"] = async (viewer, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    const parsed = createArenaFolderInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidName };
+    const { name, parentId } = parsed.data;
+    try {
+      if (parentId && !(await folders.findById(parentId)))
+        return { error: arenaErrors.folderNotFound };
+      return { message: "Pasta criada", payload: await folders.create(name, parentId) };
+    } catch (error) {
+      return failed("createFolder", error);
+    }
+  };
+
+  const renameFolder: IArenaController["renameFolder"] = async (viewer, id, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    if (!isId(id)) return { error: arenaErrors.folderNotFound };
+    const parsed = renameArenaFolderInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidName };
+    try {
+      const folder = await folders.rename(id, parsed.data.name);
+      return folder
+        ? { message: "Pasta renomeada", payload: folder }
+        : { error: arenaErrors.folderNotFound };
+    } catch (error) {
+      return failed("renameFolder", error);
+    }
+  };
+
+  const deleteFolder: IArenaController["deleteFolder"] = async (viewer, id) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    if (!isId(id)) return { error: arenaErrors.folderNotFound };
+    try {
+      return (await folders.remove(id))
+        ? { message: "Pasta excluída", payload: { id } }
+        : { error: arenaErrors.folderNotFound };
+    } catch (error) {
+      return failed("deleteFolder", error);
+    }
+  };
+
+  const moveLibraryItem: IArenaController["moveLibraryItem"] = async (viewer, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    const parsed = moveArenaLibraryItemInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidMove };
+    const { kind, id, parentId, index } = parsed.data;
+    try {
+      const folderList = await folders.list();
+      if (parentId && !folderList.some((folder) => folder.id === parentId))
+        return { error: arenaErrors.folderNotFound };
+      if (kind === "folder") {
+        if (!folderList.some((folder) => folder.id === id))
+          return { error: arenaErrors.folderNotFound };
+        if (parentId && isSameOrDescendant(folderList, parentId, id))
+          return { error: arenaErrors.invalidFolderMove };
+        if (!(await folders.moveFolder(id, parentId, index)))
+          return { error: arenaErrors.invalidFolderMove };
+      } else {
+        if (!(await scenes.findById(id))) return { error: arenaErrors.sceneNotFound };
+        await folders.moveScene(id, parentId, index);
+      }
+      return { message: "Item movido", payload: null };
+    } catch (error) {
+      return failed("moveLibraryItem", error);
     }
   };
 
@@ -142,6 +232,14 @@ export function createArenaController({
     if (!isId(id)) return { error: arenaErrors.sceneNotFound };
     if (!upload.file || upload.file.length === 0) return { error: arenaErrors.imageMissing };
     if (upload.file.length > ARENA_MAP_MAX_BYTES) return { error: arenaErrors.mapTooLarge };
+    const size = images.sizeOf(upload.file);
+    if (!size) return { error: arenaErrors.imageInvalid };
+    if (
+      size.width > ARENA_MAP_MAX_SIDE ||
+      size.height > ARENA_MAP_MAX_SIDE ||
+      size.width * size.height > ARENA_MAP_MAX_PIXELS
+    )
+      return { error: arenaErrors.mapTooBig };
     try {
       if (!(await scenes.findById(id))) return { error: arenaErrors.sceneNotFound };
       const key = await images.storeMap(id, upload.file);
@@ -305,6 +403,10 @@ export function createArenaController({
     if (!upload.file || upload.file.length === 0) return { error: arenaErrors.imageMissing };
     if (upload.file.length > ARENA_TOKEN_IMAGE_MAX_BYTES)
       return { error: arenaErrors.imageTooLarge };
+    const size = images.sizeOf(upload.file);
+    if (!size) return { error: arenaErrors.imageInvalid };
+    if (size.width > ARENA_TOKEN_IMAGE_MAX_SIDE || size.height > ARENA_TOKEN_IMAGE_MAX_SIDE)
+      return { error: arenaErrors.tokenImageTooBig };
     try {
       const existing = await tokens.findById(id);
       if (!existing) return { error: arenaErrors.tokenNotFound };
@@ -392,6 +494,11 @@ export function createArenaController({
   return {
     getView,
     listScenes,
+    listLibrary,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    moveLibraryItem,
     createScene,
     renameScene,
     deleteScene,
@@ -410,6 +517,7 @@ export function createArenaController({
 
 export const arenaController = createArenaController({
   scenes: arenaSceneModels,
+  folders: arenaSceneFolderModels,
   tokens: arenaTokenModels,
   characters: characterModels,
   images: arenaImages,

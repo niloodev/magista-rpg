@@ -36,7 +36,11 @@ export function ArenaStage({ label, onKeyDown, className, ...hookProps }: ArenaS
           label={ARENA_MAP_LOADING_LABEL}
           className="pointer-events-none absolute inset-0 bg-void-900"
         >
-          <ArenaMapPlaceholder className="h-full" />
+          <ArenaMapPlaceholder
+            className="h-full"
+            insetLeft={hookProps.insetLeft}
+            insetRight={hookProps.insetRight}
+          />
         </SkeletonRegion>
       )}
       {status === "unsupported" && (

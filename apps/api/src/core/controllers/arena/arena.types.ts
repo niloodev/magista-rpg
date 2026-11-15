@@ -1,6 +1,8 @@
 import type {
   ControllerResult,
   IArenaDragEvent,
+  IArenaFolder,
+  IArenaLibrary,
   IArenaScene,
   IArenaToken,
   IArenaTokenRemovedEvent,
@@ -8,6 +10,7 @@ import type {
 } from "@magista/shared";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
+import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import type { IArenaTokenModels } from "@/core/models/arenaToken";
 import type { ICharacterModels } from "@/core/models/character";
 import type { IArenaImageStore } from "@/core/services/media";
@@ -17,6 +20,7 @@ import type { ArenaError } from "./arena.errors";
 
 export interface IArenaControllerDeps {
   scenes: IArenaSceneModels;
+  folders: IArenaSceneFolderModels;
   tokens: IArenaTokenModels;
   characters: Pick<ICharacterModels, "exists" | "listAccessibleIds">;
   images: IArenaImageStore;
@@ -74,6 +78,11 @@ type Result<T> = Promise<ControllerResult<T, ArenaError>>;
 export interface IArenaController {
   getView: (viewer: IViewer, sceneId?: unknown) => Result<IArenaView>;
   listScenes: (viewer: IViewer) => Result<IArenaScene[]>;
+  listLibrary: (viewer: IViewer) => Result<IArenaLibrary>;
+  createFolder: (viewer: IViewer, input: unknown) => Result<IArenaFolder>;
+  renameFolder: (viewer: IViewer, id: string, input: unknown) => Result<IArenaFolder>;
+  deleteFolder: (viewer: IViewer, id: string) => Result<{ id: string }>;
+  moveLibraryItem: (viewer: IViewer, input: unknown) => Result<null>;
   createScene: (viewer: IViewer, input: unknown) => Result<IArenaScene>;
   renameScene: (viewer: IViewer, id: string, input: unknown) => Result<IArenaSceneChange>;
   deleteScene: (viewer: IViewer, id: string) => Result<IArenaSceneRemoval>;

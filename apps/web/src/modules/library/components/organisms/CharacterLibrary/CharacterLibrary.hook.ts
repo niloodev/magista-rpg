@@ -1,6 +1,13 @@
 "use client";
 
-import { isErrorResult, matchesSearch, type IMoveLibraryItemInput } from "@magista/shared";
+import {
+  childFolders,
+  isErrorResult,
+  matchesSearch,
+  type ICharacterSummary,
+  type IFolder,
+  type IMoveLibraryItemInput,
+} from "@magista/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLibraryShapeHint } from "@/modules/library/hooks";
@@ -9,8 +16,14 @@ import {
   LIBRARY_SHAPE_HINT_KEY,
   SEARCH_SHORTCUT,
 } from "@/modules/library/library.constants";
-import type { LibraryDialog } from "@/modules/library/library.types";
-import { characterSubtitle, libraryShape, searchCharacters } from "@/modules/library/library.utils";
+import type { ITreeMove, LibraryDialog } from "@/modules/library/library.types";
+import {
+  characterSubtitle,
+  countCharactersDeep,
+  folderSummary,
+  libraryShape,
+  searchCharacters,
+} from "@/modules/library/library.utils";
 import { portraitOf } from "@/modules/sheet/sheet.utils";
 import { toMediaUrl } from "@/core/services/http";
 import { fetchLibrary, moveLibraryItem } from "@/modules/library/services";
@@ -23,6 +36,7 @@ import {
   accessLabels,
   characterCountLabel,
   characterMenu,
+  folderMenu,
   isTypingTarget,
 } from "./CharacterLibrary.utils";
 import type { ICharacterRowItem } from "./subcomponents";
@@ -124,6 +138,14 @@ export function useCharacterLibrary() {
     [store, reload],
   );
 
+  const onTreeMove = useCallback(
+    (move: ITreeMove) => {
+      if (move.kind === "folder" || move.kind === "character")
+        void moveItem({ ...move, kind: move.kind });
+    },
+    [moveItem],
+  );
+
   const searching = library.query.trim().length > 0;
   const data = useMemo(
     () => ({ characters: library.characters, folders: library.folders }),
@@ -143,6 +165,20 @@ export function useCharacterLibrary() {
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     [library.characters, library.query],
   );
+  const folderSummaryOf = useCallback(
+    (folderId: string) =>
+      folderSummary(
+        countCharactersDeep(data, folderId),
+        childFolders(data.folders, folderId).length,
+      ),
+    [data],
+  );
+  const folderMenuOf = useCallback((folder: IFolder) => folderMenu(folder, setDialog), []);
+  const portraitUrlOf = useCallback(
+    (character: ICharacterSummary) => toMediaUrl(portraitOf(character)),
+    [],
+  );
+
   const accountLogins = useMemo(
     () => new Map(library.accounts.map((account) => [account.id, account.login])),
     [library.accounts],
@@ -210,5 +246,9 @@ export function useCharacterLibrary() {
     noticeClassName: NOTICE_CLASSES[notice ? "visible" : "hidden"],
     setNotice,
     moveItem,
+    onTreeMove,
+    folderSummaryOf,
+    folderMenuOf,
+    portraitUrlOf,
   };
 }

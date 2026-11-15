@@ -25,14 +25,14 @@ export function CharacterRowSkeleton({
         <p className="overflow-hidden font-serif text-base tracking-wide text-clip whitespace-nowrap">
           <Skeleton shape="glyphs">{skeletonSample(name)}</Skeleton>
         </p>
-        <p className="font-sans text-xs">
+        <p className="overflow-hidden font-sans text-xs text-clip whitespace-nowrap">
           <span className="font-semibold tracking-wider uppercase">
             <Skeleton shape="glyphs">{subtitle || skeletonSample(18)}</Skeleton>
           </span>
         </p>
       </div>
       {access && (
-        <div className="hidden max-w-[45%] flex-wrap justify-end gap-1.5 sm:flex">
+        <div className="hidden max-w-[45%] flex-wrap justify-end gap-1.5 @md:flex">
           {access.length === 0 ? (
             <span className="font-sans text-xs text-muted-strong italic">{NO_ACCESS_LABEL}</span>
           ) : (

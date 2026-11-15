@@ -29,6 +29,8 @@ export function useArenaStage({
   onDrop,
   onResize,
   resizable,
+  insetRight,
+  insetLeft,
   onBounds,
   onMapError,
 }: ArenaStageHookProps) {
@@ -97,6 +99,10 @@ export function useArenaStage({
 
   const sceneId = scene?.id ?? null;
   const mapUrl = scene?.mapUrl ?? null;
+
+  useEffect(() => {
+    renderer?.setSideInsets(insetLeft, insetRight);
+  }, [renderer, insetLeft, insetRight]);
 
   useEffect(() => {
     if (renderer) void renderer.setScene(sceneId ? { id: sceneId, mapUrl } : null);

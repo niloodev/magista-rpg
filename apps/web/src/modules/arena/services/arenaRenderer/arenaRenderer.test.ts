@@ -86,4 +86,20 @@ describe("arena camera", () => {
     expect(camera.scale).toBeCloseTo(0.5);
     expect(camera.y).toBeCloseTo(56 + 298);
   });
+
+  it("leaves the sidebar out when fitting and centering", () => {
+    const camera = fitCamera(
+      { width: 2000, height: 1000 },
+      { width: 1456, height: 1096 },
+      0,
+      0,
+      360,
+    );
+    expect(camera.scale).toBeCloseTo(0.5);
+    expect(camera.x).toBeCloseTo(48);
+    expect(
+      centerCamera({ x: 0, y: 0, scale: 1 }, { x: 0, y: 0 }, { width: 1000, height: 800 }, 0, 200)
+        .x,
+    ).toBe(400);
+  });
 });

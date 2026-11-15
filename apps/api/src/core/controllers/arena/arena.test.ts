@@ -1,7 +1,8 @@
-import type { IArenaScene, IArenaToken } from "@magista/shared";
+import type { IArenaFolder, IArenaScene, IArenaToken } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
+import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import type { IArenaMoveGuard, IArenaTokenModels, IArenaTokenMove } from "@/core/models/arenaToken";
 import type { IArenaImageStore } from "@/core/services/media";
 
@@ -17,6 +18,8 @@ const T_BRUNO = "2a3b4c5d-6e7f-4809-9a1b-2c3d4e5f6a7b";
 const T_WOLF = "3b4c5d6e-7f80-4910-8b2c-3d4e5f6a7b8c";
 const T_HIDDEN = "4c5d6e7f-8091-4a21-9c3d-4e5f6a7b8c9d";
 const T_PREP = "5d6e7f80-91a2-4b32-8d4e-5f6a7b8c9dae";
+const F_ROOT = "7f8091a2-b3c4-4d54-8e6f-7a8b9cadbecf";
+const F_CHILD = "8091a2b3-c4d5-4e65-9f70-8b9cadbecfd0";
 const MISSING = "6e7f8091-a2b3-4c43-9e5f-6a7b8c9daebf";
 
 const gm = { accountId: "gm", role: "GM" as const };
@@ -41,8 +44,8 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
 
 function build(options: { active?: string | null } = {}) {
   const sceneList: IArenaScene[] = [
-    { id: LIVE, name: "Ruínas", mapUrl: null, position: 0 },
-    { id: PREP, name: "Taverna", mapUrl: null, position: 1 },
+    { id: LIVE, name: "Ruínas", folderId: null, mapUrl: null, position: 0 },
+    { id: PREP, name: "Taverna", folderId: F_ROOT, mapUrl: null, position: 1 },
   ];
   let active = options.active === undefined ? LIVE : options.active;
   let tokenList: IArenaToken[] = [
@@ -56,7 +59,13 @@ function build(options: { active?: string | null } = {}) {
   const scenes: IArenaSceneModels = {
     list: vi.fn(async () => sceneList),
     findById: vi.fn(async (id) => sceneList.find((scene) => scene.id === id) ?? null),
-    create: vi.fn(async (name) => ({ id: MISSING, name, mapUrl: null, position: 2 })),
+    create: vi.fn(async (name, folderId) => ({
+      id: MISSING,
+      name,
+      folderId,
+      mapUrl: null,
+      position: 2,
+    })),
     rename: vi.fn(async (id, name) => {
       const scene = sceneList.find((entry) => entry.id === id);
       return scene ? { ...scene, name } : null;
@@ -121,7 +130,30 @@ function build(options: { active?: string | null } = {}) {
       return found ? { token: { ...found, imageUrl: `/media/${key}` }, previousKey: "old" } : null;
     }),
   };
+  let folderList: IArenaFolder[] = [
+    { id: F_ROOT, name: "Campanha", parentId: null, position: 0 },
+    { id: F_CHILD, name: "Dungeon", parentId: F_ROOT, position: 0 },
+  ];
+  const folders: IArenaSceneFolderModels = {
+    list: vi.fn(async () => folderList),
+    findById: vi.fn(async (id) => folderList.find((folder) => folder.id === id) ?? null),
+    create: vi.fn(async (name, parentId) => ({ id: MISSING, name, parentId, position: 0 })),
+    rename: vi.fn(async (id, name) => {
+      const folder = folderList.find((entry) => entry.id === id);
+      return folder ? { ...folder, name } : null;
+    }),
+    remove: vi.fn(async (id) => {
+      const exists = folderList.some((folder) => folder.id === id);
+      folderList = folderList.filter((folder) => folder.id !== id);
+      return exists;
+    }),
+    moveFolder: vi.fn(async () => true),
+    moveScene: vi.fn(async () => undefined),
+  };
   const images: IArenaImageStore = {
+    sizeOf: vi.fn((body: Buffer) =>
+      body.toString() === "huge" ? { width: 20_000, height: 100 } : { width: 2400, height: 1600 },
+    ),
     storeMap: vi.fn(async (sceneId, body) =>
       body.toString() === "not-an-image" ? null : `arena/maps/${sceneId}/map-new.png`,
     ),
@@ -132,6 +164,7 @@ function build(options: { active?: string | null } = {}) {
   };
   const controller = createArenaController({
     scenes,
+    folders,
     tokens,
     images,
     characters: {
@@ -139,7 +172,7 @@ function build(options: { active?: string | null } = {}) {
       listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
     },
   });
-  return { controller, scenes, tokens, images };
+  return { controller, scenes, tokens, images, folders };
 }
 
 const png = Buffer.from("png-bytes");
@@ -470,5 +503,129 @@ describe("arena controller: batch edits", () => {
     expect(await controller.deleteTokens(gm, { ids: [MISSING] })).toEqual({
       error: arenaErrors.tokenNotFound,
     });
+  });
+});
+
+describe("arena controller: scene library", () => {
+  it("keeps the library for the GM", async () => {
+    const { controller } = build();
+    expect(await controller.listLibrary(alice)).toEqual({ error: arenaErrors.gmOnly });
+    expect(await controller.createFolder(alice, { name: "x" })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.moveLibraryItem(alice, {})).toEqual({ error: arenaErrors.gmOnly });
+    const library = await controller.listLibrary(gm);
+    expect(library).toMatchObject({ payload: { scenes: [{ id: LIVE }, { id: PREP }] } });
+  });
+
+  it("creates scenes and folders only inside existing folders", async () => {
+    const { controller, scenes } = build();
+    expect(await controller.createScene(gm, { name: "Cripta", folderId: MISSING })).toEqual({
+      error: arenaErrors.folderNotFound,
+    });
+    await controller.createScene(gm, { name: "Cripta", folderId: F_CHILD });
+    expect(scenes.create).toHaveBeenLastCalledWith("Cripta", F_CHILD);
+    expect(await controller.createFolder(gm, { name: "Sub", parentId: MISSING })).toEqual({
+      error: arenaErrors.folderNotFound,
+    });
+    expect(await controller.createFolder(gm, { name: "Sub", parentId: F_ROOT })).toMatchObject({
+      payload: { name: "Sub", parentId: F_ROOT },
+    });
+  });
+
+  it("renames and deletes folders", async () => {
+    const { controller } = build();
+    expect(await controller.renameFolder(gm, F_ROOT, { name: "Arco 1" })).toMatchObject({
+      payload: { name: "Arco 1" },
+    });
+    expect(await controller.renameFolder(gm, MISSING, { name: "x" })).toEqual({
+      error: arenaErrors.folderNotFound,
+    });
+    expect(await controller.deleteFolder(gm, F_CHILD)).toEqual({
+      message: "Pasta excluída",
+      payload: { id: F_CHILD },
+    });
+    expect(await controller.deleteFolder(gm, F_CHILD)).toEqual({
+      error: arenaErrors.folderNotFound,
+    });
+  });
+
+  it("moves scenes and folders, refusing a folder into itself", async () => {
+    const { controller, folders } = build();
+    expect(
+      await controller.moveLibraryItem(gm, {
+        kind: "scene",
+        id: LIVE,
+        parentId: F_CHILD,
+        index: 0,
+      }),
+    ).toEqual({ message: "Item movido", payload: null });
+    expect(folders.moveScene).toHaveBeenCalledWith(LIVE, F_CHILD, 0);
+    expect(
+      await controller.moveLibraryItem(gm, {
+        kind: "folder",
+        id: F_ROOT,
+        parentId: F_CHILD,
+        index: 0,
+      }),
+    ).toEqual({ error: arenaErrors.invalidFolderMove });
+    expect(
+      await controller.moveLibraryItem(gm, {
+        kind: "scene",
+        id: MISSING,
+        parentId: null,
+        index: 0,
+      }),
+    ).toEqual({ error: arenaErrors.sceneNotFound });
+    expect(
+      await controller.moveLibraryItem(gm, {
+        kind: "folder",
+        id: F_CHILD,
+        parentId: null,
+        index: 1,
+      }),
+    ).toEqual({ message: "Item movido", payload: null });
+  });
+
+  it("refuses a folder move that became a cycle meanwhile", async () => {
+    const { controller, folders } = build();
+    vi.mocked(folders.moveFolder).mockResolvedValueOnce(false);
+    expect(
+      await controller.moveLibraryItem(gm, {
+        kind: "folder",
+        id: F_ROOT,
+        parentId: null,
+        index: 0,
+      }),
+    ).toEqual({ error: arenaErrors.invalidFolderMove });
+  });
+
+  it("hides the GM folder of the live scene from players", async () => {
+    const { controller, scenes } = build();
+    vi.mocked(scenes.findById).mockResolvedValueOnce({
+      id: LIVE,
+      name: "Ruínas",
+      folderId: F_ROOT,
+      mapUrl: null,
+      position: 0,
+    });
+    expect(await controller.getView(alice)).toMatchObject({
+      payload: { scene: { folderId: null } },
+    });
+  });
+
+  it("refuses token images too big for the table GPUs", async () => {
+    const { controller } = build();
+    expect(await controller.setTokenImage(gm, T_WOLF, { file: Buffer.from("huge") })).toEqual({
+      error: arenaErrors.tokenImageTooBig,
+    });
+  });
+
+  it("refuses maps too big for the table GPUs", async () => {
+    const { controller, images } = build();
+    expect(await controller.setSceneMap(gm, LIVE, { file: Buffer.from("huge") })).toEqual({
+      error: arenaErrors.mapTooBig,
+    });
+    expect(images.storeMap).not.toHaveBeenCalled();
   });
 });

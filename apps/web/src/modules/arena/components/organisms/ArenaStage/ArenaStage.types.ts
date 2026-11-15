@@ -18,6 +18,8 @@ export interface ArenaStageHookProps {
   onDrop: (moves: IMoveArenaTokenInput[]) => void;
   onResize: (updates: IArenaSizeUpdate[]) => void;
   resizable: boolean;
+  insetRight: number;
+  insetLeft: number;
   onBounds: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
 }

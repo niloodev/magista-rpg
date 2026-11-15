@@ -1,7 +1,7 @@
 "use client";
 
 import { LibraryRowsSkeleton } from "@/modules/library/components/molecules";
-import { SEARCH_PLACEHOLDER } from "@/modules/library/library.constants";
+import { LIBRARY_SIDEBAR_FRAME, SEARCH_PLACEHOLDER } from "@/modules/library/library.constants";
 import { Icon, Input, Skeleton, Text } from "@/shared/components/atoms";
 import { ButtonSkeleton, Panel } from "@/shared/components/molecules";
 
@@ -14,11 +14,21 @@ import type { CharacterLibrarySkeletonProps } from "./CharacterLibrarySkeleton.t
  * inert. Rows follow the last library loaded here.
  */
 export function CharacterLibrarySkeleton(props: CharacterLibrarySkeletonProps) {
-  const { gm = false } = props;
+  const { gm = false, variant = "page" } = props;
+  const sidebar = variant === "sidebar";
   const { shape, title, titleSample, countSample } = useCharacterLibrarySkeleton(props);
   return (
-    <Panel variant="inner" className="@container p-5 md:p-6">
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+    <Panel
+      variant="inner"
+      className={`@container ${sidebar ? LIBRARY_SIDEBAR_FRAME : "p-5 md:p-6"}`}
+    >
+      <div
+        className={
+          sidebar
+            ? "hidden"
+            : "mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-2"
+        }
+      >
         <div className="flex items-center gap-2">
           <Icon name="scroll-text" size={14} aria-hidden="true" className="text-primary" />
           <Text variant="h3" as="p">

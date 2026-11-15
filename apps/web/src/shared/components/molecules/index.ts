@@ -10,6 +10,7 @@ export * from "./Modal";
 export * from "./NumberField";
 export * from "./Panel";
 export * from "./PasswordField";
+export * from "./ResizeHandle";
 export * from "./SectionHeader";
 export * from "./SkeletonRegion";
 export * from "./Stepper";

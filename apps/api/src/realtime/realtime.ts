@@ -37,7 +37,7 @@ import {
 } from "./handlers";
 import { authenticateSocket } from "./realtime.auth";
 import type { RealtimeServer, RealtimeSocket } from "./realtime.types";
-import { accountRoom, characterRoom } from "./realtime.utils";
+import { accountRoom, characterRoom, pendingOf } from "./realtime.utils";
 
 let io: RealtimeServer | null = null;
 
@@ -173,10 +173,12 @@ export function broadcastCharacterImages(images: ICharacterImages): void {
 }
 
 /**
- * Shares a roll with the whole table once the roller's animation has revealed it, and keeps it in the recent
- * history sent to every socket that connects (in memory; persisted history comes with the chat).
+ * Announces a roll to the whole table at once (who rolls what, without the dice) and shares the result once the
+ * roller's animation has revealed it, keeping it in the recent history sent to every socket that connects
+ * (in memory; persisted history comes with the chat).
  */
 export function broadcastRollResult(roll: IRollResult): void {
+  io?.to(TABLE_ROOM).emit("roll:pending", pendingOf(roll, ROLL_REVEAL_DELAY_MS));
   setTimeout(() => publishToTable(roll), ROLL_REVEAL_DELAY_MS);
 }
 
@@ -263,8 +265,12 @@ function relayArenaDrag({ groups }: IArenaDragRelay, socketId: string): void {
 /**
  * Asks who may see a scene to refetch it (the live scene reaches the table; others only the GM).
  */
-export function broadcastArenaScene(sceneId: string | null, audience: ArenaAudience): void {
-  io?.to(arenaRoom(audience)).emit("arena:scene", { sceneId });
+export function broadcastArenaScene(
+  sceneId: string | null,
+  audience: ArenaAudience,
+  libraryOnly = false,
+): void {
+  io?.to(arenaRoom(audience)).emit("arena:scene", { sceneId, libraryOnly });
 }
 
 /**

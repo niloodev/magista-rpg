@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const ARENA_NAME_MAX_LENGTH = 60;
 
+/** Message of the API when a scene does not exist (the web uses it to drop a preview of a deleted scene). */
+export const ARENA_SCENE_NOT_FOUND_MESSAGE = "Cena não encontrada.";
+
 export const ARENA_MAP_MAX_BYTES = 25 * 1024 * 1024;
 
 export const ARENA_TOKEN_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
@@ -28,9 +31,18 @@ const arenaCoordSchema = z.number().min(0).max(ARENA_COORD_MAX);
 
 const arenaTokenSizeSchema = z.number().int().min(ARENA_TOKEN_SIZE_MIN).max(ARENA_TOKEN_SIZE_MAX);
 
+export const ARENA_MAP_MAX_SIDE = 16_384;
+
+export const ARENA_MAP_MAX_PIXELS = 64_000_000;
+
+export const ARENA_TOKEN_IMAGE_MAX_SIDE = 4096;
+
+export const ARENA_LIBRARY_ITEM_KINDS = ["folder", "scene"] as const;
+
 export const arenaSceneSchema = z.object({
   id: z.string(),
   name: z.string(),
+  folderId: z.string().nullable(),
   mapUrl: z.string().nullable(),
   position: z.number().int(),
 });
@@ -55,7 +67,36 @@ export const arenaViewSchema = z.object({
   controllableCharacterIds: z.array(z.string()),
 });
 
-export const createArenaSceneInputSchema = z.object({ name: arenaNameSchema });
+export const createArenaSceneInputSchema = z.object({
+  name: arenaNameSchema,
+  folderId: arenaIdSchema.nullable().default(null),
+});
+
+export const arenaFolderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parentId: z.string().nullable(),
+  position: z.number().int(),
+});
+
+export const arenaLibrarySchema = z.object({
+  scenes: z.array(arenaSceneSchema),
+  folders: z.array(arenaFolderSchema),
+});
+
+export const createArenaFolderInputSchema = z.object({
+  name: arenaNameSchema,
+  parentId: arenaIdSchema.nullable().default(null),
+});
+
+export const renameArenaFolderInputSchema = z.object({ name: arenaNameSchema });
+
+export const moveArenaLibraryItemInputSchema = z.object({
+  kind: z.enum(ARENA_LIBRARY_ITEM_KINDS),
+  id: arenaIdSchema,
+  parentId: arenaIdSchema.nullable(),
+  index: z.number().int().min(0).max(10_000),
+});
 
 export const renameArenaSceneInputSchema = z.object({ name: arenaNameSchema });
 

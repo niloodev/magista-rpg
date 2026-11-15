@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   arenaHint,
   arrowDelta,
+  panelWidth,
   parseArenaHint,
+  parseSidebarState,
   roundPoint,
   selectionSummary,
   toRenderTokens,
@@ -27,7 +29,7 @@ function token(id: string, characterId: string | null): IArenaToken {
 
 const view: IArenaView = {
   activeSceneId: "s",
-  scene: { id: "s", name: "Cena", mapUrl: null, position: 0 },
+  scene: { id: "s", name: "Cena", folderId: null, mapUrl: null, position: 0 },
   tokens: [token("ana", "c-ana"), token("bruno", "c-bruno"), token("lobo", null)],
   controllableCharacterIds: ["c-ana"],
 };
@@ -56,13 +58,66 @@ describe("arena utils", () => {
     expect(ana).toMatchObject({ x: 99, y: 98 });
   });
 
-  it("keeps only counts in the skeleton hint and reads it back safely", () => {
-    expect(arenaHint(30, "Ruínas")).toEqual([12, 6]);
-    expect(arenaHint(0, null)).toEqual([0, 0]);
-    expect(parseArenaHint([2, 6])).toEqual({ known: true, tray: 2, nameLength: 6 });
-    expect(parseArenaHint([99, -3])).toEqual({ known: true, tray: 12, nameLength: 0 });
+  it("keeps only counts and widths in the skeleton hint and reads it back safely", () => {
+    const panels = {
+      open: true,
+      tab: "characters" as const,
+      rollsOpen: false,
+      width: 420,
+      rollsWidth: 300,
+    };
+    expect(arenaHint(30, "Ruínas", panels)).toEqual([12, 6, 420, 0, 0]);
+    expect(arenaHint(0, null, { ...panels, tab: "scenes" })[4]).toBe(1);
+    expect(parseArenaHint([2, 6, 0, 330, 1])).toEqual({
+      known: true,
+      tray: 2,
+      nameLength: 6,
+      sidebarWidth: 0,
+      rollsWidth: 330,
+      tab: "scenes",
+    });
+    expect(parseArenaHint([99, -3, 9999, 10])).toEqual({
+      known: true,
+      tray: 12,
+      nameLength: 0,
+      sidebarWidth: 560,
+      rollsWidth: 340,
+      tab: "characters",
+    });
     for (const value of [null, "x", [1], [1, "a"], [Number.NaN, 1]])
-      expect(parseArenaHint(value)).toEqual({ known: false, tray: 0, nameLength: 18 });
+      expect(parseArenaHint(value)).toEqual({
+        known: false,
+        tray: 0,
+        nameLength: 18,
+        sidebarWidth: 360,
+        rollsWidth: 340,
+        tab: "characters",
+      });
+  });
+
+  it("sends a saved width below the minimum back to the default and keeps closed panels", () => {
+    const limits = { default: 340, min: 320, max: 520 };
+    expect(panelWidth(300, limits, false)).toBe(340);
+    expect(panelWidth(0, limits, true)).toBe(0);
+    expect(panelWidth(330.6, limits, false)).toBe(331);
+    expect(panelWidth(999, limits, false)).toBe(520);
+    expect(panelWidth("x", limits, true)).toBe(340);
+  });
+
+  it("reads the saved panels state safely", () => {
+    expect(
+      parseSidebarState(
+        '{"open":false,"tab":"scenes","rollsOpen":false,"width":480,"rollsWidth":9}',
+      ),
+    ).toEqual({ open: false, tab: "scenes", rollsOpen: false, width: 480, rollsWidth: 340 });
+    expect(parseSidebarState('{"open":"x","tab":"rolls","width":2000}')).toEqual({
+      open: true,
+      tab: "characters",
+      rollsOpen: true,
+      width: 560,
+      rollsWidth: 340,
+    });
+    expect(parseSidebarState("not json")).toMatchObject({ open: true, width: 360 });
   });
 
   it("rounds positions to one decimal", () => {

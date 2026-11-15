@@ -1,5 +1,7 @@
 import type { IArenaBounds } from "@magista/shared";
 
+import type { IArenaSidebarState } from "./arena.types";
+
 export const ARENA_TITLE = "Arena";
 
 export const ARENA_PATH = "/arena";
@@ -27,7 +29,7 @@ export const ARENA_BACK_PATH = "/mesa";
 export const ARENA_EMPTY_TEXTS = {
   gm: {
     title: "Nenhuma cena no ar",
-    body: "Ainda não há cena na Arena. Em breve você poderá criar cenas, enviar mapas e colocá-las no ar por aqui.",
+    body: "Abra a aba Mapas na barra lateral para criar uma cena, enviar o mapa e colocá-la no ar.",
   },
   player: {
     title: "Nenhuma cena no ar",
@@ -103,3 +105,103 @@ export const ARENA_SELECTION_TEXTS = {
 } as const;
 
 export const ARENA_BOTTOM_INSET = 72;
+
+export const ARENA_SIDEBAR_WIDTH = { default: 360, min: 300, max: 560 } as const;
+
+export const ARENA_ROLLS_WIDTH = { default: 340, min: 320, max: 520 } as const;
+
+export const ARENA_SIDEBAR_STORAGE_KEY = "magista:arena:sidebar";
+
+export const ARENA_FOLDERS_STORAGE_KEY = "magista:arena:expanded";
+
+export const ARENA_SIDEBAR_TEXTS = {
+  label: "Barra lateral da Arena",
+  tabs: "Seções da barra lateral",
+  characters: "Fichas",
+  scenes: "Mapas",
+  open: "Abrir barra lateral",
+  close: "Recolher barra lateral",
+  resize: "Largura da barra lateral",
+} as const;
+
+export const ARENA_ROLLS_TEXTS = {
+  label: "Rolagens da mesa",
+  resize: "Largura das rolagens",
+  open: "Abrir rolagens",
+  close: "Recolher rolagens",
+  emptyHint: "Quando alguém rolar pela ficha, a rolagem aparece aqui para a mesa toda.",
+} as const;
+
+export const ARENA_ROLLS_PANEL_ID = "arena-rolls-panel";
+
+export const ARENA_SIDEBAR_PANEL_ID = "arena-sidebar-panel";
+
+export const SCENE_TEXTS = {
+  newScene: "Nova cena",
+  newFolder: "Nova pasta",
+  live: "Ao vivo",
+  viewing: "Vendo agora",
+  noMap: "Sem mapa",
+  open: "Ver cena",
+  goLive: "Colocar no ar",
+  rename: "Renomear",
+  changeMap: "Trocar mapa",
+  remove: "Excluir",
+  newSceneHere: "Nova cena aqui",
+  newFolderHere: "Nova pasta aqui",
+  emptyLibrary: "Nenhuma cena ainda. Crie a primeira e envie o mapa.",
+  emptyFolder: "Pasta vazia. Arraste cenas para cá.",
+  sceneName: "Nome da cena",
+  folderName: "Nome da pasta",
+  map: "Mapa",
+  mapHint: "PNG, JPG, WEBP ou GIF, até 25 MB e 16384 px de lado.",
+  mapTooLarge: "O mapa passa do limite de 25 MB.",
+  nameRequired: "Informe um nome.",
+  mapRequired: "Escolha a imagem do mapa.",
+  mapNotSent: "A cena foi criada, mas o mapa não foi enviado:",
+  create: "Criar",
+  save: "Salvar",
+  cancel: "Cancelar",
+  deleteSceneTitle: (name: string) => `Excluir a cena ${name}?`,
+  deleteSceneMessage:
+    "A cena, o mapa e todos os tokens dela serão apagados. As fichas continuam na biblioteca.",
+  deleteFolderTitle: (name: string) => `Excluir a pasta ${name}?`,
+  deleteFolderMessage: "As cenas e subpastas dela sobem para a pasta de cima. Nada é apagado.",
+  sceneActions: (name: string) => `Ações da cena ${name}`,
+  summary: (scenes: number, folders: number) =>
+    [`${scenes} ${scenes === 1 ? "cena" : "cenas"}`]
+      .concat(folders > 0 ? [`${folders} ${folders === 1 ? "pasta" : "pastas"}`] : [])
+      .join(" · "),
+} as const;
+
+export const SCENE_TREE_LABELS = {
+  list: "Pastas e cenas",
+  rootIdle: "Todas as cenas",
+  rootDragging: "Solte aqui para tirar da pasta (raiz)",
+  emptyFolder: "Pasta vazia. Arraste cenas para cá.",
+  moveFolder: (name: string) => `Mover pasta ${name}`,
+  moveLeaf: (name: string) => `Mover cena ${name}`,
+  folderActions: (name: string) => `Ações da pasta ${name}`,
+};
+
+export const ARENA_PREVIEW_TEXTS = {
+  live: "Ao vivo",
+  preview: "Prévia",
+  previewHint: "Só você vê esta cena",
+  goLive: "Colocar no ar",
+  backToLive: "Voltar ao vivo",
+  wentLive: "Cena colocada no ar para a mesa.",
+  gone: "Essa cena não existe mais. Voltando para a cena ao vivo.",
+} as const;
+
+export const DEFAULT_SIDEBAR: IArenaSidebarState = {
+  open: true,
+  tab: "characters",
+  rollsOpen: true,
+  width: ARENA_SIDEBAR_WIDTH.default,
+  rollsWidth: ARENA_ROLLS_WIDTH.default,
+};
+
+export const ARENA_HINT_DELAY_MS = 500;
+
+export const ARENA_PANEL_TOGGLE_POSITION = "absolute top-[calc(50%+1.75rem)] z-20 -translate-y-1/2";

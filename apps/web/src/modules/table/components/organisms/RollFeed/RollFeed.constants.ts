@@ -42,3 +42,6 @@ export const DEFAULT_FEED_SHAPE: IFeedShape = {
     },
   ],
 };
+
+export const FEED_EMPTY_HINT =
+  "Clique em um atributo, perícia, bloqueio ou habilidade para rolar, ou mostre um traço ou item na mesa.";

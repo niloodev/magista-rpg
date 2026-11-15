@@ -14,10 +14,12 @@ const findById: IArenaSceneModels["findById"] = async (id) => {
   return row ? toArenaScene(row) : null;
 };
 
-const create: IArenaSceneModels["create"] = async (name) => {
+const create: IArenaSceneModels["create"] = async (name, folderId) => {
   const row = await getDatabase().$transaction(async (tx) => {
-    const last = await tx.arenaScene.aggregate({ _max: { position: true } });
-    return tx.arenaScene.create({ data: { name, position: (last._max.position ?? -1) + 1 } });
+    const last = await tx.arenaScene.aggregate({ where: { folderId }, _max: { position: true } });
+    return tx.arenaScene.create({
+      data: { name, folderId, position: (last._max.position ?? -1) + 1 },
+    });
   });
   return toArenaScene(row);
 };

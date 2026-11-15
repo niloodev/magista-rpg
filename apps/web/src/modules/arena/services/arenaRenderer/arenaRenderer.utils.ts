@@ -29,16 +29,19 @@ export function fitCamera(
   viewport: IArenaViewport,
   insetTop = 0,
   insetBottom = 0,
+  insetRight = 0,
+  insetLeft = 0,
 ): IArenaCamera {
   const visibleHeight = Math.max(viewport.height - insetTop - insetBottom, 1);
+  const visibleWidth = Math.max(viewport.width - insetRight - insetLeft, 1);
   const padding =
     viewport.width < ARENA_COMPACT_WIDTH ? ARENA_FIT_PADDING_COMPACT : ARENA_FIT_PADDING;
-  const usableWidth = Math.max(viewport.width - padding * 2, 1);
+  const usableWidth = Math.max(visibleWidth - padding * 2, 1);
   const usableHeight = Math.max(visibleHeight - padding * 2, 1);
   const scale = clampZoom(Math.min(usableWidth / bounds.width, usableHeight / bounds.height));
   return {
     scale,
-    x: (viewport.width - bounds.width * scale) / 2,
+    x: insetLeft + (visibleWidth - bounds.width * scale) / 2,
     y: insetTop + (visibleHeight - bounds.height * scale) / 2,
   };
 }
@@ -67,10 +70,12 @@ export function centerCamera(
   world: IArenaPoint,
   viewport: IArenaViewport,
   insetTop = 0,
+  insetRight = 0,
+  insetLeft = 0,
 ): IArenaCamera {
   return {
     scale: camera.scale,
-    x: viewport.width / 2 - world.x * camera.scale,
+    x: insetLeft + (viewport.width - insetRight - insetLeft) / 2 - world.x * camera.scale,
     y: insetTop + (viewport.height - insetTop) / 2 - world.y * camera.scale,
   };
 }

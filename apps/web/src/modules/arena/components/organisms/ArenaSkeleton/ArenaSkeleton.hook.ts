@@ -20,6 +20,10 @@ export function useArenaSkeleton() {
   return {
     trayRows: Array.from({ length: hint.tray }, (_, index) => index),
     noScene: hint.known && hint.nameLength === 0,
+    sidebarWidth: hint.sidebarWidth,
+    rollsWidth: hint.rollsWidth,
+    tab: hint.tab,
+    known: hint.known,
     nameLength: hint.nameLength || 1,
     people: String(people),
   };

@@ -1,3 +1,5 @@
+import type { IRollPending, IRollResult } from "@magista/shared";
+
 import {
   ARENA_DRAG_LIMIT,
   ARENA_DRAG_WINDOW_MS,
@@ -63,3 +65,20 @@ export const arenaMoveGateFor = createGateRegistry(ARENA_MOVE_LIMIT, ARENA_MOVE_
  * Per-account window for drag previews in the Arena, summing every socket of the account (extra previews are dropped).
  */
 export const arenaDragGateFor = createGateRegistry(ARENA_DRAG_LIMIT, ARENA_DRAG_WINDOW_MS);
+
+/**
+ * What the table may know about a roll before it is revealed: who rolls what, and when the result comes.
+ */
+export function pendingOf(roll: IRollResult, revealInMs: number, now = Date.now()): IRollPending {
+  return {
+    id: roll.id,
+    kind: roll.kind,
+    characterId: roll.characterId,
+    characterName: roll.characterName,
+    portraitUrl: roll.portraitUrl,
+    rolledByGm: roll.rolledByGm,
+    title: roll.title,
+    subtitle: roll.subtitle,
+    revealAt: new Date(now + revealInMs).toISOString(),
+  };
+}

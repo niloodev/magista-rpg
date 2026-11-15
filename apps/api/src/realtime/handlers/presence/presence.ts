@@ -1,4 +1,4 @@
-import { TABLE_ROOM, type IPresenceMember } from "@magista/shared";
+import { LATENCY_PING_MIN_GAP_MS, TABLE_ROOM, type IPresenceMember } from "@magista/shared";
 
 import type { RealtimeServer, RealtimeSocket } from "../../realtime.types";
 
@@ -10,10 +10,18 @@ async function broadcastPresence(io: RealtimeServer): Promise<void> {
 }
 
 /**
- * Joins the socket to the main table and keeps every client's online list in sync.
+ * Joins the socket to the main table, keeps every client's online list in sync and answers latency pings
+ * (at most one per `LATENCY_PING_MIN_GAP_MS`).
  */
 export function registerPresenceHandlers(io: RealtimeServer, socket: RealtimeSocket): void {
   void socket.join(TABLE_ROOM);
+  let lastPing = 0;
+  socket.on("presence:ping", (ack) => {
+    const now = Date.now();
+    if (typeof ack !== "function" || now - lastPing < LATENCY_PING_MIN_GAP_MS) return;
+    lastPing = now;
+    ack();
+  });
   void broadcastPresence(io);
   socket.on("disconnect", () => {
     void broadcastPresence(io);

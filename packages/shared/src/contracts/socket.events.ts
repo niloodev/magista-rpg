@@ -8,7 +8,12 @@ import type {
   IMarkedShare,
   IMarkedStopInput,
 } from "../game/marked/marked.types";
-import type { IPingRequest, IRollRequest, IRollResult } from "../game/rolls/rolls.types";
+import type {
+  IPingRequest,
+  IRollPending,
+  IRollRequest,
+  IRollResult,
+} from "../game/rolls/rolls.types";
 import type { AccountRole } from "../schemas/account";
 import type {
   IArenaDragEvent,
@@ -22,6 +27,12 @@ import type { ICharacter, ICharacterImages } from "../schemas/character";
 import type { ControllerResult } from "./envelope";
 
 export const TABLE_ROOM = "table:main";
+
+/** How often a client measures its round trip to the server (`presence:ping`). */
+export const LATENCY_PING_INTERVAL_MS = 5000;
+
+/** Pings closer than this on the same socket are not answered. */
+export const LATENCY_PING_MIN_GAP_MS = 1000;
 
 export const GM_ROOM = "table:gm";
 
@@ -43,6 +54,7 @@ export interface ICharacterUpdatedEvent {
 export interface ServerToClientEvents {
   "presence:update": (members: IPresenceMember[]) => void;
   "character:updated": (event: ICharacterUpdatedEvent) => void;
+  "roll:pending": (pending: IRollPending) => void;
   "roll:result": (result: IRollResult) => void;
   "roll:history": (results: IRollResult[]) => void;
   "library:changed": () => void;
@@ -58,6 +70,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+  "presence:ping": (ack: () => void) => void;
   "roll:request": (
     request: IRollRequest,
     ack: (result: ControllerResult<IRollResult>) => void,

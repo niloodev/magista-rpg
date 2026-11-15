@@ -15,6 +15,10 @@ import { loginAs } from "../support/session";
 
 const SCENE = "Arena de teste";
 
+const ROLLS_PANEL = 340;
+
+const SIDEBAR = 360;
+
 test.describe("arena", () => {
   let gm: APIRequestContext;
   let player: APIRequestContext;
@@ -83,7 +87,10 @@ test.describe("arena", () => {
     const before = (await readArena(gm, sceneId)).tokens.find((token) => token.id === own.id);
     await page.getByRole("navigation", { name: "Meus tokens" }).getByRole("button").click();
     const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
-    const center = { x: viewport.width / 2, y: 56 + (viewport.height - 56) / 2 };
+    const center = {
+      x: ROLLS_PANEL + (viewport.width - ROLLS_PANEL - SIDEBAR) / 2,
+      y: 56 + (viewport.height - 56) / 2,
+    };
     await page.mouse.move(center.x, center.y);
     await page.mouse.down();
     await page.mouse.move(center.x + 60, center.y + 40, { steps: 6 });
@@ -133,10 +140,10 @@ test.describe("arena", () => {
     await openArena(page);
     const before = (await readArena(gm, sceneId)).tokens;
     const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
-    await page.mouse.move(8, 64);
+    await page.mouse.move(ROLLS_PANEL + 8, 64);
     await page.mouse.down();
     await page.mouse.move(viewport.width / 2, viewport.height / 2, { steps: 5 });
-    await page.mouse.move(viewport.width - 90, viewport.height - 140, { steps: 5 });
+    await page.mouse.move(viewport.width - SIDEBAR - 90, viewport.height - 8, { steps: 5 });
     await page.mouse.up();
     const stage = page.getByRole("application", { name: /Mapa da cena/ });
     await stage.focus();

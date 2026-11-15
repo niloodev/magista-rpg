@@ -7,6 +7,30 @@ export interface ILibraryData {
 
 export type DropPosition = "before" | "after" | "inside";
 
+/** Anything the folder tree can hold besides folders (a character, a scene). */
+export interface ITreeLeaf {
+  id: string;
+  name: string;
+  folderId: string | null;
+  position: number;
+}
+
+export interface ITreeData<L extends ITreeLeaf = ITreeLeaf> {
+  folders: IFolder[];
+  leaves: L[];
+}
+
+/** A tree item: "folder" or the tree's leaf kind ("character", "scene"). */
+export interface ITreeItemRef {
+  kind: string;
+  id: string;
+}
+
+export interface ITreeMove extends ITreeItemRef {
+  parentId: string | null;
+  index: number;
+}
+
 export interface ILibraryItemRef {
   kind: LibraryItemKind;
   id: string;

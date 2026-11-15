@@ -21,7 +21,7 @@ function token(id: string, extra: Partial<IArenaToken> = {}): IArenaToken {
 
 const view: IArenaView = {
   activeSceneId: "s1",
-  scene: { id: "s1", name: "Ruínas", mapUrl: null, position: 0 },
+  scene: { id: "s1", name: "Ruínas", folderId: null, mapUrl: null, position: 0 },
   tokens: [token("a", { position: 0 }), token("b", { position: 1 })],
   controllableCharacterIds: [],
 };
@@ -115,5 +115,42 @@ describe("arena slice", () => {
       [200, false],
       [140, true],
     ]);
+  });
+
+  it("loads the scene library and moves scenes between folders, with undo", () => {
+    const store = createAppStore();
+    store.getState().startArenaLibraryLoad();
+    store.getState().finishArenaLibraryLoad({
+      scenes: [
+        { id: "a", name: "A", folderId: null, mapUrl: null, position: 0 },
+        { id: "b", name: "B", folderId: null, mapUrl: null, position: 1 },
+      ],
+      folders: [{ id: "f", name: "Pasta", parentId: null, position: 0 }],
+    });
+    const snapshot = store
+      .getState()
+      .applyArenaLibraryMove({ kind: "scene", id: "b", parentId: "f", index: 0 });
+    expect(store.getState().arena.library.scenes.find((scene) => scene.id === "b")).toMatchObject({
+      folderId: "f",
+      position: 0,
+    });
+    store.getState().restoreArenaLibrary(snapshot);
+    expect(
+      store.getState().arena.library.scenes.find((scene) => scene.id === "b")?.folderId,
+    ).toBeNull();
+  });
+
+  it("tracks expanded scene folders and drops the ones that disappear", () => {
+    const store = createAppStore();
+    store.getState().toggleArenaFolder("f");
+    store.getState().expandArenaFolders(["g", "f"]);
+    expect(store.getState().arena.expandedFolderIds).toEqual(["f", "g"]);
+    store.getState().finishArenaLibraryLoad({
+      scenes: [],
+      folders: [{ id: "g", name: "G", parentId: null, position: 0 }],
+    });
+    expect(store.getState().arena.expandedFolderIds).toEqual(["g"]);
+    store.getState().toggleArenaFolder("g");
+    expect(store.getState().arena.expandedFolderIds).toEqual([]);
   });
 });

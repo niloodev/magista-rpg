@@ -8,8 +8,8 @@ export interface IArenaSceneMapChange {
 export interface IArenaSceneModels {
   list: () => Promise<IArenaScene[]>;
   findById: (id: string) => Promise<IArenaScene | null>;
-  /** Appends a scene after the existing ones. */
-  create: (name: string) => Promise<IArenaScene>;
+  /** Appends a scene after the others of its folder (null is the root). */
+  create: (name: string, folderId: string | null) => Promise<IArenaScene>;
   rename: (id: string, name: string) => Promise<IArenaScene | null>;
   /** Deletes the scene (its tokens go with it); returns the ids of its tokens for media cleanup, or null when missing. */
   remove: (id: string) => Promise<{ tokenIds: string[] } | null>;

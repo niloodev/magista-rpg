@@ -8,6 +8,8 @@ export interface CharacterRowProps {
   name: string;
   subtitle: string;
   href: string;
+  /** Opens the sheet in place (Arena) instead of following `href`. */
+  onOpen?: () => void;
   portraitUrl: string | null;
   path?: string;
   accountLabels?: string[];

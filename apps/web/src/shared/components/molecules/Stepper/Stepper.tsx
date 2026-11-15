@@ -16,7 +16,7 @@ export function Stepper({
 }: StepperProps) {
   const current = value ?? 0;
   const sizes = STEPPER_SIZES[size];
-  const buttonClass = `flex shrink-0 cursor-pointer items-center justify-center border bg-black/40 transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 ${sizes.button} ${STEPPER_BUTTON_TONES[tone]}`;
+  const buttonClass = `flex shrink-0 cursor-pointer items-center justify-center border bg-black/40 transition-all not-disabled:active:scale-90 disabled:cursor-default disabled:opacity-30 ${sizes.button} ${STEPPER_BUTTON_TONES[tone]}`;
   return (
     <div className="flex items-center justify-center gap-1.5">
       <button

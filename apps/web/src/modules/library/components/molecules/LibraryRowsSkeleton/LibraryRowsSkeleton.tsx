@@ -1,8 +1,8 @@
 import { ROOT_FOLDER_LABEL } from "@/modules/library/library.constants";
-import { Icon } from "@/shared/components/atoms";
 import { SkeletonRegion } from "@/shared/components/molecules";
 
 import { CharacterRowSkeleton } from "../CharacterRowSkeleton";
+import { RootRowSkeleton } from "../RowControlsSkeleton";
 import { LIBRARY_SKELETON_LABEL } from "./LibraryRowsSkeleton.constants";
 import type { LibraryRowsSkeletonProps } from "./LibraryRowsSkeleton.types";
 import { TreeShapeSkeleton } from "./subcomponents";
@@ -30,10 +30,7 @@ export function LibraryRowsSkeleton({
       announce={announce}
       className="flex flex-col gap-3"
     >
-      <div className="flex min-h-11 items-center gap-2 border border-transparent border-b-white/10 px-3 font-serif text-sm tracking-wide text-muted-strong">
-        <Icon name="house" size={16} aria-hidden="true" />
-        {ROOT_FOLDER_LABEL}
-      </div>
+      <RootRowSkeleton label={ROOT_FOLDER_LABEL} />
       <div className="space-y-2">
         <TreeShapeSkeleton nodes={shape.tree} />
       </div>

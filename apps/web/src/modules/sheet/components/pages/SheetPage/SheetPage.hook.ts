@@ -38,6 +38,7 @@ export function useSheetPage({ characterId }: SheetPageProps) {
   const rollsLoaded = useApp((state) => state.table.rollsLoaded);
   const { setHint } = useSkeletonHintActions();
   const connection = useApp((state) => state.table.connection);
+  const latencyMs = useApp((state) => state.table.latencyMs);
   const editSheet = useApp((state) => state.editSheet);
   const [rollError, setRollError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SheetTab>("geral");
@@ -183,6 +184,7 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     rolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
     connection,
+    latencyMs,
     rollError,
     activeTab,
     activeRoll,

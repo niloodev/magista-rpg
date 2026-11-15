@@ -2,14 +2,15 @@ import type { ButtonShape, ButtonSize, ButtonVariant } from "./Button.types";
 
 export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary/85 text-primary-foreground border border-ruby-500/40 shadow-[0_0_22px_rgba(220,25,88,0.2)] hover:bg-primary/92 hover:shadow-[0_0_36px_rgba(236,42,102,0.46)] active:scale-[0.97] active:translate-y-[2px]",
+    "bg-primary/85 text-primary-foreground border border-ruby-500/40 shadow-[0_0_22px_rgba(220,25,88,0.2)] not-disabled:hover:bg-primary/92 not-disabled:hover:shadow-[0_0_36px_rgba(236,42,102,0.46)] not-disabled:active:scale-[0.97] not-disabled:active:translate-y-[2px]",
   secondary:
-    "bg-black/40 text-foreground border border-primary/40 hover:border-primary/80 hover:bg-primary/15 hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(228,42,99,0.25)] active:scale-95",
+    "bg-black/40 text-foreground border border-primary/40 not-disabled:hover:border-primary/80 not-disabled:hover:bg-primary/15 not-disabled:hover:-translate-y-0.5 not-disabled:hover:shadow-[0_0_15px_rgba(228,42,99,0.25)] not-disabled:active:scale-95",
   mystic:
-    "bg-teal-900/40 text-teal-200 border border-teal-500/50 hover:border-teal-500/80 hover:bg-teal-900/60 hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(20,184,166,0.25)] active:scale-95",
+    "bg-teal-900/40 text-teal-200 border border-teal-500/50 not-disabled:hover:border-teal-500/80 not-disabled:hover:bg-teal-900/60 not-disabled:hover:-translate-y-0.5 not-disabled:hover:shadow-[0_0_15px_rgba(20,184,166,0.25)] not-disabled:active:scale-95",
   destructive:
-    "bg-destructive/20 text-destructive border border-destructive/50 hover:bg-destructive/35 hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(212,24,61,0.3)] active:scale-95",
-  ghost: "bg-transparent text-muted-strong hover:text-accent-text hover:bg-white/5",
+    "bg-destructive/20 text-destructive border border-destructive/50 not-disabled:hover:bg-destructive/35 not-disabled:hover:-translate-y-0.5 not-disabled:hover:shadow-[0_0_15px_rgba(212,24,61,0.3)] not-disabled:active:scale-95",
+  ghost:
+    "bg-transparent text-muted-strong not-disabled:hover:text-accent-text not-disabled:hover:bg-white/5",
 };
 
 export const BUTTON_SIZES: Record<ButtonSize, string> = {

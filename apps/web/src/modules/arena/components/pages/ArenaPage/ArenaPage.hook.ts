@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ARENA_SCENE_NOT_FOUND_MESSAGE,
   clampToMap,
   isErrorResult,
   type IArenaBounds,
@@ -8,6 +9,7 @@ import {
   ARENA_TOKEN_SIZE_MAX,
   ARENA_TOKEN_SIZE_MIN,
   type IArenaPoint,
+  type IArenaSceneEvent,
   type IArenaTokenPatch,
   type IMoveArenaTokenInput,
 } from "@magista/shared";
@@ -19,6 +21,7 @@ import {
   ARENA_DRAG_EMIT_MS,
   ARENA_EMPTY_BOUNDS,
   ARENA_EMPTY_TEXTS,
+  ARENA_HINT_DELAY_MS,
   ARENA_HINT_KEY,
   ARENA_MOVED_LABEL,
   ARENA_STAGE_LABEL,
@@ -27,11 +30,14 @@ import {
   ARENA_NUDGE_STEP,
   ARENA_NUDGE_STEP_LARGE,
   ARENA_PREVIEW_STALE_MS,
+  ARENA_PREVIEW_TEXTS,
   ARENA_SELECTION_TEXTS,
   ARENA_SIZE_COMMIT_MS,
 } from "@/modules/arena/arena.constants";
 import type {
   ArenaSelectionMode,
+  ArenaSidebarTab,
+  IArenaSidebarState,
   IArenaSizeUpdate,
   IArenaStageControls,
 } from "@/modules/arena/arena.types";
@@ -40,6 +46,8 @@ import {
   arrowDelta,
   roundPoint,
   selectionSummary,
+  readSidebarState,
+  saveSidebarState,
   toRenderTokens,
 } from "@/modules/arena/arena.utils";
 import {
@@ -47,6 +55,7 @@ import {
   emitArenaDrag,
   fetchArena,
   moveArenaTokens,
+  setArenaLiveScene,
   updateArenaTokens,
 } from "@/modules/arena/services";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
@@ -64,8 +73,15 @@ export function useArenaPage() {
   const store = useAppStoreApi();
   const isGm = useApp((state) => state.session.data?.account.role === "GM");
   const connection = useApp((state) => state.table.connection);
+  const latencyMs = useApp((state) => state.table.latencyMs);
   const memberCount = useApp((state) => state.table.members.length);
-  const { status, view, error, selectedTokenIds, previews } = useApp((state) => state.arena);
+  const { status, view, error, selectedTokenIds, previews, viewSceneId } = useApp(
+    (state) => state.arena,
+  );
+  const rolls = useApp((state) => state.table.rolls);
+  const pendingRolls = useApp((state) => state.table.pendingRolls);
+  const rollsLoaded = useApp((state) => state.table.rollsLoaded);
+  const [sidebar, setSidebar] = useState<IArenaSidebarState>(readSidebarState);
   const desktop = useIsDesktopViewport();
   const controlsRef = useRef<IArenaStageControls | null>(null);
   const boundsRef = useRef<IArenaBounds>(ARENA_EMPTY_BOUNDS);
@@ -84,15 +100,33 @@ export function useArenaPage() {
   const sizeTimer = useRef(0);
   const pendingSize = useRef<IArenaTokenPatch[] | null>(null);
   const { setHint } = useSkeletonHintActions();
+  const reportPreviewGone = useRef(() => {});
+
+  useEffect(() => {
+    reportPreviewGone.current = () => setActionError(ARENA_PREVIEW_TEXTS.gone);
+  }, []);
 
   const load = useCallback(async () => {
     const seq = ++loadSeq.current;
+    const previewing = store.getState().arena.viewSceneId;
     store.getState().startArenaLoad();
-    const result = await fetchArena();
+    const result = await fetchArena(previewing ?? undefined);
     if (!mounted.current || seq !== loadSeq.current) return;
-    if (isErrorResult(result)) store.getState().failArenaLoad(result.error);
-    else store.getState().finishArenaLoad(result.payload);
+    if (isErrorResult(result)) {
+      if (previewing && result.error === ARENA_SCENE_NOT_FOUND_MESSAGE) {
+        reportPreviewGone.current();
+        store.getState().setArenaViewScene(null);
+        return;
+      }
+      store.getState().failArenaLoad(result.error);
+    } else store.getState().finishArenaLoad(result.payload);
   }, [store]);
+
+  const updateSidebar = (patch: Partial<IArenaSidebarState>, persist = true) => {
+    const next = { ...sidebar, ...patch };
+    setSidebar(next);
+    if (persist) saveSidebarState(next);
+  };
 
   useEffect(() => {
     if (!desktop) return;
@@ -119,6 +153,14 @@ export function useArenaPage() {
     };
   }, [load, store, socket, desktop]);
 
+  const shownViewScene = useRef(viewSceneId);
+
+  useEffect(() => {
+    if (shownViewScene.current === viewSceneId) return;
+    shownViewScene.current = viewSceneId;
+    if (mounted.current) void load();
+  }, [viewSceneId, load]);
+
   useEffect(() => {
     if (connection === "disconnected") lostConnection.current = true;
     if (connection !== "connected" || !lostConnection.current) return;
@@ -130,7 +172,9 @@ export function useArenaPage() {
     if (!socket) return;
     const { applyArenaToken, removeArenaToken, applyArenaDrag, clearArenaDrag } = store.getState();
     const timers = previewTimers.current;
-    const onScene = () => void load();
+    const onScene = (event: IArenaSceneEvent) => {
+      if (!event.libraryOnly) void load();
+    };
     const onDragging = (event: IArenaDragEvent) => {
       applyArenaDrag(event);
       for (const { tokenId } of event.moves) {
@@ -170,8 +214,13 @@ export function useArenaPage() {
   const trayCount = trayTokens.length;
 
   useEffect(() => {
-    if (status === "ready") setHint(ARENA_HINT_KEY, arenaHint(trayCount, sceneName));
-  }, [status, trayCount, sceneName, setHint]);
+    if (status !== "ready") return;
+    const timer = window.setTimeout(
+      () => setHint(ARENA_HINT_KEY, arenaHint(trayCount, sceneName, sidebar)),
+      ARENA_HINT_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [status, trayCount, sceneName, sidebar, setHint]);
 
   const commitMoves = useCallback(
     async (moves: IMoveArenaTokenInput[]) => {
@@ -343,6 +392,31 @@ export function useArenaPage() {
     action();
   };
 
+  const liveSceneId = view?.activeSceneId ?? null;
+  const viewingSceneId = view?.scene?.id ?? null;
+
+  const onPreviewScene = (sceneId: string) =>
+    store.getState().setArenaViewScene(sceneId === liveSceneId ? null : sceneId);
+
+  const onGoLive = async (sceneId: string) => {
+    const result = await setArenaLiveScene(sceneId);
+    if (isErrorResult(result)) {
+      setActionError(result.error);
+      return;
+    }
+    setActionError(null);
+    store.getState().setArenaViewScene(null);
+    setAnnouncement(ARENA_PREVIEW_TEXTS.wentLive);
+  };
+
+  const broadcast =
+    isGm && view?.scene
+      ? { live: view.scene.id === view.activeSceneId, hasLive: view.activeSceneId !== null }
+      : null;
+
+  const insetLeft = sidebar.rollsOpen ? sidebar.rollsWidth : 0;
+  const insetRight = sidebar.open ? sidebar.width : 0;
+
   const scene = view?.scene ?? null;
   const stageScene = useMemo(
     () => (scene ? { id: scene.id, mapUrl: toMediaUrl(scene.mapUrl) } : null),
@@ -368,6 +442,7 @@ export function useArenaPage() {
     selectedTokenId: selectedTokenIds.length === 1 ? (selectedTokenIds[0] ?? null) : null,
     desktop,
     connection,
+    latencyMs,
     memberCount,
     controlsRef,
     announcement,
@@ -401,6 +476,34 @@ export function useArenaPage() {
     onBounds,
     onPickToken,
     onStageKeyDown,
+    stageInsetRight: insetRight,
+    stageInsetLeft: insetLeft,
+    hudStyle: { left: insetLeft, right: insetRight },
+    sidebarWidth: sidebar.width,
+    rollsWidth: sidebar.rollsWidth,
+    onSidebarResize: (width: number) => updateSidebar({ width }, false),
+    onSidebarResizeCommit: (width: number) => updateSidebar({ width }),
+    onRollsResize: (rollsWidth: number) => updateSidebar({ rollsWidth }, false),
+    onRollsResizeCommit: (rollsWidth: number) => updateSidebar({ rollsWidth }),
+    rollsOpen: sidebar.rollsOpen,
+    onRollsOpen: (rollsOpen: boolean) => updateSidebar({ rollsOpen }),
+    broadcast,
+    onGoLiveViewed: () => {
+      if (viewingSceneId) void onGoLive(viewingSceneId);
+    },
+    onBackToLive: () => store.getState().setArenaViewScene(null),
+    sidebarOpen: sidebar.open,
+    sidebarTab: !isGm && sidebar.tab === "scenes" ? "characters" : sidebar.tab,
+    onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
+    onSidebarOpen: (open: boolean) => updateSidebar({ open }),
+    onOpenCharacter: (characterId: string) => openPopout({ kind: "sheet", id: characterId }),
+    liveSceneId,
+    viewingSceneId,
+    onPreviewScene,
+    onGoLive: (sceneId: string) => void onGoLive(sceneId),
+    rolls,
+    pendingRolls,
+    rollsLoading: !rollsLoaded && connection !== "disconnected",
     onZoomIn: () => controlsRef.current?.zoomIn(),
     onZoomOut: () => controlsRef.current?.zoomOut(),
     onFit: () => controlsRef.current?.fit(),

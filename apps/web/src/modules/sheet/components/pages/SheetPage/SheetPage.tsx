@@ -38,6 +38,7 @@ export function SheetPage(props: SheetPageProps) {
     rolls,
     rollsLoading,
     connection,
+    latencyMs,
     rollError,
     activeTab,
     activeRoll,
@@ -98,6 +99,7 @@ export function SheetPage(props: SheetPageProps) {
             saveStatus={saveStatus}
             saveError={saveError}
             connection={connection}
+            latencyMs={latencyMs}
             rollError={rollError}
             onRetrySave={onRetrySave}
           />

@@ -57,6 +57,8 @@ export interface IArenaRenderer {
   setTokens: (tokens: IArenaRenderToken[]) => void;
   setSelection: (tokenIds: string[]) => void;
   setResizable: (resizable: boolean) => void;
+  /** Widths covered by the side panels, left out when fitting or centering. */
+  setSideInsets: (left: number, right: number) => void;
   zoomBy: (factor: number) => void;
   fitToMap: () => void;
   centerOn: (tokenId: string) => void;

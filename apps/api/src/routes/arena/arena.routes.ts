@@ -1,3 +1,4 @@
+import { isErrorResult } from "@magista/shared";
 import { Router } from "express";
 
 import { arenaController, arenaErrors } from "@/core/controllers/arena";
@@ -19,6 +20,31 @@ arenaRoutes.get("/", async (req, res: AuthedResponse) => {
 
 arenaRoutes.get("/scenes", async (_req, res: AuthedResponse) => {
   sendResult(res, await arenaController.listScenes(viewerOf(res)), ARENA_ERROR_STATUS);
+});
+
+arenaRoutes.get("/library", async (_req, res: AuthedResponse) => {
+  sendResult(res, await arenaController.listLibrary(viewerOf(res)), ARENA_ERROR_STATUS);
+});
+
+arenaRoutes.post("/library/move", async (req, res: AuthedResponse) => {
+  const result = await arenaController.moveLibraryItem(viewerOf(res), req.body);
+  sendResult(res, result, ARENA_ERROR_STATUS);
+  if (!isErrorResult(result)) broadcastArenaScene(null, "gm", true);
+});
+
+arenaRoutes.post("/folders", async (req, res: AuthedResponse) => {
+  const result = await arenaController.createFolder(viewerOf(res), req.body);
+  if (sendResult(res, result, ARENA_ERROR_STATUS, 201)) broadcastArenaScene(null, "gm", true);
+});
+
+arenaRoutes.patch("/folders/:id", async (req, res: AuthedResponse) => {
+  const result = await arenaController.renameFolder(viewerOf(res), req.params.id ?? "", req.body);
+  if (sendResult(res, result, ARENA_ERROR_STATUS)) broadcastArenaScene(null, "gm", true);
+});
+
+arenaRoutes.delete("/folders/:id", async (req, res: AuthedResponse) => {
+  const result = await arenaController.deleteFolder(viewerOf(res), req.params.id ?? "");
+  if (sendResult(res, result, ARENA_ERROR_STATUS)) broadcastArenaScene(null, "gm", true);
 });
 
 arenaRoutes.post("/scenes", async (req, res: AuthedResponse) => {

@@ -1,12 +1,13 @@
 import type { StateCreator } from "zustand";
 
+import { applyTreeMove } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultArenaState } from "./arenaSlice.constants";
 import type { ArenaSlice } from "./arenaSlice.types";
 import { nextSelection, omitKey, upsertToken } from "./arenaSlice.utils";
 
-export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set) => ({
+export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set, get) => ({
   ...defaultArenaState,
   startArenaLoad: () =>
     set((state) => ({
@@ -121,5 +122,76 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         selectedTokenIds: nextSelection(state.arena.selectedTokenIds, tokenIds, mode),
       },
     })),
+  setArenaViewScene: (sceneId) =>
+    set((state) => ({ arena: { ...state.arena, viewSceneId: sceneId } })),
+  startArenaLibraryLoad: () =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        library: {
+          ...state.arena.library,
+          status: state.arena.library.status === "ready" ? "ready" : "loading",
+          error: null,
+        },
+      },
+    })),
+  finishArenaLibraryLoad: ({ scenes, folders }) =>
+    set((state) => {
+      const present = new Set(folders.map((folder) => folder.id));
+      return {
+        arena: {
+          ...state.arena,
+          library: { status: "ready", scenes, folders, error: null },
+          expandedFolderIds: state.arena.expandedFolderIds.filter((id) => present.has(id)),
+        },
+      };
+    }),
+  failArenaLibraryLoad: (error) =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        library: {
+          ...state.arena.library,
+          status: state.arena.library.status === "ready" ? "ready" : "error",
+          error,
+        },
+      },
+    })),
+  applyArenaLibraryMove: (move) => {
+    const { scenes, folders } = get().arena.library;
+    const moved = applyTreeMove({ folders, leaves: scenes }, move);
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        library: { ...state.arena.library, scenes: moved.leaves, folders: moved.folders },
+      },
+    }));
+    return { scenes, folders };
+  },
+  restoreArenaLibrary: ({ scenes, folders }) =>
+    set((state) => ({
+      arena: { ...state.arena, library: { ...state.arena.library, scenes, folders } },
+    })),
+  toggleArenaFolder: (folderId) =>
+    set((state) => {
+      const expanded = state.arena.expandedFolderIds;
+      return {
+        arena: {
+          ...state.arena,
+          expandedFolderIds: expanded.includes(folderId)
+            ? expanded.filter((id) => id !== folderId)
+            : [...expanded, folderId],
+        },
+      };
+    }),
+  expandArenaFolders: (folderIds) =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        expandedFolderIds: [...new Set([...state.arena.expandedFolderIds, ...folderIds])],
+      },
+    })),
+  setArenaFolders: (folderIds) =>
+    set((state) => ({ arena: { ...state.arena, expandedFolderIds: folderIds } })),
   resetArena: () => set(defaultArenaState),
 });
