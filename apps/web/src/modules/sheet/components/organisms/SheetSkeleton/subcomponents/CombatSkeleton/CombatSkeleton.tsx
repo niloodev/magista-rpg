@@ -88,7 +88,7 @@ export function CombatSkeleton() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-teal-500/50 bg-teal-900/30 font-serif text-lg text-teal-200">
                 {action.cost}
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 grow basis-40">
                 <p className="font-sans text-[15px] font-semibold text-foreground">{action.name}</p>
                 <p className="font-sans text-[13px] leading-snug text-muted-strong">
                   {action.effect}

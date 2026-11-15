@@ -17,6 +17,8 @@ export interface TabsProps<K extends string> {
   idPrefix: string;
   /** Smaller tabs for narrow panels (sidebars). */
   dense?: boolean;
+  /** Decide the narrow and wide layouts by the nearest `@container` instead of the screen (takes precedence over `dense`). */
+  container?: boolean;
 }
 
 export interface TabPanelProps {

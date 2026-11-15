@@ -33,3 +33,27 @@ export async function saveWithReconcile(deps: SheetSaveDeps): Promise<void> {
   const { character } = deps.read();
   if (character) deps.markFailed(character.id, SAVE_CONFLICT_ERROR);
 }
+
+const savesInFlight = new Map<string, Promise<void>>();
+
+/**
+ * Runs the save of a sheet after any save of the same sheet still running in this tab, even one started by
+ * another instance of the page (a window docked or undocked keeps saving while the new one mounts).
+ */
+export async function saveExclusively(
+  characterId: string,
+  task: () => Promise<void>,
+): Promise<void> {
+  let running = savesInFlight.get(characterId);
+  while (running) {
+    await running.catch(() => undefined);
+    running = savesInFlight.get(characterId);
+  }
+  const current = task();
+  savesInFlight.set(characterId, current);
+  try {
+    await current;
+  } finally {
+    if (savesInFlight.get(characterId) === current) savesInFlight.delete(characterId);
+  }
+}

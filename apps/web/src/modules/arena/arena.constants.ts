@@ -129,6 +129,7 @@ export const ARENA_ROLLS_TEXTS = {
   resize: "Largura das rolagens",
   open: "Abrir rolagens",
   close: "Recolher rolagens",
+  tabs: "Abas do painel de rolagens",
   emptyHint: "Quando alguém rolar pela ficha, a rolagem aparece aqui para a mesa toda.",
 } as const;
 
@@ -231,3 +232,50 @@ export const ARENA_SELECTION_BAR_SLOT = {
   /** Without the token tray the bar sits on the bottom edge; with it (players), above the tray. */
   bottom: { free: "bottom-4", aboveTray: "bottom-[5.75rem]" },
 } as const;
+
+/** Floating sheet windows open at the same time in the Arena (opening another closes the one at the back). */
+export const ARENA_SHEET_WINDOWS_MAX = 4;
+
+export const ARENA_SHEET_WINDOW_TEXTS = {
+  title: (name: string | null) => (name ? `Ficha de ${name}` : "Ficha"),
+  close: (name: string | null) => (name ? `Fechar a ficha de ${name}` : "Fechar a ficha"),
+  popout: (name: string | null) =>
+    name
+      ? `Abrir a ficha de ${name} numa janela do navegador`
+      : "Abrir a ficha numa janela do navegador",
+} as const;
+
+/** Where floating sheet windows open and how they cascade, in CSS pixels. */
+export const ARENA_SHEET_WINDOW_LAYOUT = {
+  gap: 24,
+  top: 72,
+  minTop: 56,
+  cascade: 32,
+  width: 640,
+  bottomGap: 88,
+  zBase: 40,
+  storagePrefix: "magista-arena-sheet-window:",
+} as const;
+
+export const ARENA_DOCK_TAB_PREFIX = "sheet:";
+
+export const ARENA_DOCK_TEXTS = {
+  tab: (name: string | null) => name ?? "Ficha",
+  hint: "Solte para encaixar a ficha como aba",
+  dockLeft: (name: string | null) =>
+    `Encaixar ${name ? `a ficha de ${name}` : "a ficha"} no painel de rolagens`,
+  dockRight: (name: string | null) =>
+    `Encaixar ${name ? `a ficha de ${name}` : "a ficha"} na barra lateral`,
+  undock: "Desencaixar",
+  undockLabel: (name: string | null) =>
+    `Desencaixar ${name ? `a ficha de ${name}` : "a ficha"} numa janela`,
+  close: "Fechar",
+  closeLabel: (name: string | null) => `Fechar ${name ? `a ficha de ${name}` : "a ficha"}`,
+  rollsTab: "Rolagens",
+} as const;
+
+export const ARENA_WINDOW_ICON_BUTTON =
+  "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center text-muted-strong transition-colors hover:bg-white/5 hover:text-accent-text";
+
+/** Map width always left between the side panels (they shrink, never below their minimum, to keep it). */
+export const ARENA_MAP_MIN_WIDTH = 360;

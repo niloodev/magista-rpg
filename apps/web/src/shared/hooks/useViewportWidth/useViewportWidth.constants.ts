@@ -1,0 +1,1 @@
+export const SERVER_VIEWPORT_WIDTH = 1440;

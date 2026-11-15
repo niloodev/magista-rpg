@@ -1,118 +1,107 @@
-import { mergeGmOnlyFields } from "@magista/shared";
 import type { StateCreator } from "zustand";
 
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
-import { defaultSheetState } from "./sheetSlice.constants";
-import { isStaleLoad } from "./sheetSlice.utils";
+import { defaultSheetState, EMPTY_SHEET_ENTRY } from "./sheetSlice.constants";
 import type { SheetSlice } from "./sheetSlice.types";
+import { hasUnsavedWork, updateEntry, withRemoteCharacter } from "./sheetSlice.utils";
 
 export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set) => ({
   ...defaultSheetState,
   startSheetLoad: (characterId) =>
-    set({ sheet: { ...defaultSheetState.sheet, status: "loading", requestedId: characterId } }),
+    set((state) => {
+      const accountId = state.session.data?.account.id ?? null;
+      const entry = state.sheets[characterId];
+      if (entry && entry.accountId === accountId && hasUnsavedWork(entry)) return state;
+      return {
+        sheets: {
+          ...state.sheets,
+          [characterId]: { ...EMPTY_SHEET_ENTRY, status: "loading", accountId },
+        },
+      };
+    }),
   finishSheetLoad: (character) =>
-    set((state) =>
-      isStaleLoad(state.sheet.requestedId, character.id)
-        ? state
-        : {
-            sheet: {
-              ...defaultSheetState.sheet,
-              status: "ready",
-              requestedId: character.id,
-              character,
-            },
-          },
-    ),
+    set((state) => {
+      const viewerIsGm = state.session.data?.account.role === "GM";
+      return updateEntry(state, character.id, (entry) =>
+        entry.character
+          ? withRemoteCharacter(entry, character, viewerIsGm)
+          : { ...EMPTY_SHEET_ENTRY, status: "ready", accountId: entry.accountId, character },
+      );
+    }),
   failSheetLoad: (characterId, error) =>
     set((state) =>
-      isStaleLoad(state.sheet.requestedId, characterId)
-        ? state
-        : {
-            sheet: {
-              ...defaultSheetState.sheet,
-              status: "error",
-              requestedId: characterId,
-              error,
-            },
-          },
+      updateEntry(state, characterId, (entry) =>
+        hasUnsavedWork(entry) && entry.accountId === (state.session.data?.account.id ?? null)
+          ? { ...entry, error }
+          : { ...EMPTY_SHEET_ENTRY, status: "error", accountId: entry.accountId, error },
+      ),
     ),
-  editSheet: (mutator) =>
-    set((state) => {
-      const { character } = state.sheet;
-      if (!character) return state;
-      const draft = structuredClone(character.sheet);
-      mutator(draft);
-      return {
-        sheet: {
-          ...state.sheet,
-          character: { ...character, sheet: draft },
-          revision: state.sheet.revision + 1,
+  editSheet: (characterId, mutator) =>
+    set((state) =>
+      updateEntry(state, characterId, (entry) => {
+        if (!entry.character) return null;
+        const draft = structuredClone(entry.character.sheet);
+        mutator(draft);
+        return {
+          ...entry,
+          character: { ...entry.character, sheet: draft },
+          revision: entry.revision + 1,
           saveStatus: "pending",
-        },
-      };
-    }),
-  markSheetSaving: () => set((state) => ({ sheet: { ...state.sheet, saveStatus: "saving" } })),
+        };
+      }),
+    ),
+  markSheetSaving: (characterId) =>
+    set((state) =>
+      updateEntry(state, characterId, (entry) => ({ ...entry, saveStatus: "saving" })),
+    ),
   markSheetSaved: (characterId, revision, updatedAt) =>
-    set((state) => {
-      const { character } = state.sheet;
-      if (!character || character.id !== characterId) return state;
-      return {
-        sheet: {
-          ...state.sheet,
-          character: { ...character, updatedAt },
-          savedRevision: revision,
-          saveStatus: revision === state.sheet.revision ? "saved" : "pending",
-          saveError: null,
-        },
-      };
-    }),
+    set((state) =>
+      updateEntry(state, characterId, (entry) =>
+        entry.character
+          ? {
+              ...entry,
+              character: { ...entry.character, updatedAt },
+              savedRevision: revision,
+              saveStatus: revision === entry.revision ? "saved" : "pending",
+              saveError: null,
+            }
+          : null,
+      ),
+    ),
   markSheetSaveFailed: (characterId, error) =>
     set((state) =>
-      state.sheet.character?.id === characterId
-        ? { sheet: { ...state.sheet, saveStatus: "error", saveError: error } }
-        : state,
+      updateEntry(state, characterId, (entry) =>
+        entry.character ? { ...entry, saveStatus: "error", saveError: error } : null,
+      ),
     ),
   replaceCharacter: (character) =>
-    set((state) => ({
-      sheet: {
-        ...state.sheet,
+    set((state) =>
+      updateEntry(state, character.id, (entry) => ({
+        ...entry,
         character,
-        savedRevision: state.sheet.revision,
+        savedRevision: entry.revision,
         saveStatus: "saved",
         saveError: null,
-      },
-    })),
+      })),
+    ),
   applySheetImages: ({ id, avatarUrl, artUrl }) =>
-    set((state) => {
-      const { character } = state.sheet;
-      if (!character || character.id !== id) return state;
-      return { sheet: { ...state.sheet, character: { ...character, avatarUrl, artUrl } } };
-    }),
+    set((state) =>
+      updateEntry(state, id, (entry) =>
+        entry.character ? { ...entry, character: { ...entry.character, avatarUrl, artUrl } } : null,
+      ),
+    ),
   applySheetFeatures: ({ id, features }) =>
-    set((state) => {
-      const { character } = state.sheet;
-      if (!character || character.id !== id) return state;
-      return { sheet: { ...state.sheet, character: { ...character, features } } };
-    }),
+    set((state) =>
+      updateEntry(state, id, (entry) =>
+        entry.character ? { ...entry, character: { ...entry.character, features } } : null,
+      ),
+    ),
   applyRemoteCharacter: (character) =>
     set((state) => {
-      const current = state.sheet.character;
-      if (!current || current.id !== character.id) return state;
-      if (state.sheet.revision === state.sheet.savedRevision) {
-        return { sheet: { ...state.sheet, character } };
-      }
       const viewerIsGm = state.session.data?.account.role === "GM";
-      return {
-        sheet: {
-          ...state.sheet,
-          character: {
-            ...current,
-            sheet: viewerIsGm ? current.sheet : mergeGmOnlyFields(current.sheet, character.sheet),
-            features: character.features,
-            updatedAt: character.updatedAt,
-          },
-        },
-      };
+      return updateEntry(state, character.id, (entry) =>
+        entry.character ? withRemoteCharacter(entry, character, viewerIsGm) : null,
+      );
     }),
 });

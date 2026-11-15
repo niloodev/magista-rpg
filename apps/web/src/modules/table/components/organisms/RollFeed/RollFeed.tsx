@@ -3,7 +3,7 @@
 import { Icon, Skeleton } from "@/shared/components/atoms";
 import { Panel, SkeletonRegion } from "@/shared/components/molecules";
 
-import { FEED_EMPTY_HINT, FEED_LOADING_LABEL } from "./RollFeed.constants";
+import { FEED_EMPTY_HINT, FEED_LOADING_LABEL, FEED_TITLE } from "./RollFeed.constants";
 import { useRollFeed } from "./RollFeed.hook";
 import type { RollFeedProps } from "./RollFeed.types";
 import { RollCard, RollCardSkeleton, RollPendingCard } from "./subcomponents";
@@ -13,23 +13,34 @@ import { RollCard, RollCardSkeleton, RollPendingCard } from "./subcomponents";
  * last feed seen on this device instead of a false "no rolls yet".
  */
 export function RollFeed(props: RollFeedProps) {
-  const { rolls, pending = [], className, nested = false, emptyHint = FEED_EMPTY_HINT } = props;
+  const {
+    rolls,
+    pending = [],
+    className,
+    nested = false,
+    headless = false,
+    emptyHint = FEED_EMPTY_HINT,
+  } = props;
   const { shape, showSkeleton, showEmpty, countLabel, countSample, TitleTag } = useRollFeed(props);
   return (
     <Panel variant="inner" className={`flex min-h-0 flex-col ${className ?? ""}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
-        <TitleTag className="flex items-center gap-2 font-sans text-[15px] font-bold tracking-[0.18em] text-accent-text uppercase">
-          <Icon name="dices" size={16} />
-          Rolagens da mesa
-        </TitleTag>
-        {showSkeleton ? (
-          <span className="font-sans text-xs">
-            <Skeleton shape="glyphs">{countSample}</Skeleton>
-          </span>
-        ) : (
-          countLabel && <span className="font-sans text-xs text-muted-strong">{countLabel}</span>
-        )}
-      </div>
+      {headless ? (
+        <TitleTag className="sr-only">{FEED_TITLE}</TitleTag>
+      ) : (
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+          <TitleTag className="flex items-center gap-2 font-sans text-[15px] font-bold tracking-[0.18em] text-accent-text uppercase">
+            <Icon name="dices" size={16} />
+            {FEED_TITLE}
+          </TitleTag>
+          {showSkeleton ? (
+            <span className="font-sans text-xs">
+              <Skeleton shape="glyphs">{countSample}</Skeleton>
+            </span>
+          ) : (
+            countLabel && <span className="font-sans text-xs text-muted-strong">{countLabel}</span>
+          )}
+        </div>
+      )}
       {showSkeleton ? (
         <SkeletonRegion
           label={FEED_LOADING_LABEL}

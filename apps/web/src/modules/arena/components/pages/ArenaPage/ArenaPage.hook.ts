@@ -14,9 +14,9 @@ import {
   type IMoveArenaTokenInput,
 } from "@magista/shared";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { toMediaUrl } from "@/core/services/http";
-import { openPopout } from "@/core/services/windows";
 import {
   ARENA_DRAG_EMIT_MS,
   ARENA_EMPTY_BOUNDS,
@@ -36,6 +36,7 @@ import {
   ARENA_SELECTION_BAR_SLOT,
 } from "@/modules/arena/arena.constants";
 import type {
+  ArenaDockSide,
   ArenaSelectionMode,
   ArenaSidebarTab,
   IArenaSidebarState,
@@ -50,6 +51,9 @@ import {
   readSidebarState,
   saveSidebarState,
   toRenderTokens,
+  dockSideOf,
+  fitPanels,
+  sheetNameOf,
 } from "@/modules/arena/arena.utils";
 import {
   deleteArenaTokens,
@@ -60,10 +64,11 @@ import {
   updateArenaTokens,
 } from "@/modules/arena/services";
 import { useArenaTokenPlacement } from "@/modules/arena/hooks";
+import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
-import { useIsDesktopViewport } from "@/shared/hooks";
+import { useIsDesktopViewport, useViewportWidth } from "@/shared/hooks";
 
 /**
  * Drives the Arena: loads what this account may see, follows the live events (tokens created, changed, removed,
@@ -77,14 +82,17 @@ export function useArenaPage() {
   const connection = useApp((state) => state.table.connection);
   const latencyMs = useApp((state) => state.table.latencyMs);
   const memberCount = useApp((state) => state.table.members.length);
-  const { status, view, error, selectedTokenIds, previews, viewSceneId } = useApp(
+  const { status, view, error, selectedTokenIds, previews, viewSceneId, docked, dockTab } = useApp(
     (state) => state.arena,
   );
+  const namesById = useApp(useShallow((state) => sheetNames(state.sheets)));
+  const libraryCharacters = useApp((state) => state.library.characters);
   const rolls = useApp((state) => state.table.rolls);
   const pendingRolls = useApp((state) => state.table.pendingRolls);
   const rollsLoaded = useApp((state) => state.table.rollsLoaded);
   const [sidebar, setSidebar] = useState<IArenaSidebarState>(readSidebarState);
   const desktop = useIsDesktopViewport();
+  const viewportWidth = useViewportWidth();
   const controlsRef = useRef<IArenaStageControls | null>(null);
   const boundsRef = useRef<IArenaBounds>(ARENA_EMPTY_BOUNDS);
   const lastDragEmit = useRef(0);
@@ -416,8 +424,35 @@ export function useArenaPage() {
       ? { live: view.scene.id === view.activeSceneId, hasLive: view.activeSceneId !== null }
       : null;
 
-  const insetLeft = sidebar.rollsOpen ? sidebar.rollsWidth : 0;
-  const insetRight = sidebar.open ? sidebar.width : 0;
+  const { left: insetLeft, right: insetRight } = fitPanels(
+    sidebar.rollsOpen ? sidebar.rollsWidth : 0,
+    sidebar.open ? sidebar.width : 0,
+    viewportWidth,
+  );
+
+  const onDock = (characterId: string, side: ArenaDockSide) => {
+    store.getState().dockArenaSheet(characterId, side);
+    updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
+  };
+
+  const openSheet = (characterId: string) => {
+    const side = dockSideOf(docked, characterId);
+    if (!side) {
+      store.getState().openArenaSheet(characterId);
+      return;
+    }
+    store.getState().showDockTab(side, characterId);
+    updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
+  };
+
+  const dockedTabs = (side: ArenaDockSide) => ({
+    sheets: docked[side].map((id) => ({
+      id,
+      name: sheetNameOf(id, namesById, libraryCharacters),
+    })),
+    active: dockTab[side],
+    onShow: (characterId: string | null) => store.getState().showDockTab(side, characterId),
+  });
 
   const scene = view?.scene ?? null;
   const placement = useArenaTokenPlacement({
@@ -475,7 +510,7 @@ export function useArenaPage() {
     onSizeChange,
     onToggleHidden,
     onOpenSheet: () => {
-      if (sheetTarget) openPopout({ kind: "sheet", id: sheetTarget });
+      if (sheetTarget) openSheet(sheetTarget);
     },
     onRequestRemove: () => setConfirmRemove(true),
     confirmRemove,
@@ -488,8 +523,8 @@ export function useArenaPage() {
     stageInsetRight: insetRight,
     stageInsetLeft: insetLeft,
     hudStyle: { left: insetLeft, right: insetRight },
-    sidebarWidth: sidebar.width,
-    rollsWidth: sidebar.rollsWidth,
+    sidebarWidth: insetRight || sidebar.width,
+    rollsWidth: insetLeft || sidebar.rollsWidth,
     onSidebarResize: (width: number) => updateSidebar({ width }, false),
     onSidebarResizeCommit: (width: number) => updateSidebar({ width }),
     onRollsResize: (rollsWidth: number) => updateSidebar({ rollsWidth }, false),
@@ -505,7 +540,14 @@ export function useArenaPage() {
     sidebarTab: !isGm && sidebar.tab === "scenes" ? "characters" : sidebar.tab,
     onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
     onSidebarOpen: (open: boolean) => updateSidebar({ open }),
-    onOpenCharacter: (characterId: string) => openPopout({ kind: "sheet", id: characterId }),
+    onOpenCharacter: openSheet,
+    dockedLeft: dockedTabs("left"),
+    dockedRight: dockedTabs("right"),
+    windowPanels: { left: insetLeft, right: insetRight },
+    onDock,
+    onUndock: (characterId: string) => store.getState().undockArenaSheet(characterId),
+    sheetNameFor: (characterId: string) => sheetNameOf(characterId, namesById, libraryCharacters),
+    onCloseDocked: (characterId: string) => store.getState().closeDockedSheet(characterId),
     canPlace: Boolean(scene) && status === "ready",
     onPlaceCharacter: placement.placeCharacter,
     onDropCharacter: placement.dropCharacter,

@@ -1,4 +1,5 @@
 import type { IArenaPoint } from "@magista/shared";
+import type { ReactNode } from "react";
 
 export type ArenaSelectionMode = "replace" | "add" | "toggle";
 
@@ -41,6 +42,9 @@ export interface IArenaHint {
 
 export type ArenaSidebarTab = "characters" | "scenes";
 
+/** Side panel a sheet can be docked into: the roll feed (left) or the sidebar (right). */
+export type ArenaDockSide = "left" | "right";
+
 export interface IArenaSidebarState {
   open: boolean;
   tab: ArenaSidebarTab;
@@ -52,4 +56,19 @@ export interface IArenaSidebarState {
 export interface IPendingNudge {
   tokenId: string;
   point: IArenaPoint;
+}
+
+/** A sheet docked as a tab in a side panel. */
+export interface IArenaDockedSheet {
+  id: string;
+  name: string | null;
+}
+
+/** Docked sheet tabs of one side panel. */
+export interface IArenaDockedTabs {
+  sheets: IArenaDockedSheet[];
+  /** Docked sheet shown, or null for the panel's own tab. */
+  active: string | null;
+  onShow: (characterId: string | null) => void;
+  render: (characterId: string) => ReactNode;
 }

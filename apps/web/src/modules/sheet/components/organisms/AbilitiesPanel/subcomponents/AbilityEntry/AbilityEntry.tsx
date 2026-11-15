@@ -8,7 +8,7 @@ export function AbilityEntry({ ability, derived, onRoll, onEdit, onDelete }: Abi
   return (
     <div className="min-w-0 flex-1 border border-white/10 bg-black/40 p-4 transition-colors hover:border-primary/40">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 grow basis-48">
           <h3 className="font-serif text-lg text-foreground">{title}</h3>
           {derived && (
             <div className="mt-2 flex flex-wrap gap-2 font-sans text-sm">
@@ -21,7 +21,7 @@ export function AbilityEntry({ ability, derived, onRoll, onEdit, onDelete }: Abi
             </div>
           )}
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <Button
             variant="primary"
             size="sm"
@@ -38,7 +38,7 @@ export function AbilityEntry({ ability, derived, onRoll, onEdit, onDelete }: Abi
             icon={<Icon name="pen-line" size={14} />}
             aria-label={`Editar ${title}`}
           >
-            Editar
+            <span className="@max-[37rem]:sr-only">Editar</span>
           </Button>
           <Button
             variant="ghost"

@@ -54,7 +54,7 @@ export function MarkedSoulPanel(props: MarkedSoulPanelProps) {
             </Button>
           }
         />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 @min-[45rem]:grid-cols-2">
           {MARKED_RULES.map((rule) => (
             <div key={rule.title}>
               <Text variant="fieldLabel" as="p" className="mb-1">

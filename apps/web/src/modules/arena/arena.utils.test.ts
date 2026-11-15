@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   arenaHint,
   arrowDelta,
+  dockedIdOf,
+  dockTabKey,
+  dockZoneAt,
+  fitPanels,
   panelWidth,
   placementPoint,
   parseArenaHint,
@@ -155,5 +159,22 @@ describe("arena utils", () => {
       allHidden: true,
       sheetTarget: null,
     });
+  });
+
+  it("names docked sheet tabs and finds the panel under a dragged window", () => {
+    expect(dockedIdOf(dockTabKey("c1"))).toBe("c1");
+    expect(dockedIdOf("characters")).toBeNull();
+    const panels = { left: 340, right: 360 };
+    expect(dockZoneAt(200, 1440, panels)).toBe("left");
+    expect(dockZoneAt(1200, 1440, panels)).toBe("right");
+    expect(dockZoneAt(700, 1440, panels)).toBeNull();
+    expect(dockZoneAt(10, 1440, { left: 0, right: 360 })).toBeNull();
+  });
+
+  it("shrinks wide panels on a narrow screen so some map is always left", () => {
+    expect(fitPanels(340, 360, 1440)).toEqual({ left: 340, right: 360 });
+    expect(fitPanels(520, 560, 1024)).toEqual({ left: 320, right: 344 });
+    expect(fitPanels(0, 560, 1024)).toEqual({ left: 0, right: 560 });
+    expect(fitPanels(520, 560, 700)).toEqual({ left: 320, right: 300 });
   });
 });

@@ -14,7 +14,9 @@ import { ConfirmDialog } from "@/shared/components/molecules";
 import { ArenaNotice, ArenaSelectionBar, ArenaTokenTray, ArenaZoomControls } from "../../molecules";
 import {
   ArenaCharactersTab,
+  ArenaDockedSheet,
   ArenaMobileNotice,
+  ArenaSheetWindows,
   ArenaRollsPanel,
   ArenaSidebar,
   ArenaSkeleton,
@@ -91,6 +93,13 @@ export function ArenaPage() {
     onSidebarTab,
     onSidebarOpen,
     onOpenCharacter,
+    dockedLeft,
+    dockedRight,
+    windowPanels,
+    onDock,
+    onUndock,
+    onCloseDocked,
+    sheetNameFor,
     canPlace,
     onPlaceCharacter,
     onDropCharacter,
@@ -108,6 +117,14 @@ export function ArenaPage() {
     rollsLoading,
   } = useArenaPage();
   if (!desktop) return <ArenaMobileNotice />;
+  const renderDocked = (characterId: string) => (
+    <ArenaDockedSheet
+      characterId={characterId}
+      name={sheetNameFor(characterId)}
+      onUndock={() => onUndock(characterId)}
+      onClose={() => onCloseDocked(characterId)}
+    />
+  );
   if (status === "idle" || status === "loading") return <ArenaSkeleton gm={isGm} />;
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-void-900">
@@ -130,6 +147,7 @@ export function ArenaPage() {
         width={rollsWidth}
         onResize={onRollsResize}
         onResizeCommit={onRollsResizeCommit}
+        docked={{ ...dockedLeft, render: renderDocked }}
       />
       {scene && (
         <ArenaStage
@@ -236,6 +254,7 @@ export function ArenaPage() {
         width={sidebarWidth}
         onResize={onSidebarResize}
         onResizeCommit={onSidebarResizeCommit}
+        docked={{ ...dockedRight, render: renderDocked }}
         characters={
           <ArenaCharactersTab
             isGm={isGm}
@@ -266,6 +285,7 @@ export function ArenaPage() {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+      <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
       <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
       {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
     </main>

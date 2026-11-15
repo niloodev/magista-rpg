@@ -11,7 +11,7 @@ import type {
 } from "@magista/shared";
 
 import type { IArenaPoint } from "@magista/shared";
-import type { ArenaSelectionMode } from "@/modules/arena/arena.types";
+import type { ArenaDockSide, ArenaSelectionMode } from "@/modules/arena/arena.types";
 import type { ITreeMove } from "@/modules/library/library.types";
 import type { LoadStatus } from "@/shared/types";
 
@@ -32,6 +32,13 @@ export interface ArenaState {
       error: string | null;
     };
     expandedFolderIds: string[];
+    /** Sheets open in floating windows, bottom to top (the last one is in front). */
+    openSheets: string[];
+    /** Fixed cascade slot of each open window (rendering and the default position follow it, not the stack). */
+    sheetSlots: Record<string, number>;
+    /** Sheets docked as tabs in a side panel, and the docked tab shown on each side (null: the panel's own tab). */
+    docked: Record<ArenaDockSide, string[]>;
+    dockTab: Record<ArenaDockSide, string | null>;
   };
 }
 
@@ -56,6 +63,15 @@ export interface ArenaActions {
   toggleArenaFolder: (folderId: string) => void;
   expandArenaFolders: (folderIds: string[]) => void;
   setArenaFolders: (folderIds: string[]) => void;
+  /** Opens a sheet window (or brings it to the front); past the limit the window at the back closes. */
+  openArenaSheet: (characterId: string) => void;
+  closeArenaSheet: (characterId: string) => void;
+  /** Moves a sheet (floating or docked elsewhere) into a side panel as a tab and shows it. */
+  dockArenaSheet: (characterId: string, side: ArenaDockSide) => void;
+  /** Takes a docked sheet back to a floating window. */
+  undockArenaSheet: (characterId: string) => void;
+  closeDockedSheet: (characterId: string) => void;
+  showDockTab: (side: ArenaDockSide, characterId: string | null) => void;
   resetArena: () => void;
 }
 

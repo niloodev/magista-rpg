@@ -54,7 +54,7 @@ export const SHEET_TABS: TabItem<SheetTab>[] = [
   { key: "habilidades", label: "Habilidades", icon: "sword" },
   { key: "inventario", label: "Inventário", icon: "package-search" },
   { key: "tracos", label: "Traços", icon: "type" },
-  { key: "rolagens", label: "Rolagens", icon: "dices", className: "xl:hidden" },
+  { key: "rolagens", label: "Rolagens", icon: "dices", className: "@min-[77rem]:hidden" },
 ];
 
 export const BLOCK_ICONS: Record<BlockKey, IconName> = {
@@ -72,4 +72,5 @@ export const PING_FEEDBACK_MS = 2500;
 export const SHEET_MAIN_CLASSES: Record<SheetVariant, string> = {
   page: "relative isolate min-h-screen bg-void-900 px-4 pb-24",
   window: "relative isolate min-h-screen bg-void-900 px-4 pb-10",
+  panel: "relative bg-void-900 px-4 pb-6",
 };

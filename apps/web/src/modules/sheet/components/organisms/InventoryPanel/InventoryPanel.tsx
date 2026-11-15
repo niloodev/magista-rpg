@@ -39,7 +39,7 @@ export function InventoryPanel(props: SheetSectionProps) {
           </Button>
         }
       />
-      <div className="mb-5 grid gap-4 border border-white/10 bg-black/30 p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="mb-5 grid gap-4 border border-white/10 bg-black/30 p-4 @min-[37rem]:grid-cols-[1fr_auto] @min-[37rem]:items-end">
         <div>
           <div className="mb-2 flex flex-wrap justify-between gap-2 font-sans text-sm">
             <span className="text-muted-strong">

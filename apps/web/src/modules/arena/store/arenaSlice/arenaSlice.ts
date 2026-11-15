@@ -5,7 +5,15 @@ import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultArenaState } from "./arenaSlice.constants";
 import type { ArenaSlice } from "./arenaSlice.types";
-import { nextSelection, omitKey, upsertToken } from "./arenaSlice.utils";
+import {
+  clearDockTab,
+  nextSelection,
+  omitKey,
+  slotsFor,
+  upsertToken,
+  withoutDocked,
+  withSheetOnTop,
+} from "./arenaSlice.utils";
 
 export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set, get) => ({
   ...defaultArenaState,
@@ -193,5 +201,63 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
     })),
   setArenaFolders: (folderIds) =>
     set((state) => ({ arena: { ...state.arena, expandedFolderIds: folderIds } })),
+  openArenaSheet: (characterId) =>
+    set((state) => {
+      const openSheets = withSheetOnTop(state.arena.openSheets, characterId);
+      if (openSheets === state.arena.openSheets) return state;
+      return {
+        arena: {
+          ...state.arena,
+          openSheets,
+          sheetSlots: slotsFor(openSheets, state.arena.sheetSlots, characterId),
+        },
+      };
+    }),
+  closeArenaSheet: (characterId) =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        openSheets: state.arena.openSheets.filter((id) => id !== characterId),
+        sheetSlots: omitKey(state.arena.sheetSlots, characterId),
+      },
+    })),
+  dockArenaSheet: (characterId, side) =>
+    set((state) => {
+      const docked = withoutDocked(state.arena.docked, characterId);
+      return {
+        arena: {
+          ...state.arena,
+          openSheets: state.arena.openSheets.filter((id) => id !== characterId),
+          sheetSlots: omitKey(state.arena.sheetSlots, characterId),
+          docked: { ...docked, [side]: [...docked[side], characterId] },
+          dockTab: { ...clearDockTab(state.arena.dockTab, characterId), [side]: characterId },
+        },
+      };
+    }),
+  undockArenaSheet: (characterId) =>
+    set((state) => {
+      const openSheets = withSheetOnTop(state.arena.openSheets, characterId);
+      return {
+        arena: {
+          ...state.arena,
+          docked: withoutDocked(state.arena.docked, characterId),
+          dockTab: clearDockTab(state.arena.dockTab, characterId),
+          openSheets,
+          sheetSlots: slotsFor(openSheets, state.arena.sheetSlots, characterId),
+        },
+      };
+    }),
+  closeDockedSheet: (characterId) =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        docked: withoutDocked(state.arena.docked, characterId),
+        dockTab: clearDockTab(state.arena.dockTab, characterId),
+      },
+    })),
+  showDockTab: (side, characterId) =>
+    set((state) => ({
+      arena: { ...state.arena, dockTab: { ...state.arena.dockTab, [side]: characterId } },
+    })),
   resetArena: () => set(defaultArenaState),
 });

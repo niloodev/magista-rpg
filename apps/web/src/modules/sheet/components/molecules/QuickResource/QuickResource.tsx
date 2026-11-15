@@ -7,7 +7,7 @@ import type { QuickResourceProps } from "./QuickResource.types";
 export function QuickResource({ label, tone, resource, onCurrentChange }: QuickResourceProps) {
   const styles = RESOURCE_TONES[tone];
   return (
-    <div className="flex min-w-[220px] flex-1 flex-col gap-1">
+    <div className="flex min-w-[16rem] flex-1 flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
         <span
           className={`flex items-center gap-1.5 font-sans text-xs font-bold tracking-wider uppercase ${styles.label}`}

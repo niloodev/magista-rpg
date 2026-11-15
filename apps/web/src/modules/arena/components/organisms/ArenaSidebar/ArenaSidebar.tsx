@@ -8,13 +8,10 @@ import {
 } from "@/modules/arena/arena.constants";
 import { ResizeHandle, TabPanel, Tabs } from "@/shared/components/molecules";
 
-import {
-  ARENA_SIDEBAR_CLASSES,
-  ARENA_SIDEBAR_ID_PREFIX,
-  ARENA_SIDEBAR_TABS,
-} from "./ArenaSidebar.constants";
-import { ArenaPanelToggle } from "../../molecules";
+import { ARENA_SIDEBAR_CLASSES, ARENA_SIDEBAR_ID_PREFIX } from "./ArenaSidebar.constants";
+import { ArenaPanelToggle, DockedTabPanels } from "../../molecules";
 import type { ArenaSidebarProps } from "./ArenaSidebar.types";
+import { sidebarTabs } from "./ArenaSidebar.utils";
 
 /**
  * Right sidebar of the Arena, like the Roll20 one: sheets and, for the GM, the scene library, in tabs.
@@ -31,10 +28,9 @@ export function ArenaSidebar({
   width,
   onResize,
   onResizeCommit,
+  docked,
 }: ArenaSidebarProps) {
-  const items = showScenes
-    ? ARENA_SIDEBAR_TABS
-    : ARENA_SIDEBAR_TABS.filter((item) => item.key !== "scenes");
+  const { items, active, onChange } = sidebarTabs({ showScenes, tab, docked, onTabChange });
   return (
     <>
       <ArenaPanelToggle
@@ -67,8 +63,8 @@ export function ArenaSidebar({
             <div className="min-w-0 flex-1">
               <Tabs
                 items={items}
-                active={tab}
-                onChange={onTabChange}
+                active={active}
+                onChange={onChange}
                 label={ARENA_SIDEBAR_TEXTS.tabs}
                 idPrefix={ARENA_SIDEBAR_ID_PREFIX}
                 dense
@@ -78,7 +74,7 @@ export function ArenaSidebar({
           <TabPanel
             idPrefix={ARENA_SIDEBAR_ID_PREFIX}
             tabKey="characters"
-            active={tab === "characters"}
+            active={!docked.active && tab === "characters"}
             className="min-h-0 flex-1 overflow-y-auto p-4"
           >
             <h2 className="sr-only">{ARENA_SIDEBAR_TEXTS.characters}</h2>
@@ -88,13 +84,14 @@ export function ArenaSidebar({
             <TabPanel
               idPrefix={ARENA_SIDEBAR_ID_PREFIX}
               tabKey="scenes"
-              active={tab === "scenes"}
+              active={!docked.active && tab === "scenes"}
               className="min-h-0 flex-1 overflow-y-auto p-4"
             >
               <h2 className="sr-only">{ARENA_SIDEBAR_TEXTS.scenes}</h2>
               {scenes}
             </TabPanel>
           )}
+          <DockedTabPanels idPrefix={ARENA_SIDEBAR_ID_PREFIX} docked={docked} />
         </aside>
       )}
     </>

@@ -26,10 +26,15 @@ import {
   SceneLibrarySkeleton,
 } from "../../molecules";
 import { ArenaMobileNotice } from "../ArenaMobileNotice";
-import { ARENA_ROLLS_PANEL_CLASSES } from "../ArenaRollsPanel";
+import { ARENA_ROLLS_PANEL_CLASSES, ARENA_ROLLS_TAB_KEY } from "../ArenaRollsPanel";
 import { ARENA_SIDEBAR_CLASSES, ARENA_SIDEBAR_TABS } from "../ArenaSidebar";
 import { ARENA_BACK_LINK_CLASSES, ARENA_TOP_BAR_CLASSES } from "../ArenaTopBar";
-import { ARENA_SKELETON_TABS_PREFIX, HUD_GAP } from "./ArenaSkeleton.constants";
+import {
+  ARENA_SKELETON_ROLLS_PREFIX,
+  ARENA_SKELETON_ROLLS_TABS,
+  ARENA_SKELETON_TABS_PREFIX,
+  HUD_GAP,
+} from "./ArenaSkeleton.constants";
 import { useArenaSkeleton } from "./ArenaSkeleton.hook";
 import type { ArenaSkeletonProps } from "./ArenaSkeleton.types";
 import { ignoreTab } from "./ArenaSkeleton.utils";
@@ -124,12 +129,25 @@ export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
               className={ARENA_ROLLS_PANEL_CLASSES}
               style={{ width: rollsWidth }}
             >
-              <RollFeed
-                rolls={[]}
-                loading
-                nested
-                className="h-full min-w-0 flex-1 border-0 bg-transparent"
-              />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div inert>
+                  <Tabs
+                    items={ARENA_SKELETON_ROLLS_TABS}
+                    active={ARENA_ROLLS_TAB_KEY}
+                    onChange={ignoreTab}
+                    label={ARENA_ROLLS_TEXTS.tabs}
+                    idPrefix={ARENA_SKELETON_ROLLS_PREFIX}
+                    dense
+                  />
+                </div>
+                <RollFeed
+                  rolls={[]}
+                  loading
+                  nested
+                  headless
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent"
+                />
+              </div>
             </div>
           )}
           <div inert>

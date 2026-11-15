@@ -7,11 +7,16 @@ import {
   ARENA_ROLLS_WIDTH,
 } from "@/modules/arena/arena.constants";
 import { RollFeed } from "@/modules/table/components/organisms";
-import { ResizeHandle } from "@/shared/components/molecules";
+import { ResizeHandle, TabPanel, Tabs } from "@/shared/components/molecules";
 
-import { ArenaPanelToggle } from "../../molecules";
-import { ARENA_ROLLS_PANEL_CLASSES } from "./ArenaRollsPanel.constants";
+import { ArenaPanelToggle, DockedTabPanels } from "../../molecules";
+import {
+  ARENA_ROLLS_PANEL_CLASSES,
+  ARENA_ROLLS_TAB_KEY,
+  ARENA_ROLLS_TABS_PREFIX,
+} from "./ArenaRollsPanel.constants";
 import type { ArenaRollsPanelProps } from "./ArenaRollsPanel.types";
+import { rollsPanelTabs } from "./ArenaRollsPanel.utils";
 
 /**
  * The table roll feed, always at hand on the left of the Arena (it is where the table lives). The tab on its
@@ -26,7 +31,19 @@ export function ArenaRollsPanel({
   width,
   onResize,
   onResizeCommit,
+  docked,
 }: ArenaRollsPanelProps) {
+  const tabs = rollsPanelTabs(docked);
+  const feed = (
+    <RollFeed
+      rolls={rolls}
+      pending={pending}
+      loading={loading}
+      className="h-full min-w-0 flex-1 border-0 bg-transparent"
+      emptyHint={ARENA_ROLLS_TEXTS.emptyHint}
+      headless
+    />
+  );
   return (
     <>
       {open && (
@@ -36,13 +53,25 @@ export function ArenaRollsPanel({
           className={ARENA_ROLLS_PANEL_CLASSES}
           style={{ width }}
         >
-          <RollFeed
-            rolls={rolls}
-            pending={pending}
-            loading={loading}
-            className="h-full min-w-0 flex-1 border-0 bg-transparent"
-            emptyHint={ARENA_ROLLS_TEXTS.emptyHint}
-          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Tabs
+              items={tabs.items}
+              active={tabs.active}
+              onChange={tabs.onChange}
+              label={ARENA_ROLLS_TEXTS.tabs}
+              idPrefix={ARENA_ROLLS_TABS_PREFIX}
+              dense
+            />
+            <TabPanel
+              idPrefix={ARENA_ROLLS_TABS_PREFIX}
+              tabKey={ARENA_ROLLS_TAB_KEY}
+              active={!docked.active}
+              className="flex min-h-0 flex-1"
+            >
+              {feed}
+            </TabPanel>
+            <DockedTabPanels idPrefix={ARENA_ROLLS_TABS_PREFIX} docked={docked} />
+          </div>
           <ResizeHandle
             label={ARENA_ROLLS_TEXTS.resize}
             value={width}

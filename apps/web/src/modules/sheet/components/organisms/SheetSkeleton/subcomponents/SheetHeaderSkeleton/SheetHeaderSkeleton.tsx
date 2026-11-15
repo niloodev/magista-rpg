@@ -10,7 +10,10 @@ import type { SheetHeaderSkeletonProps } from "./SheetHeaderSkeleton.types";
  */
 export function SheetHeaderSkeleton({ gm, art }: SheetHeaderSkeletonProps) {
   return (
-    <Panel variant="primary" className="flex flex-col gap-6 p-6 md:flex-row md:items-center">
+    <Panel
+      variant="primary"
+      className="flex flex-col gap-6 p-6 @min-[45rem]:flex-row @min-[45rem]:items-center"
+    >
       <div className="flex flex-col items-center gap-2 self-center">
         <AvatarSkeleton size="xl" />
         {art && <ButtonSkeleton label="Ver arte completa" size="sm" variant="ghost" icon="image" />}
@@ -21,7 +24,7 @@ export function SheetHeaderSkeleton({ gm, art }: SheetHeaderSkeletonProps) {
             <div className="mb-2 flex min-h-6 flex-wrap items-center gap-x-4 gap-y-2">
               <Text variant="micro">Ficha do jogador</Text>
             </div>
-            <p className="font-serif text-4xl md:text-5xl">
+            <p className="font-serif text-4xl @min-[45rem]:text-5xl">
               <Skeleton shape="text" className="w-80 max-w-full" />
             </p>
           </div>
@@ -37,7 +40,7 @@ export function SheetHeaderSkeleton({ gm, art }: SheetHeaderSkeletonProps) {
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 @min-[61rem]:grid-cols-4">
           {HEADER_FACT_LABELS.map((label) => (
             <div key={label} className="border border-white/10 bg-black/30 px-4 py-3">
               <p className="font-sans text-xs font-semibold tracking-[0.12em] text-label uppercase">

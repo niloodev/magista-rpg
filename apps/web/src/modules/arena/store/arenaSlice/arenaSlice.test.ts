@@ -153,4 +153,46 @@ describe("arena slice", () => {
     store.getState().toggleArenaFolder("g");
     expect(store.getState().arena.expandedFolderIds).toEqual([]);
   });
+
+  it("stacks sheet windows, brings a reopened one to the front and keeps at most four", () => {
+    const store = createAppStore();
+    for (const id of ["a", "b", "c"]) store.getState().openArenaSheet(id);
+    store.getState().openArenaSheet("a");
+    expect(store.getState().arena.openSheets).toEqual(["b", "c", "a"]);
+    store.getState().openArenaSheet("d");
+    store.getState().openArenaSheet("e");
+    expect(store.getState().arena.openSheets).toEqual(["c", "a", "d", "e"]);
+    expect(store.getState().arena.sheetSlots).toEqual({ c: 2, a: 0, d: 3, e: 1 });
+    store.getState().closeArenaSheet("a");
+    expect(store.getState().arena.openSheets).toEqual(["c", "d", "e"]);
+    store.getState().openArenaSheet("f");
+    expect(store.getState().arena.sheetSlots.f).toBe(0);
+  });
+
+  it("docks a sheet as a tab, moves it between sides, takes it back to a window and closes it", () => {
+    const store = createAppStore();
+    store.getState().openArenaSheet("a");
+    store.getState().openArenaSheet("b");
+    store.getState().dockArenaSheet("a", "right");
+    expect(store.getState().arena).toMatchObject({
+      openSheets: ["b"],
+      docked: { left: [], right: ["a"] },
+      dockTab: { left: null, right: "a" },
+    });
+    store.getState().dockArenaSheet("a", "left");
+    expect(store.getState().arena).toMatchObject({
+      docked: { left: ["a"], right: [] },
+      dockTab: { left: "a", right: null },
+    });
+    store.getState().undockArenaSheet("a");
+    expect(store.getState().arena).toMatchObject({
+      openSheets: ["b", "a"],
+      docked: { left: [], right: [] },
+      dockTab: { left: null, right: null },
+    });
+    store.getState().dockArenaSheet("b", "right");
+    store.getState().showDockTab("right", null);
+    store.getState().closeDockedSheet("b");
+    expect(store.getState().arena.docked.right).toEqual([]);
+  });
 });

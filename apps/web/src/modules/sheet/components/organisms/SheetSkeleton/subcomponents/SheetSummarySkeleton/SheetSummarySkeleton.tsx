@@ -9,9 +9,9 @@ import { RESOURCE_SKELETONS, SUMMARY_STAT_LABELS } from "../../SheetSkeleton.con
  */
 export function SheetSummarySkeleton() {
   return (
-    <div className="z-30 -mx-4 border-b border-primary/30 bg-void-900/90 px-4 py-3 backdrop-blur-md md:sticky md:top-0">
+    <div className="z-30 -mx-4 border-b border-primary/30 bg-void-900/90 px-4 py-3 backdrop-blur-md @min-[45rem]:sticky @min-[45rem]:top-0">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 @min-[61rem]:flex">
           <AvatarSkeleton size="sm" />
           <span className="font-serif text-lg">
             <Skeleton shape="text" className="w-32" />
@@ -20,7 +20,7 @@ export function SheetSummarySkeleton() {
         {RESOURCE_SKELETONS.map(({ label, tone }) => {
           const styles = RESOURCE_TONES[tone];
           return (
-            <div key={label} className="flex min-w-[220px] flex-1 flex-col gap-1">
+            <div key={label} className="flex min-w-[16rem] flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <span
                   className={`flex items-center gap-1.5 font-sans text-xs font-bold tracking-wider uppercase ${styles.label}`}

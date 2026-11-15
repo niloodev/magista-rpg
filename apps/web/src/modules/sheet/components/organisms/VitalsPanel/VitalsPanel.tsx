@@ -23,7 +23,7 @@ export function VitalsPanel({ sheet, derived, onEdit, onRoll, isGm }: SheetSecti
           onChange={(resource) => onEdit((draft) => void (draft.resources.sanity = resource))}
         />
       </div>
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">
+      <div className="mt-6 grid gap-2 @min-[37rem]:grid-cols-2">
         <RollBar
           label="Iniciativa"
           expression={derived.initiative}

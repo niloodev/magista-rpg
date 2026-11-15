@@ -23,4 +23,5 @@ export interface SheetSectionProps {
 export type SheetTab = "geral" | "habilidades" | "inventario" | "tracos" | "rolagens";
 
 /** "page" is the full route; "window" is the popout (no page chrome), opened beside the table or, later, the Arena. */
-export type SheetVariant = "page" | "window";
+/** Where the sheet lives: its own page, a popout window, or a floating panel inside another page (Arena). */
+export type SheetVariant = "page" | "window" | "panel";

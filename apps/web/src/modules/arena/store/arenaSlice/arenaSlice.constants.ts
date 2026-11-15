@@ -10,5 +10,9 @@ export const defaultArenaState: ArenaState = {
     viewSceneId: null,
     library: { status: "idle", scenes: [], folders: [], error: null },
     expandedFolderIds: [],
+    openSheets: [],
+    sheetSlots: {},
+    docked: { left: [], right: [] },
+    dockTab: { left: null, right: null },
   },
 };

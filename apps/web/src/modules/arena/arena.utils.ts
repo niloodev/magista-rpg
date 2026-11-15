@@ -9,21 +9,27 @@ import {
 } from "@magista/shared";
 
 import {
+  ARENA_DOCK_TAB_PREFIX,
+  ARENA_DOCK_TEXTS,
   ARENA_HINT_DEFAULT_NAME,
   ARENA_HINT_MAX_TRAY,
+  ARENA_MAP_MIN_WIDTH,
   ARENA_ROLLS_WIDTH,
   ARENA_SIDEBAR_STORAGE_KEY,
   ARENA_SIDEBAR_WIDTH,
   DEFAULT_SIDEBAR,
 } from "@/modules/arena/arena.constants";
 import type {
+  ArenaDockSide,
   ArenaSidebarTab,
+  IArenaDockedSheet,
   IArenaHint,
   IArenaSelectionSummary,
   IArenaSidebarState,
 } from "@/modules/arena/arena.types";
 
 import type { IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
+import type { TabItem } from "@/shared/components/molecules";
 
 /**
  * Turns the loaded view into what the board draws: live drag previews win over stored positions, and the ring
@@ -201,4 +207,94 @@ export function saveSidebarState(state: IArenaSidebarState): void {
 export function placementPoint(point: IArenaPoint, bounds: IArenaBounds): IArenaPoint {
   const inside = bounds.width > 0 && bounds.height > 0 ? clampToMap(point, bounds) : point;
   return roundPoint(inside);
+}
+
+/**
+ * Tab key of a docked sheet in a side panel ("sheet:<id>").
+ */
+export function dockTabKey(characterId: string): string {
+  return `${ARENA_DOCK_TAB_PREFIX}${characterId}`;
+}
+
+/**
+ * Character id of a docked sheet tab key, or null for the panel's own tabs.
+ */
+export function dockedIdOf(key: string): string | null {
+  return key.startsWith(ARENA_DOCK_TAB_PREFIX) ? key.slice(ARENA_DOCK_TAB_PREFIX.length) : null;
+}
+
+/**
+ * Side panel under a pointer while a sheet window is dragged: the roll feed on the left or the sidebar on the
+ * right (only open panels, given by their widths; 0 is closed).
+ */
+export function dockZoneAt(
+  x: number,
+  viewportWidth: number,
+  panels: { left: number; right: number },
+): ArenaDockSide | null {
+  if (panels.left > 0 && x <= panels.left) return "left";
+  if (panels.right > 0 && x >= viewportWidth - panels.right) return "right";
+  return null;
+}
+
+/**
+ * Tabs of a side panel: its own tabs followed by one per docked sheet.
+ */
+export function withDockedTabs(
+  own: TabItem<string>[],
+  sheets: IArenaDockedSheet[],
+): TabItem<string>[] {
+  return [
+    ...own,
+    ...sheets.map((sheet) => ({
+      key: dockTabKey(sheet.id),
+      label: ARENA_DOCK_TEXTS.tab(sheet.name),
+      icon: "scroll-text" as const,
+    })),
+  ];
+}
+
+/**
+ * Display name of an open sheet: the loaded sheet, else the library entry, else null.
+ */
+export function sheetNameOf(
+  characterId: string,
+  names: Record<string, string | null>,
+  characters: { id: string; name: string }[],
+): string | null {
+  return (
+    names[characterId] ?? characters.find((character) => character.id === characterId)?.name ?? null
+  );
+}
+
+/**
+ * Side where a sheet is docked, or null when it is not docked.
+ */
+export function dockSideOf(
+  docked: Record<ArenaDockSide, string[]>,
+  characterId: string,
+): ArenaDockSide | null {
+  if (docked.left.includes(characterId)) return "left";
+  return docked.right.includes(characterId) ? "right" : null;
+}
+
+/**
+ * Widths the open side panels actually take: the chosen ones, shrunk together (not below their minimums) when
+ * they would leave less than `ARENA_MAP_MIN_WIDTH` of map on a narrow screen. 0 for a closed panel.
+ */
+export function fitPanels(
+  rolls: number,
+  sidebar: number,
+  viewportWidth: number,
+): { left: number; right: number } {
+  const available = viewportWidth - ARENA_MAP_MIN_WIDTH;
+  const total = rolls + sidebar;
+  if (total <= available || total === 0) return { left: rolls, right: sidebar };
+  const scale = Math.max(available, 0) / total;
+  const shrink = (width: number, min: number) =>
+    width === 0 ? 0 : Math.max(Math.round(width * scale), min);
+  return {
+    left: shrink(rolls, ARENA_ROLLS_WIDTH.min),
+    right: shrink(sidebar, ARENA_SIDEBAR_WIDTH.min),
+  };
 }

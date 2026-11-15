@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { ArenaSidebarTab } from "@/modules/arena/arena.types";
+import type { ArenaSidebarTab, IArenaDockedTabs } from "@/modules/arena/arena.types";
 
 export interface ArenaSidebarProps {
   open: boolean;
@@ -13,4 +13,5 @@ export interface ArenaSidebarProps {
   width: number;
   onResize: (width: number) => void;
   onResizeCommit: (width: number) => void;
+  docked: IArenaDockedTabs;
 }

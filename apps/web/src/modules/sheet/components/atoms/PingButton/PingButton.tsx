@@ -14,7 +14,7 @@ export function PingButton({ title, sent, onPing }: PingButtonProps) {
         aria-label={sent ? PING_LABELS.sentAria(title) : PING_LABELS.aria(title)}
         className={sent ? "text-teal-300!" : undefined}
       >
-        <span className="grid whitespace-nowrap max-sm:sr-only">
+        <span className="grid whitespace-nowrap @max-[37rem]:sr-only">
           <span className={`col-start-1 row-start-1 ${sent ? "invisible" : ""}`}>
             {PING_LABELS.idle}
           </span>

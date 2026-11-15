@@ -40,7 +40,7 @@ export function VitalsSkeleton() {
           );
         })}
       </div>
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">
+      <div className="mt-6 grid gap-2 @min-[37rem]:grid-cols-2">
         {ROLL_BAR_SKELETONS.map(({ label, tone }) => {
           const styles = ROLL_BAR_TONES[tone];
           return (
