@@ -99,14 +99,19 @@ export function useArenaStage({
 
   const sceneId = scene?.id ?? null;
   const mapUrl = scene?.mapUrl ?? null;
+  const boardWidth = scene?.width ?? 0;
+  const boardHeight = scene?.height ?? 0;
 
   useEffect(() => {
     renderer?.setSideInsets(insetLeft, insetRight);
   }, [renderer, insetLeft, insetRight]);
 
   useEffect(() => {
-    if (renderer) void renderer.setScene(sceneId ? { id: sceneId, mapUrl } : null);
-  }, [renderer, sceneId, mapUrl]);
+    if (!renderer) return;
+    void renderer.setScene(
+      sceneId ? { id: sceneId, mapUrl, width: boardWidth, height: boardHeight } : null,
+    );
+  }, [renderer, sceneId, mapUrl, boardWidth, boardHeight]);
 
   useEffect(() => {
     renderer?.setTokens(tokens);

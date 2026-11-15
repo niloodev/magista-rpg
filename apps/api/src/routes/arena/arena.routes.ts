@@ -81,6 +81,12 @@ arenaRoutes.put("/scenes/:id/map", async (req, res: AuthedResponse) => {
   if (changed) broadcastArenaScene(changed.scene.id, changed.audience);
 });
 
+arenaRoutes.put("/scenes/:id/board", async (req, res: AuthedResponse) => {
+  const result = await arenaController.setSceneBoard(viewerOf(res), req.params.id ?? "", req.body);
+  const changed = sendResult(res, result, ARENA_ERROR_STATUS);
+  if (changed) broadcastArenaScene(changed.scene.id, changed.audience);
+});
+
 arenaRoutes.put("/active", async (req, res: AuthedResponse) => {
   const result = await arenaController.setActiveScene(viewerOf(res), req.body);
   const changed = sendResult(res, result, ARENA_ERROR_STATUS);

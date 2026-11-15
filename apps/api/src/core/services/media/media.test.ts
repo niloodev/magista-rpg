@@ -1,5 +1,7 @@
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
+import { optimizeMap } from "./media";
 import { IMAGE_TYPES } from "./media.constants";
 import {
   arenaMapKeyFor,
@@ -96,5 +98,30 @@ describe("readImageSize", () => {
   it("gives up on unreadable headers", () => {
     expect(readImageSize(Buffer.from("not an image"))).toBeNull();
     expect(readImageSize(Buffer.from([0xff, 0xd8, 0xff, 0x00]))).toBeNull();
+  });
+});
+
+describe("optimizeMap", () => {
+  const noisyPng = (width: number, height: number) => {
+    const pixels = Buffer.alloc(width * height * 3);
+    for (let at = 0; at < pixels.length; at += 1) pixels[at] = (at * 7919) % 251;
+    return sharp(pixels, { raw: { width, height, channels: 3 } })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+  };
+
+  it("re-encodes a large map as a smaller WebP of the same size", async () => {
+    const png = await noisyPng(320, 200);
+    const optimized = await optimizeMap(png);
+    expect(detectImageType(optimized)).toBe(IMAGE_TYPES.webp);
+    expect(readImageSize(optimized)).toEqual({ width: 320, height: 200 });
+    expect(optimized.length).toBeLessThan(png.length);
+  });
+
+  it("keeps GIFs and unreadable bytes as they are", async () => {
+    const gif = Buffer.from("GIF89a\x01\x00\x01\x00", "latin1");
+    expect(await optimizeMap(gif)).toBe(gif);
+    const broken = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    expect(await optimizeMap(broken)).toBe(broken);
   });
 });

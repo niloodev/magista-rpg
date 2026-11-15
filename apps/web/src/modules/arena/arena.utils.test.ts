@@ -34,7 +34,17 @@ function token(id: string, characterId: string | null): IArenaToken {
 
 const view: IArenaView = {
   activeSceneId: "s",
-  scene: { id: "s", name: "Cena", folderId: null, mapUrl: null, position: 0 },
+  scene: {
+    id: "s",
+    name: "Cena",
+    folderId: null,
+    mapUrl: null,
+    width: 1750,
+    height: 1750,
+    mapWidth: null,
+    mapHeight: null,
+    position: 0,
+  },
   tokens: [token("ana", "c-ana"), token("bruno", "c-bruno"), token("lobo", null)],
   controllableCharacterIds: ["c-ana"],
 };

@@ -1,8 +1,34 @@
+import { fitBoard, resolveBoard, scaleBoardPoint, type IArenaBounds } from "@magista/shared";
+
 import { getDatabase } from "@/core/services/database";
+import type { Prisma } from "@/generated/prisma/client";
 
 import { SCENE_ORDER } from "./arenaScene.constants";
 import type { IArenaSceneModels } from "./arenaScene.types";
-import { toArenaScene } from "./arenaScene.utils";
+import { mapSizeOf, toArenaScene, type ArenaSceneRow } from "./arenaScene.utils";
+
+type Transaction = Prisma.TransactionClient;
+
+const lockScene = async (tx: Transaction, id: string) => {
+  const [locked] = await tx.$queryRaw<ArenaSceneRow[]>`
+    SELECT "id", "name", "folderId", "mapKey", "mapWidth", "mapHeight", "boardWidth", "boardHeight",
+      "position"
+    FROM "arena_scenes" WHERE "id" = ${id}::uuid FOR UPDATE`;
+  return locked ?? null;
+};
+
+/**
+ * Moves every token of a scene so it stays on the same spot of the map after the board changed size.
+ */
+const rescaleTokens = async (tx: Transaction, id: string, from: IArenaBounds, to: IArenaBounds) => {
+  if (from.width === to.width && from.height === to.height) return;
+  const tokens = await tx.arenaToken.findMany({
+    where: { sceneId: id },
+    select: { id: true, x: true, y: true },
+  });
+  for (const token of tokens)
+    await tx.arenaToken.update({ where: { id: token.id }, data: scaleBoardPoint(token, from, to) });
+};
 
 const list: IArenaSceneModels["list"] = async () => {
   const rows = await getDatabase().arenaScene.findMany({ orderBy: SCENE_ORDER });
@@ -36,14 +62,63 @@ const remove: IArenaSceneModels["remove"] = async (id) =>
     return count === 1 ? { tokenIds: tokens.map((token) => token.id) } : null;
   });
 
-const setMapKey: IArenaSceneModels["setMapKey"] = async (id, key) =>
+const setMapKey: IArenaSceneModels["setMapKey"] = async (id, key, size) =>
   getDatabase().$transaction(async (tx) => {
-    const [locked] = await tx.$queryRaw<{ mapKey: string | null }[]>`
-      SELECT "mapKey" FROM "arena_scenes" WHERE "id" = ${id}::uuid FOR UPDATE`;
+    const locked = await lockScene(tx, id);
     if (!locked) return null;
-    const row = await tx.arenaScene.update({ where: { id }, data: { mapKey: key } });
+    const unmeasured =
+      locked.mapKey !== null && mapSizeOf(locked) === null && locked.boardWidth === null;
+    const before = unmeasured ? null : resolveBoard(locked);
+    const keepsWidth = locked.boardWidth !== null || locked.mapKey !== null;
+    const board = fitBoard({ width: before && keepsWidth ? before.width : size.width }, size);
+    const row = await tx.arenaScene.update({
+      where: { id },
+      data: {
+        mapKey: key,
+        mapWidth: size.width,
+        mapHeight: size.height,
+        boardWidth: board.width,
+        boardHeight: board.height,
+      },
+    });
+    if (before) await rescaleTokens(tx, id, before, board);
     return { scene: toArenaScene(row), previousKey: locked.mapKey };
   });
+
+const setBoard: IArenaSceneModels["setBoard"] = async (id, request) =>
+  getDatabase().$transaction(async (tx) => {
+    const locked = await lockScene(tx, id);
+    if (!locked) return null;
+    const before = resolveBoard(locked);
+    const board = fitBoard(request, mapSizeOf(locked));
+    const row = await tx.arenaScene.update({
+      where: { id },
+      data: { boardWidth: board.width, boardHeight: board.height },
+    });
+    await rescaleTokens(tx, id, before, board);
+    return toArenaScene(row);
+  });
+
+const setMapSize: IArenaSceneModels["setMapSize"] = async (id, size) => {
+  await getDatabase().arenaScene.updateMany({
+    where: { id, mapWidth: null },
+    data: { mapWidth: size.width, mapHeight: size.height },
+  });
+  return findById(id);
+};
+
+const findUnmeasuredMaps: IArenaSceneModels["findUnmeasuredMaps"] = async () => {
+  const rows = await getDatabase().arenaScene.findMany({
+    where: { mapKey: { not: null }, mapWidth: null },
+    select: { id: true, mapKey: true },
+  });
+  return rows.flatMap((row) => (row.mapKey ? [{ id: row.id, mapKey: row.mapKey }] : []));
+};
+
+const findBoards: IArenaSceneModels["findBoards"] = async (ids) => {
+  const rows = await getDatabase().arenaScene.findMany({ where: { id: { in: ids } } });
+  return new Map(rows.map((row) => [row.id, resolveBoard(row)]));
+};
 
 const findActiveSceneId: IArenaSceneModels["findActiveSceneId"] = async () => {
   const row = await getDatabase().arenaState.findUnique({
@@ -68,6 +143,10 @@ export const arenaSceneModels: IArenaSceneModels = {
   rename,
   remove,
   setMapKey,
+  setBoard,
+  setMapSize,
+  findUnmeasuredMaps,
+  findBoards,
   findActiveSceneId,
   setActiveScene,
 };

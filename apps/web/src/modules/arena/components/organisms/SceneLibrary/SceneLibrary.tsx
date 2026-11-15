@@ -6,6 +6,7 @@ import { Button, Icon } from "@/shared/components/atoms";
 import { ActionMenu, ConfirmDialog } from "@/shared/components/molecules";
 
 import { SceneLibrarySkeleton, SceneRow } from "../../molecules";
+import { SceneBoardDialog } from "../SceneBoardDialog";
 import { SceneFormDialog } from "../SceneFormDialog";
 import { useSceneLibrary } from "./SceneLibrary.hook";
 import type { SceneLibraryProps } from "./SceneLibrary.types";
@@ -35,6 +36,7 @@ export function SceneLibrary(props: SceneLibraryProps) {
     submitFolder,
     submitRename,
     submitMap,
+    submitBoard,
     confirmDelete,
     retry,
   } = useSceneLibrary(props);
@@ -170,6 +172,9 @@ export function SceneLibrary(props: SceneLibraryProps) {
           onSubmit={submitMap}
           onClose={closeDialog}
         />
+      )}
+      {dialog?.type === "board" && (
+        <SceneBoardDialog scene={dialog.scene} onSubmit={submitBoard} onClose={closeDialog} />
       )}
       <ConfirmDialog
         open={dialog?.type === "deleteScene" || dialog?.type === "deleteFolder"}

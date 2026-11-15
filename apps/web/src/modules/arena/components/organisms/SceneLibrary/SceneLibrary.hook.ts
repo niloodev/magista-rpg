@@ -1,6 +1,12 @@
 "use client";
 
-import { childFolders, isErrorResult, type IArenaFolder, type IArenaScene } from "@magista/shared";
+import {
+  childFolders,
+  isErrorResult,
+  type IArenaBoardInput,
+  type IArenaFolder,
+  type IArenaScene,
+} from "@magista/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toMediaUrl } from "@/core/services/http";
@@ -14,6 +20,7 @@ import {
   moveArenaLibraryItem,
   renameArenaFolder,
   renameArenaScene,
+  setArenaSceneBoard,
   uploadArenaSceneMap,
 } from "@/modules/arena/services";
 import type { ITreeMove } from "@/modules/library/library.types";
@@ -164,6 +171,14 @@ export function useSceneLibrary({ liveSceneId, onPreview, onGoLive }: SceneLibra
     return null;
   };
 
+  const submitBoard = async (board: IArenaBoardInput): Promise<string | null> => {
+    if (dialog?.type !== "board") return null;
+    const result = await setArenaSceneBoard(dialog.scene.id, board);
+    if (isErrorResult(result)) return result.error;
+    setDialog(null);
+    return null;
+  };
+
   const confirmDelete = async () => {
     const current = dialog;
     setDialog(null);
@@ -199,6 +214,7 @@ export function useSceneLibrary({ liveSceneId, onPreview, onGoLive }: SceneLibra
     submitFolder,
     submitRename,
     submitMap,
+    submitBoard,
     confirmDelete: () => void confirmDelete(),
     retry: () => void load(),
   };

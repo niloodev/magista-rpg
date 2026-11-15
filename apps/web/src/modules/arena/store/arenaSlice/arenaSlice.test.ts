@@ -21,7 +21,17 @@ function token(id: string, extra: Partial<IArenaToken> = {}): IArenaToken {
 
 const view: IArenaView = {
   activeSceneId: "s1",
-  scene: { id: "s1", name: "Ruínas", folderId: null, mapUrl: null, position: 0 },
+  scene: {
+    id: "s1",
+    name: "Ruínas",
+    folderId: null,
+    mapUrl: null,
+    width: 1750,
+    height: 1750,
+    mapWidth: null,
+    mapHeight: null,
+    position: 0,
+  },
   tokens: [token("a", { position: 0 }), token("b", { position: 1 })],
   controllableCharacterIds: [],
 };
@@ -122,8 +132,28 @@ describe("arena slice", () => {
     store.getState().startArenaLibraryLoad();
     store.getState().finishArenaLibraryLoad({
       scenes: [
-        { id: "a", name: "A", folderId: null, mapUrl: null, position: 0 },
-        { id: "b", name: "B", folderId: null, mapUrl: null, position: 1 },
+        {
+          id: "a",
+          name: "A",
+          folderId: null,
+          mapUrl: null,
+          width: 1750,
+          height: 1750,
+          mapWidth: null,
+          mapHeight: null,
+          position: 0,
+        },
+        {
+          id: "b",
+          name: "B",
+          folderId: null,
+          mapUrl: null,
+          width: 1750,
+          height: 1750,
+          mapWidth: null,
+          mapHeight: null,
+          position: 1,
+        },
       ],
       folders: [{ id: "f", name: "Pasta", parentId: null, position: 0 }],
     });

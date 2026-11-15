@@ -1,4 +1,9 @@
-import type { IArenaFolder, IArenaScene, IArenaToken } from "@magista/shared";
+import {
+  ARENA_MAP_MAX_BYTES,
+  type IArenaFolder,
+  type IArenaScene,
+  type IArenaToken,
+} from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
@@ -42,10 +47,32 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
   };
 }
 
-function build(options: { active?: string | null } = {}) {
+function build(
+  options: { active?: string | null; unmeasured?: { id: string; mapKey: string }[] } = {},
+) {
   const sceneList: IArenaScene[] = [
-    { id: LIVE, name: "Ruínas", folderId: null, mapUrl: null, position: 0 },
-    { id: PREP, name: "Taverna", folderId: F_ROOT, mapUrl: null, position: 1 },
+    {
+      id: LIVE,
+      name: "Ruínas",
+      folderId: null,
+      mapUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
+      position: 0,
+    },
+    {
+      id: PREP,
+      name: "Taverna",
+      folderId: F_ROOT,
+      mapUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
+      position: 1,
+    },
   ];
   let active = options.active === undefined ? LIVE : options.active;
   let tokenList: IArenaToken[] = [
@@ -56,6 +83,7 @@ function build(options: { active?: string | null } = {}) {
     token(T_PREP, PREP, { characterId: ANA, name: "Ana" }),
   ];
   const mapKeys: Record<string, string | null> = {};
+  const unmeasured: { id: string; mapKey: string }[] = options.unmeasured ?? [];
   const scenes: IArenaSceneModels = {
     list: vi.fn(async () => sceneList),
     findById: vi.fn(async (id) => sceneList.find((scene) => scene.id === id) ?? null),
@@ -64,6 +92,10 @@ function build(options: { active?: string | null } = {}) {
       name,
       folderId,
       mapUrl: null,
+      width: 1750,
+      height: 1750,
+      mapWidth: null,
+      mapHeight: null,
       position: 2,
     })),
     rename: vi.fn(async (id, name) => {
@@ -76,13 +108,31 @@ function build(options: { active?: string | null } = {}) {
       tokenList = tokenList.filter((entry) => entry.sceneId !== id);
       return { tokenIds };
     }),
-    setMapKey: vi.fn(async (id, key) => {
+    setMapKey: vi.fn(async (id, key, size) => {
       const scene = sceneList.find((entry) => entry.id === id);
       if (!scene) return null;
       const previousKey = mapKeys[id] ?? null;
       mapKeys[id] = key;
-      return { scene: { ...scene, mapUrl: `/media/${key}` }, previousKey };
+      const mapped = { mapUrl: `/media/${key}`, mapWidth: size.width, mapHeight: size.height };
+      return { scene: { ...scene, ...mapped }, previousKey };
     }),
+    setBoard: vi.fn(async (id, request) => {
+      const scene = sceneList.find((entry) => entry.id === id);
+      return scene ? { ...scene, width: request.width, height: request.height ?? 0 } : null;
+    }),
+    setMapSize: vi.fn(async (id, size) => {
+      const scene = sceneList.find((entry) => entry.id === id);
+      return scene ? { ...scene, mapWidth: size.width, mapHeight: size.height } : null;
+    }),
+    findUnmeasuredMaps: vi.fn(async () => unmeasured),
+    findBoards: vi.fn(
+      async (ids) =>
+        new Map(
+          sceneList
+            .filter((scene) => ids.includes(scene.id))
+            .map((scene) => [scene.id, { width: scene.width, height: scene.height }]),
+        ),
+    ),
     findActiveSceneId: vi.fn(async () => active),
     setActiveScene: vi.fn(async (id) => {
       active = id;
@@ -151,6 +201,7 @@ function build(options: { active?: string | null } = {}) {
     moveScene: vi.fn(async () => undefined),
   };
   const images: IArenaImageStore = {
+    readMapSize: vi.fn(async () => ({ width: 1024, height: 512 })),
     sizeOf: vi.fn((body: Buffer) =>
       body.toString() === "huge" ? { width: 20_000, height: 100 } : { width: 2400, height: 1600 },
     ),
@@ -381,7 +432,7 @@ describe("arena controller: GM tools", () => {
 
   it("refuses oversized maps before storing them", async () => {
     const { controller, images } = build();
-    const huge = Buffer.alloc(25 * 1024 * 1024 + 1);
+    const huge = Buffer.alloc(ARENA_MAP_MAX_BYTES + 1);
     expect(await controller.setSceneMap(gm, LIVE, { file: huge })).toEqual({
       error: arenaErrors.mapTooLarge,
     });
@@ -607,6 +658,10 @@ describe("arena controller: scene library", () => {
       name: "Ruínas",
       folderId: F_ROOT,
       mapUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
       position: 0,
     });
     expect(await controller.getView(alice)).toMatchObject({
@@ -627,5 +682,70 @@ describe("arena controller: scene library", () => {
       error: arenaErrors.mapTooBig,
     });
     expect(images.storeMap).not.toHaveBeenCalled();
+  });
+});
+
+describe("arena controller: board size", () => {
+  it("keeps resizing the board for the GM and validates the size", async () => {
+    const { controller, scenes } = build();
+    expect(await controller.setSceneBoard(alice, LIVE, { width: 1400 })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.setSceneBoard(gm, "x", { width: 1400 })).toEqual({
+      error: arenaErrors.sceneNotFound,
+    });
+    expect(await controller.setSceneBoard(gm, LIVE, { width: 10 })).toEqual({
+      error: arenaErrors.invalidBoard,
+    });
+    expect(await controller.setSceneBoard(gm, LIVE, { width: 50_000 })).toEqual({
+      error: arenaErrors.invalidBoard,
+    });
+    expect(await controller.setSceneBoard(gm, MISSING, { width: 1400 })).toEqual({
+      error: arenaErrors.sceneNotFound,
+    });
+    expect(scenes.setBoard).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the board and tells who sees the scene", async () => {
+    const { controller, scenes } = build();
+    const result = await controller.setSceneBoard(gm, PREP, { width: 1400, height: 700 });
+    expect(result).toMatchObject({ payload: { scene: { id: PREP, width: 1400 }, audience: "gm" } });
+    expect(scenes.setBoard).toHaveBeenCalledWith(PREP, { width: 1400, height: 700 });
+  });
+
+  it("stores the natural size of a new map", async () => {
+    const { controller, scenes } = build();
+    await controller.setSceneMap(gm, LIVE, { file: png });
+    expect(scenes.setMapKey).toHaveBeenCalledWith(LIVE, `arena/maps/${LIVE}/map-new.png`, {
+      width: 2400,
+      height: 1600,
+    });
+  });
+
+  it("measures old maps once when loading the Arena", async () => {
+    const { controller, scenes, images } = build({
+      unmeasured: [{ id: PREP, mapKey: "arena/maps/old.png" }],
+    });
+    await controller.listLibrary(gm);
+    expect(images.readMapSize).toHaveBeenCalledWith("arena/maps/old.png");
+    expect(scenes.setMapSize).toHaveBeenCalledWith(PREP, { width: 1024, height: 512 });
+  });
+
+  it("does not download again a map it could not measure", async () => {
+    const { controller, images } = build({
+      unmeasured: [{ id: PREP, mapKey: "arena/maps/gone.png" }],
+    });
+    vi.mocked(images.readMapSize).mockResolvedValue(null);
+    await Promise.all([controller.listLibrary(gm), controller.getView(gm)]);
+    await controller.getView(alice);
+    expect(images.readMapSize).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps moved and new tokens inside the board", async () => {
+    const { controller, tokens } = build();
+    await controller.move(gm, { moves: [{ tokenId: T_WOLF, x: 5000, y: 120 }] });
+    expect(tokens.moveMany).toHaveBeenCalledWith([{ tokenId: T_WOLF, x: 2000, y: 120 }], undefined);
+    await controller.createToken(gm, LIVE, { name: "Lobo", x: 9000, y: 9000 });
+    expect(tokens.create).toHaveBeenCalledWith(LIVE, expect.objectContaining({ x: 2000, y: 1000 }));
   });
 });

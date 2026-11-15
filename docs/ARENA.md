@@ -27,7 +27,7 @@ A Arena é a parte do app que faz o papel do tabuleiro do Roll20: um mapa por ce
 - `ArenaState` (`arena_state`): singleton (`singleton Boolean @unique`, mesmo padrão de `marked_shares`) com `activeSceneId?` (SetNull).
 - Dimensões do mapa não são gravadas: o cliente lê do arquivo. Movimento grava por SQL direto (como a ordem da biblioteca).
 - Imagem do token de ficha: avatar, com a arte como reserva (`portraitOf`). NPC tem imagem própria.
-- Chaves no storage: `arena/maps/<sceneId>/map-<uuid>.<ext>` e `arena/tokens/<tokenId>/token-<uuid>.<ext>`, adicionadas à whitelist de `/media`. Mapas aceitam até 25 MB (PNG, JPEG, WEBP, GIF pela assinatura).
+- Chaves no storage: `arena/maps/<sceneId>/map-<uuid>.<ext>` e `arena/tokens/<tokenId>/token-<uuid>.<ext>`, adicionadas à whitelist de `/media`. Mapas aceitam até 60 MB (PNG, JPEG, WEBP, GIF pela assinatura) e são regravados em WebP qualidade 90.
 
 ## Contratos (shared)
 
@@ -127,6 +127,7 @@ Dark fantasy, sem os efeitos de luz vetados em `DESIGN.md` (raios, faíscas, shi
 2. Backend: schema e migration, shared, models, controller com testes, rotas, handler de socket, chaves de mídia. Concluída (o e2e cria as próprias cenas pela API na fase 3, sem seed, para não sujar a lista de cenas do Mestre).
 3. Arena base: rota, slice, renderer com câmera e tokens, movimento em tempo real com permissão, skeleton, botão na `/mesa`. Concluída (eventos ouvidos no hook da página, sem provider no layout; bandeja de tokens e teclado já entram aqui para o mapa ser usável sem mouse).
 4. Mecânicas do Roll20, em entregas: 4A controles (seleção em grupo, câmera, aviso no celular) e 4B redimensionar e barra de seleção, concluídas; 4C painéis (Rolagens à esquerda com rolagem em suspense, barra direita com Fichas e Mapas com pastas, larguras ajustáveis, prévia do Mestre), concluída; 4D criar tokens pela barra (arrastar a ficha para o mapa, "Colocar no mapa" no menu da ficha e "Token avulso" para NPC), concluída; 4E fichas em janelas flutuantes (várias abertas, arrastar, redimensionar e encaixar como aba nos painéis laterais), concluída.
+   4F. Tamanho do tabuleiro como no Roll20 (unidades de 70 px, sempre na proporção do mapa, tokens acompanham), mapas otimizados em WebP e importador das páginas do Roll20 com as pastas. Concluída.
 5. Dock: `SheetView` em painel, Rolagens, Tokens e card do token.
 6. Polimento: VFX, SFX, perfil de performance, revisão de design e acessibilidade.
 

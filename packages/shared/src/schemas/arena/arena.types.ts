@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type {
   arenaFolderSchema,
   arenaLibrarySchema,
+  arenaBoardInputSchema,
   arenaSceneSchema,
   createArenaFolderInputSchema,
   moveArenaLibraryItemInputSchema,
@@ -78,3 +79,5 @@ export interface IArenaSceneEvent {
   /** Only the GM scene library changed (folders, order); the Arena view itself is the same. */
   libraryOnly?: boolean;
 }
+
+export type IArenaBoardInput = z.infer<typeof arenaBoardInputSchema>;

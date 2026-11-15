@@ -21,7 +21,7 @@ function toArenaUpload(
 }
 
 /**
- * Reads a scene map upload (up to 25 MB) into memory.
+ * Reads a scene map upload (up to 60 MB) into memory.
  */
 export async function readMapUpload(req: Request, res: Response) {
   return toArenaUpload(await mapUpload(req, res), arenaErrors.mapTooLarge);

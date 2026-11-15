@@ -38,6 +38,9 @@ export interface IArenaRenderToken {
 export interface IArenaRenderScene {
   id: string;
   mapUrl: string | null;
+  /** Board size in world pixels; the map image is stretched to it. */
+  width: number;
+  height: number;
 }
 
 export interface IArenaRendererCallbacks {

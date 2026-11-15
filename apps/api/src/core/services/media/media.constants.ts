@@ -21,3 +21,12 @@ export const IMAGE_TYPES = {
   webp: { extension: "webp", contentType: "image/webp" },
   gif: { extension: "gif", contentType: "image/gif" },
 } as const;
+
+/** WebP quality of an optimized scene map (visually the same as the PNG, about 7x smaller). */
+export const MAP_WEBP_QUALITY = 90;
+
+/** sharp encoder effort for maps (0 to 6): a good size without making the upload slow. */
+export const MAP_WEBP_EFFORT = 4;
+
+/** Largest side the WebP format can store; bigger maps keep their original format. */
+export const MAP_WEBP_MAX_SIDE = 16_383;

@@ -3,7 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 
 import { parseExpandedFolders, sceneFolderMenu, sceneMenu } from "./SceneLibrary.utils";
 
-const scene: IArenaScene = { id: "s1", name: "Ruínas", folderId: null, mapUrl: null, position: 0 };
+const scene: IArenaScene = {
+  id: "s1",
+  name: "Ruínas",
+  folderId: null,
+  mapUrl: null,
+  width: 1750,
+  height: 1750,
+  mapWidth: null,
+  mapHeight: null,
+  position: 0,
+};
 const folder: IArenaFolder = { id: "f1", name: "Campanha", parentId: null, position: 0 };
 
 describe("SceneLibrary utils", () => {

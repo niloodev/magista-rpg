@@ -5,13 +5,25 @@ export const ARENA_NAME_MAX_LENGTH = 60;
 /** Message of the API when a scene does not exist (the web uses it to drop a preview of a deleted scene). */
 export const ARENA_SCENE_NOT_FOUND_MESSAGE = "Cena não encontrada.";
 
-export const ARENA_MAP_MAX_BYTES = 25 * 1024 * 1024;
+export const ARENA_MAP_MAX_BYTES = 60 * 1024 * 1024;
 
 export const ARENA_TOKEN_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
 export const ARENA_IMAGE_FIELD = "file";
 
 export const ARENA_COORD_MAX = 20_000;
+
+/** Pixels of one board unit (the Roll20 grid square), the unit the GM uses to size a board. */
+export const ARENA_UNIT_PX = 70;
+
+/** Smallest board side in pixels (5 units). */
+export const ARENA_BOARD_MIN_SIDE = 350;
+
+/** Largest board side in pixels (every coordinate fits in it). */
+export const ARENA_BOARD_MAX_SIDE = ARENA_COORD_MAX;
+
+/** Side of a board without a map or a chosen size (25 units, as a new Roll20 page). */
+export const ARENA_BOARD_DEFAULT_SIDE = 25 * ARENA_UNIT_PX;
 
 export const ARENA_TOKEN_SIZE_MIN = 40;
 
@@ -44,6 +56,12 @@ export const arenaSceneSchema = z.object({
   name: z.string(),
   folderId: z.string().nullable(),
   mapUrl: z.string().nullable(),
+  /** Board size in world pixels (the map image is stretched to it, always keeping its aspect ratio). */
+  width: z.number(),
+  height: z.number(),
+  /** Natural pixel size of the map image, or null without a map. */
+  mapWidth: z.number().int().nullable(),
+  mapHeight: z.number().int().nullable(),
   position: z.number().int(),
 });
 
@@ -99,6 +117,14 @@ export const moveArenaLibraryItemInputSchema = z.object({
 });
 
 export const renameArenaSceneInputSchema = z.object({ name: arenaNameSchema });
+
+const arenaBoardSideSchema = z.number().min(ARENA_BOARD_MIN_SIDE).max(ARENA_BOARD_MAX_SIDE);
+
+/** New board size in pixels; with a map only the width counts (the height follows the map's aspect ratio). */
+export const arenaBoardInputSchema = z.object({
+  width: arenaBoardSideSchema,
+  height: arenaBoardSideSchema.optional(),
+});
 
 export const setActiveSceneInputSchema = z.object({ sceneId: arenaIdSchema.nullable() });
 

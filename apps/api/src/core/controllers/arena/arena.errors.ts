@@ -10,6 +10,7 @@ export const arenaErrors = {
   invalidToken: "Dados do token inválidos.",
   invalidMove: "Posição inválida.",
   invalidScene: "Cena inválida.",
+  invalidBoard: "Informe um tamanho de tabuleiro entre 5 e 285 unidades de lado.",
   npcOnly: "Só tokens sem ficha têm imagem própria.",
   folderNotFound: "Pasta não encontrada.",
   invalidFolderMove: "Uma pasta não pode ir para dentro dela mesma.",
@@ -19,7 +20,7 @@ export const arenaErrors = {
   characterName: "O nome de um token de ficha vem da própria ficha.",
   imageMissing: "Escolha uma imagem para enviar.",
   imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
-  mapTooLarge: "O mapa passa do limite de 25 MB.",
+  mapTooLarge: "O mapa passa do limite de 60 MB.",
   imageTooLarge: "A imagem passa do limite de 8 MB.",
   unexpected: "Não foi possível acessar a Arena agora. Tente novamente.",
 } as const;

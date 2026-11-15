@@ -475,7 +475,15 @@ export function useArenaPage() {
     onError: setActionError,
   });
   const stageScene = useMemo(
-    () => (scene ? { id: scene.id, mapUrl: toMediaUrl(scene.mapUrl) } : null),
+    () =>
+      scene
+        ? {
+            id: scene.id,
+            mapUrl: toMediaUrl(scene.mapUrl),
+            width: scene.width,
+            height: scene.height,
+          }
+        : null,
     [scene],
   );
 

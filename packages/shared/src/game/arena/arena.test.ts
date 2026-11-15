@@ -6,7 +6,7 @@ import {
   moveArenaTokensInputSchema,
   updateArenaTokenInputSchema,
 } from "../../schemas/arena";
-import { canControlToken, clampToMap } from "./arena";
+import { canControlToken, clampToMap, fitBoard, resolveBoard, scaleBoardPoint } from "./arena";
 
 const ID = "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90";
 
@@ -25,6 +25,52 @@ describe("arena rules", () => {
   it("clamps points to the map", () => {
     expect(clampToMap({ x: -5, y: 900 }, { width: 800, height: 600 })).toEqual({ x: 0, y: 600 });
     expect(clampToMap({ x: 10, y: 20 }, { width: 800, height: 600 })).toEqual({ x: 10, y: 20 });
+  });
+});
+
+describe("arena board", () => {
+  const map = { width: 4096, height: 3072 };
+
+  it("keeps the map aspect ratio, ignoring a requested height", () => {
+    expect(fitBoard({ width: 2048, height: 9999 }, map)).toEqual({ width: 2048, height: 1536 });
+  });
+
+  it("grows or shrinks both sides together to fit the limits", () => {
+    expect(fitBoard({ width: 100 }, map)).toEqual({ width: 466.67, height: 350 });
+    expect(fitBoard({ width: 30_000 }, map)).toEqual({ width: 20_000, height: 15_000 });
+    expect(fitBoard({ width: 20_000 }, { width: 100, height: 1 })).toEqual({
+      width: 20_000,
+      height: 200,
+    });
+  });
+
+  it("lets a board without a map take any size within the limits", () => {
+    expect(fitBoard({ width: 700, height: 1400 }, null)).toEqual({ width: 700, height: 1400 });
+    expect(fitBoard({ width: 10 }, null)).toEqual({ width: 350, height: 350 });
+  });
+
+  it("resolves the chosen board, then the map size, then the default", () => {
+    const none = { boardWidth: null, boardHeight: null, mapWidth: null, mapHeight: null };
+    expect(resolveBoard(none)).toEqual({ width: 1750, height: 1750 });
+    expect(resolveBoard({ ...none, mapWidth: 1024, mapHeight: 512 })).toEqual({
+      width: 1024,
+      height: 512,
+    });
+    expect(
+      resolveBoard({ boardWidth: 2000, boardHeight: 1000, mapWidth: 1024, mapHeight: 512 }),
+    ).toEqual({ width: 2000, height: 1000 });
+  });
+
+  it("keeps a point on the same spot of the map when the board changes", () => {
+    const from = { width: 1000, height: 500 };
+    expect(scaleBoardPoint({ x: 250, y: 100 }, from, { width: 2000, height: 1000 })).toEqual({
+      x: 500,
+      y: 200,
+    });
+    expect(scaleBoardPoint({ x: 1000, y: 500 }, from, { width: 400, height: 400 })).toEqual({
+      x: 400,
+      y: 400,
+    });
   });
 });
 

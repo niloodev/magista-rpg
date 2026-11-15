@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "arena_scenes" ADD COLUMN "mapWidth" INTEGER,
+ADD COLUMN "mapHeight" INTEGER,
+ADD COLUMN "boardWidth" DOUBLE PRECISION,
+ADD COLUMN "boardHeight" DOUBLE PRECISION;

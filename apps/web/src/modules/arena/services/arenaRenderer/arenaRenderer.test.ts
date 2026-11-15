@@ -6,6 +6,7 @@ import {
   clampZoom,
   fitCamera,
   fitTextureSize,
+  labelScale,
   parseStoredCamera,
   scaleTokenSize,
   screenToWorld,
@@ -120,5 +121,14 @@ describe("visible area", () => {
     expect(isInVisibleArea({ x: 200, y: 400 }, viewport, insets)).toBe(false);
     expect(isInVisibleArea({ x: 1200, y: 400 }, viewport, insets)).toBe(false);
     expect(isInVisibleArea({ x: 700, y: 30 }, viewport, insets)).toBe(false);
+  });
+});
+
+describe("labelScale", () => {
+  it("keeps token names between 12 and 18 px on screen", () => {
+    expect(labelScale(20, 0.3)).toBeCloseTo(2);
+    expect(labelScale(20, 0.75)).toBe(1);
+    expect(labelScale(20, 3)).toBeCloseTo(0.3);
+    expect(labelScale(20, 0)).toBe(1);
   });
 });

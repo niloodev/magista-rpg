@@ -87,6 +87,7 @@ export interface IArenaController {
   renameScene: (viewer: IViewer, id: string, input: unknown) => Result<IArenaSceneChange>;
   deleteScene: (viewer: IViewer, id: string) => Result<IArenaSceneRemoval>;
   setSceneMap: (viewer: IViewer, id: string, upload: IArenaUpload) => Result<IArenaSceneChange>;
+  setSceneBoard: (viewer: IViewer, id: string, input: unknown) => Result<IArenaSceneChange>;
   setActiveScene: (viewer: IViewer, input: unknown) => Result<IArenaActiveChange>;
   createToken: (viewer: IViewer, sceneId: string, input: unknown) => Result<IArenaTokenChange>;
   updateToken: (viewer: IViewer, id: string, input: unknown) => Result<IArenaTokenChange>;

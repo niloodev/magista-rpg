@@ -41,6 +41,9 @@ export const ARENA_LABEL_GAP = 6;
 
 export const ARENA_LABEL_MIN_SCREEN_PX = 12;
 
+/** Largest height of a token name on screen, so zooming into a small map does not blow the names up. */
+export const ARENA_LABEL_MAX_SCREEN_PX = 18;
+
 export const ARENA_HANDLE_SIZE = 10;
 
 export const ARENA_FRAME_PADDING = 6;

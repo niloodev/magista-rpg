@@ -10,9 +10,13 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Readable } from "node:stream";
+import sharp from "sharp";
+
+import { ARENA_MAP_MAX_PIXELS } from "@magista/shared";
 
 import { getEnv } from "@/core/services/env";
 
+import { MAP_WEBP_EFFORT, MAP_WEBP_MAX_SIDE, MAP_WEBP_QUALITY } from "./media.constants";
 import type {
   IArenaImageStore,
   ICharacterImageStore,
@@ -139,6 +143,26 @@ export function createCharacterImageStore(storage: IMediaStorage): ICharacterIma
 export const characterImages = createCharacterImageStore(mediaStorage);
 
 /**
+ * Re-encodes a map as high quality WebP (Roll20 exports are uncompressed PNGs of up to 50 MB, which every player
+ * would download). Animated GIFs, sides beyond the WebP limit, unreadable images and results that would not be
+ * smaller keep the original bytes.
+ */
+export async function optimizeMap(body: Buffer): Promise<Buffer> {
+  const type = detectImageType(body);
+  const size = readImageSize(body);
+  if (!type || type.extension === "gif" || !size) return body;
+  if (size.width > MAP_WEBP_MAX_SIDE || size.height > MAP_WEBP_MAX_SIDE) return body;
+  try {
+    const optimized = await sharp(body, { limitInputPixels: ARENA_MAP_MAX_PIXELS })
+      .webp({ quality: MAP_WEBP_QUALITY, effort: MAP_WEBP_EFFORT })
+      .toBuffer();
+    return optimized.length < body.length ? optimized : body;
+  } catch {
+    return body;
+  }
+}
+
+/**
  * Arena images (scene maps and NPC token images) on top of the object storage, validated by file signature.
  */
 export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore {
@@ -149,9 +173,18 @@ export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore 
     await storage.putObject(key, body, type.contentType);
     return key;
   };
+  const readMapSize = async (key: string) => {
+    const stored = await storage.getObject(key);
+    if (!stored) return null;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stored.body) chunks.push(Buffer.from(chunk as Uint8Array));
+    return readImageSize(Buffer.concat(chunks));
+  };
   return {
     sizeOf: readImageSize,
-    storeMap: (sceneId, body) => store(body, (type) => arenaMapKeyFor(sceneId, type)),
+    readMapSize,
+    storeMap: async (sceneId, body) =>
+      store(await optimizeMap(body), (type) => arenaMapKeyFor(sceneId, type)),
     storeToken: (tokenId, body) => store(body, (type) => arenaTokenKeyFor(tokenId, type)),
     remove: (key) => storage.deleteObject(key),
     removeScene: (sceneId) => storage.deletePrefix(arenaMapPrefix(sceneId)),

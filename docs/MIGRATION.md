@@ -7,6 +7,15 @@ Os personagens serão importados como JSON exportado do Roll20 (nenhum export ex
 - Nenhum dado do Roll20 pode ser descartado; o que não tiver campo ainda fica só em `legacy`.
 - Campos derivados no Roll20 (`*Mod`, `*CD`, `ca`, `danoBase`, `desloc`, perícias...) não são importados: são recalculados pelas regras de `docs/DOMAIN.md`.
 
+## Páginas (mapas da Arena)
+
+`npm run import:roll20-pages -- "<pasta pages do export>" [--folder "Roll20"] [--only 2,12,57] [--folders nomes.json] [--folders-template] [--force]` (entry `apps/api/src/cli/importRoll20Pages`, chama o controller da Arena como Mestre; utilitários puros com testes).
+
+- Cada subpasta (`NNN - Nome`) tem `page.json`; o mapa é a maior imagem da camada `map`, lida de `graphics/<id>.*`. O tabuleiro fica com a largura em que a imagem estava na página (a altura segue a proporção); página sem mapa vira cena vazia com o tamanho da página (unidades × 70).
+- Pastas: o `path` de cada página traz os ids das pastas do Roll20 (o export não traz os nomes). A árvore é recriada igual dentro da pasta `--folder` (padrão "Roll20"); o nome sai das palavras que todas as páginas da pasta compartilham, ou "Pasta N (primeira página)". `--folders-template` imprime um JSON `{ "<id>": "nome" }` (e, no stderr, as páginas de cada pasta) para corrigir os nomes e passar em `--folders`.
+- Nomes repetidos na mesma pasta ganham " (2)". Cena já existente na pasta é pulada (ou tem mapa e tamanho regravados com `--force`). Mapa recusado (mais de 60 MB ou 16384 px) não deixa cena vazia.
+- Tokens não são importados.
+
 ## Importador
 
 `npm run import:roll20 -- "<pasta>" [--force]` (entry `apps/api/src/cli/importRoll20`, regra em `core/controllers/importer` e conversão pura em `core/services/roll20`, com testes).

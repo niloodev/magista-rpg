@@ -4,8 +4,10 @@ import {
   ARENA_MAP_MAX_SIDE,
   ARENA_TOKEN_IMAGE_MAX_BYTES,
   ARENA_TOKEN_IMAGE_MAX_SIDE,
+  arenaBoardInputSchema,
   arenaIdSchema,
   canControlToken,
+  clampToMap,
   createArenaFolderInputSchema,
   createArenaSceneInputSchema,
   isSameOrDescendant,
@@ -55,6 +57,33 @@ export function createArenaController({
       console.error("arena media cleanup failed:", error);
     });
 
+  const measuredMaps = new Set<string>();
+  let measuring: Promise<void> | null = null;
+
+  /**
+   * Measures, once per server process, the maps of scenes stored before their natural size was recorded, so
+   * their board resolves to the size they always had. Concurrent requests share one run, and a map that cannot
+   * be measured is not tried again until the server restarts.
+   */
+  const measureOldMaps = () => {
+    measuring ??= (async () => {
+      const pending = (await scenes.findUnmeasuredMaps()).filter(
+        ({ mapKey }) => !measuredMaps.has(mapKey),
+      );
+      for (const { id, mapKey } of pending) {
+        measuredMaps.add(mapKey);
+        const size = await images.readMapSize(mapKey).catch((error: unknown) => {
+          console.error("arena map measure failed:", error);
+          return null;
+        });
+        if (size) await scenes.setMapSize(id, size);
+      }
+    })().finally(() => {
+      measuring = null;
+    });
+    return measuring;
+  };
+
   const authorizeMany = async (viewer: IViewer, ids: string[]) => {
     const found = await tokens.findManyByIds(ids);
     const activeSceneId = await scenes.findActiveSceneId();
@@ -71,6 +100,7 @@ export function createArenaController({
     const requestedId = wantsScene && isId(requestedSceneId) ? requestedSceneId : null;
     if (wantsScene && !requestedId) return { error: arenaErrors.sceneNotFound };
     try {
+      await measureOldMaps();
       const activeSceneId = await scenes.findActiveSceneId();
       const targetId = requestedId ?? activeSceneId;
       const scene = targetId ? await scenes.findById(targetId) : null;
@@ -123,6 +153,7 @@ export function createArenaController({
   const listLibrary: IArenaController["listLibrary"] = async (viewer) => {
     if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     try {
+      await measureOldMaps();
       const [sceneList, folderList] = await Promise.all([scenes.list(), folders.list()]);
       return { message: "Cenas carregadas", payload: { scenes: sceneList, folders: folderList } };
     } catch (error) {
@@ -242,9 +273,10 @@ export function createArenaController({
       return { error: arenaErrors.mapTooBig };
     try {
       if (!(await scenes.findById(id))) return { error: arenaErrors.sceneNotFound };
+      await measureOldMaps();
       const key = await images.storeMap(id, upload.file);
       if (!key) return { error: arenaErrors.imageInvalid };
-      const change = await scenes.setMapKey(id, key).catch(async (error: unknown) => {
+      const change = await scenes.setMapKey(id, key, size).catch(async (error: unknown) => {
         await cleanup(images.remove(key));
         throw error;
       });
@@ -258,6 +290,22 @@ export function createArenaController({
       return { message: "Mapa salvo", payload: { scene: change.scene, audience } };
     } catch (error) {
       return failed("setSceneMap", error);
+    }
+  };
+
+  const setSceneBoard: IArenaController["setSceneBoard"] = async (viewer, id, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    if (!isId(id)) return { error: arenaErrors.sceneNotFound };
+    const parsed = arenaBoardInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidBoard };
+    try {
+      await measureOldMaps();
+      const scene = await scenes.setBoard(id, parsed.data);
+      if (!scene) return { error: arenaErrors.sceneNotFound };
+      const audience = sceneAudience(id, await scenes.findActiveSceneId());
+      return { message: "Tamanho do tabuleiro salvo", payload: { scene, audience } };
+    } catch (error) {
+      return failed("setSceneBoard", error);
     }
   };
 
@@ -282,13 +330,15 @@ export function createArenaController({
     if (!parsed.success) return { error: arenaErrors.invalidToken };
     const { characterId, name, ...placement } = parsed.data;
     try {
-      if (!(await scenes.findById(sceneId))) return { error: arenaErrors.sceneNotFound };
+      const scene = await scenes.findById(sceneId);
+      if (!scene) return { error: arenaErrors.sceneNotFound };
       if (characterId && !(await characters.exists(characterId)))
         return { error: arenaErrors.characterNotFound };
       const token = await tokens.create(sceneId, {
         characterId,
         name: characterId ? null : (name ?? null),
         ...placement,
+        ...clampToMap(placement, scene),
       });
       const audience = tokenAudience(token, await scenes.findActiveSceneId());
       return { message: "Token criado", payload: { token, audience, previousAudience: audience } };
@@ -447,10 +497,14 @@ export function createArenaController({
       const allowedIds = new Set(auth.allowed.map((token) => token.id));
       const guard =
         viewer.role === "GM" || !auth.activeSceneId ? undefined : { sceneId: auth.activeSceneId };
-      const moved = await tokens.moveMany(
-        moves.filter((entry) => allowedIds.has(entry.tokenId)),
-        guard,
-      );
+      const sceneOf = new Map(auth.allowed.map((token) => [token.id, token.sceneId]));
+      const boards = await scenes.findBoards([...new Set(sceneOf.values())]);
+      const placed = moves.flatMap((entry) => {
+        const board = boards.get(sceneOf.get(entry.tokenId) ?? "");
+        if (!allowedIds.has(entry.tokenId) || !board) return [];
+        return [{ ...entry, ...clampToMap(entry, board) }];
+      });
+      const moved = await tokens.moveMany(placed, guard);
       if (moved.length === 0) return { error: arenaErrors.tokenNotFound };
       const activeSceneId = await scenes.findActiveSceneId();
       const movedIds = new Set(moved.map((token) => token.id));
@@ -503,6 +557,7 @@ export function createArenaController({
     renameScene,
     deleteScene,
     setSceneMap,
+    setSceneBoard,
     setActiveScene,
     createToken,
     updateToken,

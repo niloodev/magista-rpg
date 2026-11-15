@@ -44,6 +44,8 @@ import type {
 } from "./arenaRenderer.types";
 import {
   approach,
+  clampZoom,
+  labelScale,
   centerCamera,
   fitCamera,
   fitTextureSize,
@@ -161,6 +163,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private lastFrame = 0;
   private saveTimer = 0;
   private sceneVersion = 0;
+  private loadingMap = false;
   private destroyed = false;
 
   private constructor(
@@ -237,9 +240,15 @@ export class ArenaRenderer implements IArenaRenderer {
   setScene = async (scene: IArenaRenderScene | null): Promise<void> => {
     const sceneChanged = (scene?.id ?? null) !== this.sceneId;
     const mapUrl = scene?.mapUrl ?? null;
-    if (!sceneChanged && mapUrl === this.mapUrl) return;
+    if (!sceneChanged && mapUrl === this.mapUrl) {
+      if (!scene) return;
+      if (this.loadingMap) this.scene = scene;
+      else this.resizeBoard(scene);
+      return;
+    }
     const version = ++this.sceneVersion;
     this.scene = scene;
+    this.loadingMap = true;
     this.sceneId = scene?.id ?? null;
     this.mapUrl = mapUrl;
     let loaded: ILoadedTexture<Texture> | null = null;
@@ -251,24 +260,61 @@ export class ArenaRenderer implements IArenaRenderer {
       }
       if (!loaded) this.mapUrl = undefined;
     }
+    this.loadingMap = false;
+    const current = this.scene;
     this.options.callbacks.onMapError(Boolean(mapUrl) && !loaded);
     this.mapLayer.removeChildren().forEach((child) => child.destroy());
     this.mapTexture?.destroy(true);
     this.mapTexture = loaded?.texture ?? null;
-    if (loaded) {
-      const sprite = new Sprite(loaded.texture);
-      sprite.width = loaded.width;
-      sprite.height = loaded.height;
-      this.mapLayer.addChild(sprite);
-      this.bounds = { width: loaded.width, height: loaded.height };
-    } else {
-      this.bounds = ARENA_EMPTY_BOUNDS;
-      this.mapLayer.addChild(this.drawEmptyGround());
-    }
+    this.bounds = current ? { width: current.width, height: current.height } : ARENA_EMPTY_BOUNDS;
+    this.mapLayer.addChild(loaded ? new Sprite(loaded.texture) : new Graphics());
+    this.drawBoard();
     if (sceneChanged) this.camera = this.storedCamera() ?? this.fittedCamera();
     this.applyCamera();
     this.options.callbacks.onSceneReady(this.bounds);
   };
+
+  /**
+   * Applies a new board size to the scene on screen: the map stretches to it and the camera zoom compensates,
+   * so the map stays where it was on screen and only the tokens change size against it. When the zoom limits cut
+   * that compensation, the same spot of the map stays at the center of the view.
+   */
+  private resizeBoard(scene: IArenaRenderScene): void {
+    const previous = this.bounds;
+    if (previous.width === scene.width && previous.height === scene.height) return;
+    this.scene = scene;
+    this.bounds = { width: scene.width, height: scene.height };
+    this.drawBoard();
+    if (previous.width > 0 && previous.height > 0) {
+      const center = visibleCenterPoint(this.viewport(), this.insets());
+      const before = screenToWorld(this.camera, center);
+      const scale = clampZoom((this.camera.scale * previous.width) / scene.width);
+      const world = {
+        x: (before.x / previous.width) * scene.width,
+        y: (before.y / previous.height) * scene.height,
+      };
+      this.camera = { scale, x: center.x - world.x * scale, y: center.y - world.y * scale };
+    }
+    this.applyCamera();
+    this.options.callbacks.onSceneReady(this.bounds);
+  }
+
+  /** Stretches the map image (or draws the empty ground) over the whole board. */
+  private drawBoard(): void {
+    const ground = this.mapLayer.children[0];
+    const { width, height } = this.bounds;
+    if (ground instanceof Sprite) {
+      ground.width = width;
+      ground.height = height;
+    } else if (ground instanceof Graphics) {
+      ground
+        .clear()
+        .rect(0, 0, width, height)
+        .fill({ color: ARENA_COLORS.void800 })
+        .stroke({ width: 4, color: ARENA_COLORS.ruby500, alpha: 0.25 });
+    }
+    this.invalidate();
+  }
 
   setTokens = (list: IArenaRenderToken[]): void => {
     const seen = new Set<string>();
@@ -474,14 +520,6 @@ export class ArenaRenderer implements IArenaRenderer {
     }
   }
 
-  private drawEmptyGround(): Graphics {
-    const { width, height } = ARENA_EMPTY_BOUNDS;
-    return new Graphics()
-      .rect(0, 0, width, height)
-      .fill({ color: ARENA_COLORS.void800 })
-      .stroke({ width: 4, color: ARENA_COLORS.ruby500, alpha: 0.25 });
-  }
-
   private createToken(data: IArenaRenderToken): ITokenView {
     const container = new Container();
     const shadow = new Graphics();
@@ -606,7 +644,7 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private scaleLabel(view: ITokenView): void {
     const fontSize = Number(view.label.style.fontSize) || ARENA_LABEL_MIN_SCREEN_PX;
-    view.label.scale.set(Math.max(1, ARENA_LABEL_MIN_SCREEN_PX / (fontSize * this.camera.scale)));
+    view.label.scale.set(labelScale(fontSize, this.camera.scale));
   }
 
   private worldPoint(event: FederatedPointerEvent): IArenaPoint {

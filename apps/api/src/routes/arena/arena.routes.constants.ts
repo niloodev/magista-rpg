@@ -10,6 +10,7 @@ export const ARENA_ERROR_STATUS: Record<ArenaError, number> = {
   [arenaErrors.invalidToken]: 400,
   [arenaErrors.invalidMove]: 400,
   [arenaErrors.invalidScene]: 400,
+  [arenaErrors.invalidBoard]: 400,
   [arenaErrors.npcOnly]: 409,
   [arenaErrors.folderNotFound]: 404,
   [arenaErrors.invalidFolderMove]: 409,

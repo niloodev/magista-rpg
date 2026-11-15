@@ -11,6 +11,8 @@ import {
   ARENA_FIT_PADDING_COMPACT,
   ARENA_ZOOM_MAX,
   ARENA_ZOOM_MIN,
+  ARENA_LABEL_MAX_SCREEN_PX,
+  ARENA_LABEL_MIN_SCREEN_PX,
 } from "./arenaRenderer.constants";
 import type { IArenaCamera, IArenaInsets, IArenaViewport } from "./arenaRenderer.types";
 
@@ -182,4 +184,15 @@ export function isInVisibleArea(
     point.y >= insets.top &&
     point.y <= viewport.height
   );
+}
+
+/**
+ * Scale of a token name so it shows between 12 and 18 px tall on screen at any zoom (it follows the zoom only
+ * inside that range).
+ */
+export function labelScale(fontSize: number, cameraScale: number): number {
+  const onScreen = fontSize * cameraScale;
+  if (onScreen <= 0) return 1;
+  const target = Math.min(Math.max(onScreen, ARENA_LABEL_MIN_SCREEN_PX), ARENA_LABEL_MAX_SCREEN_PX);
+  return target / onScreen;
 }
