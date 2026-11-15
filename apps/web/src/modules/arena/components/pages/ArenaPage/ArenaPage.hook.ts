@@ -6,7 +6,6 @@ import {
   clampToMap,
   isErrorResult,
   type IArenaBounds,
-  type IArenaDragEvent,
   ARENA_TOKEN_SIZE_MAX,
   ARENA_TOKEN_SIZE_MIN,
   type IArenaPoint,
@@ -19,7 +18,6 @@ import { useShallow } from "zustand/react/shallow";
 
 import { toMediaUrl } from "@/core/services/http";
 import {
-  ARENA_DRAG_EMIT_MS,
   ARENA_EMPTY_BOUNDS,
   ARENA_EMPTY_TEXTS,
   ARENA_HINT_DELAY_MS,
@@ -30,7 +28,6 @@ import {
   ARENA_NUDGE_COMMIT_MS,
   ARENA_NUDGE_STEP,
   ARENA_NUDGE_STEP_LARGE,
-  ARENA_PREVIEW_STALE_MS,
   ARENA_PREVIEW_TEXTS,
   ARENA_SELECTION_TEXTS,
   ARENA_SIZE_COMMIT_MS,
@@ -54,11 +51,11 @@ import {
   toRenderTokens,
   dockSideOf,
   fitPanels,
+  dockedTabsOf,
   sheetNameOf,
 } from "@/modules/arena/arena.utils";
 import {
   deleteArenaTokens,
-  emitArenaDrag,
   fetchArena,
   moveArenaTokens,
   setArenaLiveScene,
@@ -69,7 +66,7 @@ import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
-import { useIsDesktopViewport, useViewportWidth } from "@/shared/hooks";
+import { useIsDesktopViewport, useStableCallback, useViewportWidth } from "@/shared/hooks";
 
 /**
  * Drives the Arena: loads what this account may see, follows the live events (tokens created, changed, removed,
@@ -81,10 +78,17 @@ export function useArenaPage() {
   const store = useAppStoreApi();
   const isGm = useApp((state) => state.session.data?.account.role === "GM");
   const connection = useApp((state) => state.table.connection);
-  const latencyMs = useApp((state) => state.table.latencyMs);
   const memberCount = useApp((state) => state.table.members.length);
-  const { status, view, error, selectedTokenIds, previews, viewSceneId, docked, dockTab } = useApp(
-    (state) => state.arena,
+  const { status, view, error, selectedTokenIds, viewSceneId, docked, dockTab } = useApp(
+    useShallow((state) => ({
+      status: state.arena.status,
+      view: state.arena.view,
+      error: state.arena.error,
+      selectedTokenIds: state.arena.selectedTokenIds,
+      viewSceneId: state.arena.viewSceneId,
+      docked: state.arena.docked,
+      dockTab: state.arena.dockTab,
+    })),
   );
   const namesById = useApp(useShallow((state) => sheetNames(state.sheets)));
   const libraryCharacters = useApp((state) => state.library.characters);
@@ -96,10 +100,8 @@ export function useArenaPage() {
   const viewportWidth = useViewportWidth();
   const controlsRef = useRef<IArenaStageControls | null>(null);
   const boundsRef = useRef<IArenaBounds>(ARENA_EMPTY_BOUNDS);
-  const lastDragEmit = useRef(0);
   const nudgeTimer = useRef(0);
   const pendingNudge = useRef(new Map<string, IArenaPoint>());
-  const previewTimers = useRef(new Map<string, number>());
   const lostConnection = useRef(false);
   const loadSeq = useRef(0);
   const mounted = useRef(false);
@@ -143,7 +145,6 @@ export function useArenaPage() {
     if (!desktop) return;
     mounted.current = true;
     void load();
-    const timers = previewTimers.current;
     const nudges = pendingNudge.current;
     return () => {
       mounted.current = false;
@@ -158,8 +159,6 @@ export function useArenaPage() {
       }));
       nudges.clear();
       if (pending.length > 0) void moveArenaTokens(socket, { moves: pending });
-      for (const timer of timers.values()) window.clearTimeout(timer);
-      timers.clear();
       store.getState().resetArena();
     };
   }, [load, store, socket, desktop]);
@@ -181,36 +180,28 @@ export function useArenaPage() {
 
   useEffect(() => {
     if (!socket) return;
-    const { applyArenaToken, removeArenaToken, applyArenaDrag, clearArenaDrag } = store.getState();
-    const timers = previewTimers.current;
+    const { applyArenaToken, removeArenaToken, applyArenaTokens, removeArenaTokens } =
+      store.getState();
     const onScene = (event: IArenaSceneEvent) => {
       if (!event.libraryOnly) void load();
-    };
-    const onDragging = (event: IArenaDragEvent) => {
-      applyArenaDrag(event);
-      for (const { tokenId } of event.moves) {
-        window.clearTimeout(timers.get(tokenId));
-        timers.set(
-          tokenId,
-          window.setTimeout(() => clearArenaDrag(tokenId), ARENA_PREVIEW_STALE_MS),
-        );
-      }
     };
     socket.on("arena:scene", onScene);
     socket.on("arena:token", applyArenaToken);
     socket.on("arena:token-removed", removeArenaToken);
-    socket.on("arena:dragging", onDragging);
+    socket.on("arena:tokens", applyArenaTokens);
+    socket.on("arena:tokens-removed", removeArenaTokens);
     return () => {
       socket.off("arena:scene", onScene);
       socket.off("arena:token", applyArenaToken);
       socket.off("arena:token-removed", removeArenaToken);
-      socket.off("arena:dragging", onDragging);
+      socket.off("arena:tokens", applyArenaTokens);
+      socket.off("arena:tokens-removed", removeArenaTokens);
     };
   }, [socket, store, load]);
 
   const renderTokens = useMemo(
-    () => (view ? toRenderTokens(view, previews, isGm, toMediaUrl) : []),
-    [view, previews, isGm],
+    () => (view ? toRenderTokens(view, isGm, toMediaUrl) : []),
+    [view, isGm],
   );
 
   const trayTokens = useMemo(
@@ -260,16 +251,6 @@ export function useArenaPage() {
     [store],
   );
 
-  const onDragMove = useCallback(
-    (moves: IMoveArenaTokenInput[]) => {
-      const now = Date.now();
-      if (now - lastDragEmit.current < ARENA_DRAG_EMIT_MS) return;
-      lastDragEmit.current = now;
-      emitArenaDrag(socket, { moves });
-    },
-    [socket],
-  );
-
   const onBounds = useCallback((bounds: IArenaBounds) => {
     boundsRef.current = bounds;
   }, []);
@@ -307,7 +288,7 @@ export function useArenaPage() {
     [saveTokens],
   );
 
-  const onSizeChange = (size: number | null) => {
+  const onSizeChange = useStableCallback((size: number | null) => {
     if (size === null || selectedTokens.length === 0) return;
     const clamped = Math.min(Math.max(size, ARENA_TOKEN_SIZE_MIN), ARENA_TOKEN_SIZE_MAX);
     const patches = selectedTokens.map((token) => ({ id: token.id, size: clamped }));
@@ -318,13 +299,14 @@ export function useArenaPage() {
       const sizes = flushSize();
       if (sizes) void saveTokens(sizes);
     }, ARENA_SIZE_COMMIT_MS);
-  };
+  });
 
   const summary = selectionSummary(selectedTokens, isGm, view?.controllableCharacterIds ?? []);
   const { allHidden, sheetTarget } = summary;
 
-  const onToggleHidden = () =>
-    void saveTokens(selectedTokens.map((token) => ({ id: token.id, hidden: !allHidden })));
+  const onToggleHidden = useStableCallback(
+    () => void saveTokens(selectedTokens.map((token) => ({ id: token.id, hidden: !allHidden }))),
+  );
 
   const onConfirmRemove = async () => {
     setConfirmRemove(false);
@@ -340,10 +322,10 @@ export function useArenaPage() {
     store.getState().selectArenaTokens([], "replace");
   };
 
-  const onPickToken = (tokenId: string) => {
+  const onPickToken = useStableCallback((tokenId: string) => {
     store.getState().selectArenaTokens([tokenId], "replace");
     controlsRef.current?.centerOn(tokenId);
-  };
+  });
 
   const nudgeSelected = (delta: IArenaPoint, large: boolean) => {
     const selected = new Set(selectedTokenIds);
@@ -367,7 +349,7 @@ export function useArenaPage() {
     return true;
   };
 
-  const onStageKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const onStageKeyDown = useStableCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const delta = arrowDelta(event.key);
     if (delta) {
       if (nudgeSelected(delta, event.shiftKey)) event.preventDefault();
@@ -401,13 +383,14 @@ export function useArenaPage() {
     if (!action) return;
     event.preventDefault();
     action();
-  };
+  });
 
   const liveSceneId = view?.activeSceneId ?? null;
   const viewingSceneId = view?.scene?.id ?? null;
 
-  const onPreviewScene = (sceneId: string) =>
-    store.getState().setArenaViewScene(sceneId === liveSceneId ? null : sceneId);
+  const onPreviewScene = useStableCallback((sceneId: string) =>
+    store.getState().setArenaViewScene(sceneId === liveSceneId ? null : sceneId),
+  );
 
   const onGoLive = async (sceneId: string) => {
     const result = await setArenaLiveScene(sceneId);
@@ -420,10 +403,13 @@ export function useArenaPage() {
     setAnnouncement(ARENA_PREVIEW_TEXTS.wentLive);
   };
 
-  const broadcast =
-    isGm && view?.scene
-      ? { live: view.scene.id === view.activeSceneId, hasLive: view.activeSceneId !== null }
-      : null;
+  const broadcastLive = view?.scene ? view.scene.id === view.activeSceneId : false;
+  const broadcastHasLive = (view?.activeSceneId ?? null) !== null;
+  const broadcastShown = isGm && Boolean(view?.scene);
+  const broadcast = useMemo(
+    () => (broadcastShown ? { live: broadcastLive, hasLive: broadcastHasLive } : null),
+    [broadcastShown, broadcastLive, broadcastHasLive],
+  );
 
   const { left: insetLeft, right: insetRight } = fitPanels(
     sidebar.rollsOpen ? sidebar.rollsWidth : 0,
@@ -442,12 +428,12 @@ export function useArenaPage() {
     [],
   );
 
-  const onDock = (characterId: string, side: ArenaDockSide) => {
+  const onDock = useStableCallback((characterId: string, side: ArenaDockSide) => {
     store.getState().dockArenaSheet(characterId, side);
     updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
-  };
+  });
 
-  const openSheet = (characterId: string) => {
+  const openSheet = useStableCallback((characterId: string) => {
     const side = dockSideOf(docked, characterId);
     if (!side) {
       store.getState().openArenaSheet(characterId);
@@ -455,16 +441,37 @@ export function useArenaPage() {
     }
     store.getState().showDockTab(side, characterId);
     updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
-  };
-
-  const dockedTabs = (side: ArenaDockSide) => ({
-    sheets: docked[side].map((id) => ({
-      id,
-      name: sheetNameOf(id, namesById, libraryCharacters),
-    })),
-    active: dockTab[side],
-    onShow: (characterId: string | null) => store.getState().showDockTab(side, characterId),
   });
+
+  const showDockTab = useApp((state) => state.showDockTab);
+  const dockedLeft = useMemo(
+    () => dockedTabsOf("left", docked, dockTab, namesById, libraryCharacters, showDockTab),
+    [docked, dockTab, namesById, libraryCharacters, showDockTab],
+  );
+  const dockedRight = useMemo(
+    () => dockedTabsOf("right", docked, dockTab, namesById, libraryCharacters, showDockTab),
+    [docked, dockTab, namesById, libraryCharacters, showDockTab],
+  );
+  const windowPanels = useMemo(
+    () => ({ left: insetLeft, right: insetRight }),
+    [insetLeft, insetRight],
+  );
+  const onUndock = useStableCallback((characterId: string) =>
+    store.getState().undockArenaSheet(characterId),
+  );
+  const onCloseDocked = useStableCallback((characterId: string) =>
+    store.getState().closeDockedSheet(characterId),
+  );
+  const onGoLiveStable = useStableCallback((sceneId: string) => void onGoLive(sceneId));
+  const onOpenProfile = useStableCallback(() => setProfileOpen(true));
+  const onRequestRemove = useStableCallback(() => setConfirmRemove(true));
+  const onGoLiveViewed = useStableCallback(() => {
+    if (viewingSceneId) void onGoLive(viewingSceneId);
+  });
+  const onBackToLive = useStableCallback(() => store.getState().setArenaViewScene(null));
+  const onZoomIn = useStableCallback(() => controlsRef.current?.zoomIn());
+  const onZoomOut = useStableCallback(() => controlsRef.current?.zoomOut());
+  const onFit = useStableCallback(() => controlsRef.current?.fit());
 
   const scene = view?.scene ?? null;
   const placement = useArenaTokenPlacement({
@@ -474,10 +481,25 @@ export function useArenaPage() {
     boundsRef,
     onError: setActionError,
   });
+  const onPlaceCharacter = useStableCallback(placement.placeCharacter);
+  const onDropCharacter = useStableCallback(placement.dropCharacter);
+  const onNewNpc = useStableCallback(placement.openNpcDialog);
   const stageScene = useMemo(
-    () => (scene ? { id: scene.id, mapUrl: toMediaUrl(scene.mapUrl) } : null),
+    () =>
+      scene
+        ? {
+            id: scene.id,
+            mapUrl: toMediaUrl(scene.mapUrl),
+            width: scene.width,
+            height: scene.height,
+          }
+        : null,
     [scene],
   );
+
+  const onOpenSelectedSheet = useStableCallback(() => {
+    if (sheetTarget) openSheet(sheetTarget);
+  });
 
   return {
     isGm,
@@ -498,16 +520,14 @@ export function useArenaPage() {
     selectedTokenId: selectedTokenIds.length === 1 ? (selectedTokenIds[0] ?? null) : null,
     desktop,
     connection,
-    latencyMs,
     memberCount,
     controlsRef,
     announcement,
     profileOpen,
-    onOpenProfile: () => setProfileOpen(true),
+    onOpenProfile,
     onCloseProfile: () => setProfileOpen(false),
     onRetry: () => void load(),
     onSelect,
-    onDragMove,
     onDrop: (moves: IMoveArenaTokenInput[]) => void commitMoves(moves),
     onResize,
     selection:
@@ -521,10 +541,8 @@ export function useArenaPage() {
         : null,
     onSizeChange,
     onToggleHidden,
-    onOpenSheet: () => {
-      if (sheetTarget) openSheet(sheetTarget);
-    },
-    onRequestRemove: () => setConfirmRemove(true),
+    onOpenSheet: onOpenSelectedSheet,
+    onRequestRemove,
     confirmRemove,
     confirmRemoveTitle: ARENA_SELECTION_TEXTS.confirmTitle(selectedTokens.length),
     onConfirmRemove: () => void onConfirmRemove(),
@@ -534,7 +552,7 @@ export function useArenaPage() {
     onStageKeyDown,
     stageInsetRight: insetRight,
     stageInsetLeft: insetLeft,
-    hudStyle: { left: insetLeft, right: insetRight },
+    hudStyle: windowPanels,
     sidebarWidth: insetRight || sidebar.width,
     rollsWidth: insetLeft || sidebar.rollsWidth,
     onSidebarResize: (width: number) => updateSidebar({ width }, false),
@@ -544,29 +562,27 @@ export function useArenaPage() {
     rollsOpen: sidebar.rollsOpen,
     onRollsOpen: (rollsOpen: boolean) => updateSidebar({ rollsOpen }),
     broadcast,
-    onGoLiveViewed: () => {
-      if (viewingSceneId) void onGoLive(viewingSceneId);
-    },
-    onBackToLive: () => store.getState().setArenaViewScene(null),
+    onGoLiveViewed,
+    onBackToLive,
     sidebarOpen: sidebar.open,
     sidebarTab: !isGm && sidebar.tab === "scenes" ? "characters" : sidebar.tab,
     onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
     onSidebarOpen: (open: boolean) => updateSidebar({ open }),
     onOpenCharacter: openSheet,
-    dockedLeft: dockedTabs("left"),
-    dockedRight: dockedTabs("right"),
-    windowPanels: { left: insetLeft, right: insetRight },
+    dockedLeft,
+    dockedRight,
+    windowPanels,
     onDock,
-    onUndock: (characterId: string) => store.getState().undockArenaSheet(characterId),
+    onUndock,
     sheetNameFor: (characterId: string) => sheetNameOf(characterId, namesById, libraryCharacters),
-    onCloseDocked: (characterId: string) => store.getState().closeDockedSheet(characterId),
+    onCloseDocked,
     canPlace: Boolean(scene) && status === "ready",
     isOverMap,
     tokenPreviewSize,
-    onPlaceCharacter: placement.placeCharacter,
-    onDropCharacter: placement.dropCharacter,
+    onPlaceCharacter,
+    onDropCharacter,
     npcDialogOpen: placement.npcDialogOpen,
-    onNewNpc: placement.openNpcDialog,
+    onNewNpc,
     onCloseNpc: placement.closeNpcDialog,
     selectionSlotClassName: `${ARENA_SELECTION_BAR_SLOT.base} ${
       trayTokens.length > 0
@@ -577,12 +593,12 @@ export function useArenaPage() {
     liveSceneId,
     viewingSceneId,
     onPreviewScene,
-    onGoLive: (sceneId: string) => void onGoLive(sceneId),
+    onGoLive: onGoLiveStable,
     rolls,
     pendingRolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
-    onZoomIn: () => controlsRef.current?.zoomIn(),
-    onZoomOut: () => controlsRef.current?.zoomOut(),
-    onFit: () => controlsRef.current?.fit(),
+    onZoomIn,
+    onZoomOut,
+    onFit,
   };
 }

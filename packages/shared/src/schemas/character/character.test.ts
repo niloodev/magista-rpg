@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { characterSheetSchema } from "./character.schemas";
-import { createEmptySheet, exceedsResourceMax, mergeGmOnlyFields } from "./character.utils";
+import {
+  characterPortrait,
+  createEmptySheet,
+  exceedsResourceMax,
+  mergeGmOnlyFields,
+} from "./character.utils";
 
 describe("character sheet schema", () => {
   it("accepts the empty sheet", () => {
@@ -38,5 +43,22 @@ describe("resource limits and GM-only merge", () => {
     expect(merged.identity).toMatchObject({ class: "executor", level: 5, alignmentNote: "local" });
     expect(merged.resources.health).toEqual({ current: 25, max: 25 });
     expect(local.identity.level).toBe(1);
+  });
+});
+
+describe("characterPortrait", () => {
+  it("prefers the avatar, then the art, each by its thumbnail", () => {
+    const none = { avatarUrl: null, artUrl: null };
+    expect(characterPortrait(none)).toBeNull();
+    expect(characterPortrait({ ...none, artUrl: "/art" })).toBe("/art");
+    expect(characterPortrait({ ...none, artUrl: "/art", artThumbUrl: "/art-t" })).toBe("/art-t");
+    expect(
+      characterPortrait({
+        avatarUrl: "/av",
+        artUrl: "/art",
+        avatarThumbUrl: "/av-t",
+        artThumbUrl: "/art-t",
+      }),
+    ).toBe("/av-t");
   });
 });

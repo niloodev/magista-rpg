@@ -6,6 +6,8 @@ import {
   createGateRegistry,
   createRateGate,
   pendingOf,
+  groupTokenChanges,
+  groupTokenRemovals,
 } from "./realtime.utils";
 
 describe("realtime utils", () => {
@@ -58,6 +60,45 @@ describe("realtime utils", () => {
       title: "Força",
       subtitle: "Teste",
       revealAt: new Date(3000).toISOString(),
+    });
+  });
+});
+
+describe("token batches", () => {
+  const token = (id: string) =>
+    ({
+      id,
+      sceneId: "s",
+      characterId: null,
+      name: id,
+      imageUrl: null,
+      imageThumbUrl: null,
+      x: 0,
+      y: 0,
+      size: 140,
+      hidden: false,
+      position: 0,
+    }) as const;
+
+  it("gives the players what they may see, the GM everything, and lists tokens that left the players' view", () => {
+    const batches = groupTokenChanges([
+      { token: token("a"), audience: "table", previousAudience: "table" },
+      { token: token("b"), audience: "gm", previousAudience: "table" },
+      { token: token("c"), audience: "gm", previousAudience: "gm" },
+    ]);
+    expect(batches.players.map((entry) => entry.id)).toEqual(["a"]);
+    expect(batches.gm.map((entry) => entry.id)).toEqual(["a", "b", "c"]);
+    expect(batches.hiddenFromTable).toEqual([{ id: "b", sceneId: "s" }]);
+  });
+
+  it("groups removals by who could see each token", () => {
+    const groups = groupTokenRemovals([
+      { event: { id: "a", sceneId: "s" }, audience: "table" },
+      { event: { id: "b", sceneId: "s" }, audience: "gm" },
+    ]);
+    expect(groups).toEqual({
+      table: [{ id: "a", sceneId: "s" }],
+      gm: [{ id: "b", sceneId: "s" }],
     });
   });
 });

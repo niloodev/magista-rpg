@@ -16,7 +16,7 @@ export interface ArenaToken {
 
 interface ArenaView {
   activeSceneId: string | null;
-  scene: { id: string; name: string } | null;
+  scene: { id: string; name: string; width: number; height: number } | null;
   tokens: ArenaToken[];
 }
 

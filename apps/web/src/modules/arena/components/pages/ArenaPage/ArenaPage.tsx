@@ -42,7 +42,6 @@ export function ArenaPage() {
     selectedTokenIds,
     desktop,
     connection,
-    latencyMs,
     memberCount,
     controlsRef,
     announcement,
@@ -56,7 +55,6 @@ export function ArenaPage() {
     onCloseProfile,
     onRetry,
     onSelect,
-    onDragMove,
     onDrop,
     onBounds,
     onResize,
@@ -123,8 +121,8 @@ export function ArenaPage() {
     <ArenaDockedSheet
       characterId={characterId}
       name={sheetNameFor(characterId)}
-      onUndock={() => onUndock(characterId)}
-      onClose={() => onCloseDocked(characterId)}
+      onUndock={onUndock}
+      onClose={onCloseDocked}
     />
   );
   if (status === "idle" || status === "loading") return <ArenaSkeleton gm={isGm} />;
@@ -133,7 +131,6 @@ export function ArenaPage() {
       <ArenaTopBar
         sceneName={scene?.name ?? null}
         status={connection}
-        latencyMs={latencyMs}
         memberCount={memberCount}
         broadcast={broadcast}
         onGoLive={onGoLiveViewed}
@@ -160,7 +157,6 @@ export function ArenaPage() {
           controlsRef={controlsRef}
           label={stageLabel}
           onSelect={onSelect}
-          onDragMove={onDragMove}
           onDrop={onDrop}
           onBounds={onBounds}
           onResize={onResize}

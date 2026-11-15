@@ -23,6 +23,8 @@ export function Avatar({
           width={pixels}
           height={pixels}
           unoptimized
+          loading="lazy"
+          decoding="async"
           draggable={false}
           className="h-full w-full object-cover"
         />

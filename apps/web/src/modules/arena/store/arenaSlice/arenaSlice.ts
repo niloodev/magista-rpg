@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 
-import { applyTreeMove } from "@/modules/library/library.utils";
+import { applyTreeMove, reuseUnchanged } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultArenaState } from "./arenaSlice.constants";
@@ -11,6 +11,7 @@ import {
   omitKey,
   slotsFor,
   upsertToken,
+  upsertTokens,
   withoutDocked,
   withSheetOnTop,
 } from "./arenaSlice.utils";
@@ -34,7 +35,6 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           status: "ready",
           view,
           error: null,
-          previews: {},
           selectedTokenIds: state.arena.selectedTokenIds.filter((id) => present.has(id)),
         },
       };
@@ -51,7 +51,6 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         arena: {
           ...state.arena,
           view: { ...view, tokens: upsertToken(view.tokens, token) },
-          previews: omitKey(state.arena.previews, token.id),
         },
       };
     }),
@@ -63,24 +62,39 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         arena: {
           ...state.arena,
           view: { ...view, tokens: view.tokens.filter((token) => token.id !== id) },
-          previews: omitKey(state.arena.previews, id),
           selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => selected !== id),
         },
       };
     }),
-  applyArenaDrag: ({ moves }) =>
+  applyArenaTokens: (tokens) =>
     set((state) => {
-      const present = new Set(state.arena.view?.tokens.map((token) => token.id));
-      const known = moves.filter((move) => present.has(move.tokenId));
-      if (known.length === 0) return state;
-      const previews = { ...state.arena.previews };
-      for (const { tokenId, x, y } of known) previews[tokenId] = { x, y };
-      return { arena: { ...state.arena, previews } };
+      const view = state.arena.view;
+      const sceneId = view?.scene?.id;
+      const incoming = tokens.filter((token) => token.sceneId === sceneId);
+      if (!view || incoming.length === 0) return state;
+      return {
+        arena: {
+          ...state.arena,
+          view: { ...view, tokens: upsertTokens(view.tokens, incoming) },
+        },
+      };
     }),
-  clearArenaDrag: (tokenId) =>
-    set((state) => ({
-      arena: { ...state.arena, previews: omitKey(state.arena.previews, tokenId) },
-    })),
+  removeArenaTokens: (events) =>
+    set((state) => {
+      const view = state.arena.view;
+      const sceneId = view?.scene?.id;
+      const gone = new Set(
+        events.filter((event) => event.sceneId === sceneId).map((event) => event.id),
+      );
+      if (!view || gone.size === 0) return state;
+      return {
+        arena: {
+          ...state.arena,
+          view: { ...view, tokens: view.tokens.filter((token) => !gone.has(token.id)) },
+          selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => !gone.has(selected)),
+        },
+      };
+    }),
   placeArenaTokens: (moves) =>
     set((state) => {
       const view = state.arena.view;
@@ -149,7 +163,12 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
       return {
         arena: {
           ...state.arena,
-          library: { status: "ready", scenes, folders, error: null },
+          library: {
+            status: "ready",
+            scenes: reuseUnchanged(state.arena.library.scenes, scenes),
+            folders: reuseUnchanged(state.arena.library.folders, folders),
+            error: null,
+          },
           expandedFolderIds: state.arena.expandedFolderIds.filter((id) => present.has(id)),
         },
       };

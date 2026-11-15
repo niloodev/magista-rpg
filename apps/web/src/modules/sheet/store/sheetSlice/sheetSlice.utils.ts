@@ -44,13 +44,20 @@ export function withRemoteCharacter(
   };
 }
 
+const namesCache = new WeakMap<Record<string, ISheetEntry>, Record<string, string | null>>();
+
 /**
- * Names of the loaded sheets by character id (a stable selector input for `useShallow`).
+ * Names of the loaded sheets by character id (a stable selector input for `useShallow`). Computed once per
+ * `sheets` object, so selectors running on every store change (token moves, pings) cost nothing.
  */
 export function sheetNames(sheets: Record<string, ISheetEntry>): Record<string, string | null> {
-  return Object.fromEntries(
+  const cached = namesCache.get(sheets);
+  if (cached) return cached;
+  const names = Object.fromEntries(
     Object.entries(sheets).map(([id, entry]) => [id, entry.character?.name ?? null]),
   );
+  namesCache.set(sheets, names);
+  return names;
 }
 
 /**

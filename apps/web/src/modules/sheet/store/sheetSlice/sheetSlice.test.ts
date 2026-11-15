@@ -3,11 +3,15 @@ import { describe, expect, it } from "vitest";
 
 import { createAppStore } from "@/modules/shell/store/appSlice/appSlice";
 
+import { sheetNames } from "./sheetSlice.utils";
+
 const character: ICharacter = {
   id: "c1",
   name: "Zarkov",
   avatarUrl: null,
   artUrl: null,
+  avatarThumbUrl: null,
+  artThumbUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   features: [],
@@ -55,8 +59,20 @@ describe("sheet slice", () => {
   it("applies image changes without touching the draft or the save state", () => {
     const store = loaded();
     store.getState().editSheet("c1", (sheet) => void (sheet.identity.alignmentNote = "x"));
-    store.getState().applySheetImages({ id: "c1", avatarUrl: null, artUrl: "/media/art.png" });
-    store.getState().applySheetImages({ id: "other", avatarUrl: "/media/no.png", artUrl: null });
+    store.getState().applySheetImages({
+      id: "c1",
+      avatarUrl: null,
+      artUrl: "/media/art.png",
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
+    store.getState().applySheetImages({
+      id: "other",
+      avatarUrl: "/media/no.png",
+      artUrl: null,
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
     expect(entry(store)).toMatchObject({
       revision: 1,
       saveStatus: "pending",
@@ -202,5 +218,13 @@ describe("sheet slice", () => {
     other.getState().setSession({ account: { id: "outra", login: "outra", role: "PLAYER" } });
     other.getState().startSheetLoad("c1");
     expect(entry(other)).toMatchObject({ status: "loading", character: null, accountId: "outra" });
+  });
+});
+
+describe("sheetNames", () => {
+  it("is computed once per sheets object", () => {
+    const sheets = {};
+    expect(sheetNames(sheets)).toBe(sheetNames(sheets));
+    expect(sheetNames({})).not.toBe(sheetNames(sheets));
   });
 });

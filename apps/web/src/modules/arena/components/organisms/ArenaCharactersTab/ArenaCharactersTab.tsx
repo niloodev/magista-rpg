@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import { ARENA_CHARACTERS_HINT_ID, ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
 import { CharacterLibrary } from "@/modules/library/components";
 import { Button, Icon } from "@/shared/components/atoms";
@@ -11,7 +13,7 @@ import type { ArenaCharactersTabProps } from "./ArenaCharactersTab.types";
  * "Fichas" tab of the Arena sidebar: the sheet library (rows open the sheet in a window). For the GM, with a
  * scene open, sheets can be dragged onto the map or placed from their menu, and "Token avulso" creates an NPC.
  */
-export function ArenaCharactersTab({
+export const ArenaCharactersTab = memo(function ArenaCharactersTab({
   isGm,
   canPlace,
   onOpenCharacter,
@@ -52,4 +54,4 @@ export function ArenaCharactersTab({
       />
     </div>
   );
-}
+});

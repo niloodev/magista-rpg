@@ -4,6 +4,7 @@ import { PENDING_ROLLS_LIMIT, ROLL_FEED_LIMIT } from "@/modules/table/table.cons
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultTableState } from "./tableSlice.constants";
+import { sameMembers } from "./tableSlice.utils";
 import type { TableSlice } from "./tableSlice.types";
 
 export const createTableSlice: StateCreator<AppStore, [], [], TableSlice> = (set) => ({
@@ -16,8 +17,14 @@ export const createTableSlice: StateCreator<AppStore, [], [], TableSlice> = (set
         latencyMs: connection === "connected" ? state.table.latencyMs : null,
       },
     })),
-  setLatency: (latencyMs) => set((state) => ({ table: { ...state.table, latencyMs } })),
-  setMembers: (members) => set((state) => ({ table: { ...state.table, members } })),
+  setLatency: (latencyMs) =>
+    set((state) =>
+      state.table.latencyMs === latencyMs ? state : { table: { ...state.table, latencyMs } },
+    ),
+  setMembers: (members) =>
+    set((state) =>
+      sameMembers(state.table.members, members) ? state : { table: { ...state.table, members } },
+    ),
   pushRoll: (roll) =>
     set((state) => ({
       table: {

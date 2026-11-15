@@ -27,15 +27,15 @@ A Arena é a parte do app que faz o papel do tabuleiro do Roll20: um mapa por ce
 - `ArenaState` (`arena_state`): singleton (`singleton Boolean @unique`, mesmo padrão de `marked_shares`) com `activeSceneId?` (SetNull).
 - Dimensões do mapa não são gravadas: o cliente lê do arquivo. Movimento grava por SQL direto (como a ordem da biblioteca).
 - Imagem do token de ficha: avatar, com a arte como reserva (`portraitOf`). NPC tem imagem própria.
-- Chaves no storage: `arena/maps/<sceneId>/map-<uuid>.<ext>` e `arena/tokens/<tokenId>/token-<uuid>.<ext>`, adicionadas à whitelist de `/media`. Mapas aceitam até 25 MB (PNG, JPEG, WEBP, GIF pela assinatura).
+- Chaves no storage: `arena/maps/<sceneId>/map-<uuid>.<ext>` e `arena/tokens/<tokenId>/token-<uuid>.<ext>`, adicionadas à whitelist de `/media`. Mapas aceitam até 60 MB (PNG, JPEG, WEBP, GIF pela assinatura) e são regravados em WebP qualidade 90.
 
 ## Contratos (shared)
 
 - `schemas/arena`: cena, token (DTO com `imageUrl` resolvido), visão da Arena `{ activeSceneId, scene, tokens }` e os inputs (criar e renomear cena, criar token por ficha ou nome, atualizar token, mover token). Constantes `ARENA_MAP_MAX_BYTES` e `ARENA_TOKEN_SIZES`.
 - `game/arena`: regras puras `canControlToken` e `clampToMap`, iguais no front (habilitar arraste) e no back (decidir).
 - Eventos de socket:
-  - Cliente: `arena:drag` (volátil, sem ack e sem gravar; só repassa a prévia, com limite próprio de cerca de 30 por segundo) e `arena:move` (ack, grava a posição final).
-  - Servidor: `arena:dragging` `{ tokenId, x, y, by }`, `arena:token` (criado ou alterado), `arena:token-removed` e `arena:scene` (cena ativa trocou ou a cena atual mudou; o cliente refaz o `GET /arena`).
+  - Cliente: `arena:move` (ack, grava a posição final). Não há prévia ao vivo durante o arraste: as outras telas recebem só a posição final e o token desliza até ela.
+  - Servidor: `arena:token` (criado ou alterado), `arena:token-removed` e `arena:scene` (cena ativa trocou ou a cena atual mudou; o cliente refaz o `GET /arena`).
   - Destino: token visível da cena ativa vai para `table:main`; token oculto ou de outra cena vai só para `table:gm`.
 
 ## API
@@ -84,10 +84,10 @@ A Arena não monta `SheetPage`, então o `sheetSlice` (uma ficha por contexto) f
 
 ### Renderer
 
-- `modules/arena/services/arenaRenderer`: classe imperativa com `sync(scene, tokens, selection, previews)`; camadas `map`, `tokens`, `fx` e `ui`.
+- `modules/arena/services/arenaRenderer`: classe imperativa com `setScene, setTokens e setSelection`; camadas `map`, `tokens`, `fx` e `ui`.
 - Câmera: arrastar no vazio, botão do meio ou espaço para mover; roda e pinça para zoom limitado; "Ajustar mapa"; câmera lembrada por cena no `localStorage`.
-- Token: avatar em círculo, anel rubi (meus), teal (outros), dourado (selecionado), tracejado e translúcido quando oculto, nome em Cinzel. Arraste emite a prévia e solta com `arena:move`; movimentos alheios chegam interpolados.
-- Mapas maiores que `MAX_TEXTURE_SIZE` (4096 em placas antigas) são reduzidos com `createImageBitmap` e o sprite é escalado; coordenadas seguem no espaço original.
+- Token: avatar em círculo, anel rubi (meus), teal (outros), dourado (selecionado), tracejado e translúcido quando oculto, nome em Cinzel. O arraste é local e solta com `arena:move`; movimentos alheios chegam na posição final e o token desliza até ela.
+- Mapas maiores que `min(MAX_TEXTURE_SIZE, 8192)` (`ARENA_MAP_TEXTURE_MAX`: uma textura de 16384 px ocuparia cerca de 1 GB de memória de vídeo) são reduzidos com `createImageBitmap` e o sprite é esticado no tabuleiro. Texturas de retrato que nenhum token usa mais são liberadas, e uma falha de carregamento pode ser tentada de novo.
 - Render sob demanda: o ticker para quando nada anima.
 - Sem WebGL: estado amigável explicando o problema, nunca tela preta.
 
@@ -127,10 +127,9 @@ Dark fantasy, sem os efeitos de luz vetados em `DESIGN.md` (raios, faíscas, shi
 2. Backend: schema e migration, shared, models, controller com testes, rotas, handler de socket, chaves de mídia. Concluída (o e2e cria as próprias cenas pela API na fase 3, sem seed, para não sujar a lista de cenas do Mestre).
 3. Arena base: rota, slice, renderer com câmera e tokens, movimento em tempo real com permissão, skeleton, botão na `/mesa`. Concluída (eventos ouvidos no hook da página, sem provider no layout; bandeja de tokens e teclado já entram aqui para o mapa ser usável sem mouse).
 4. Mecânicas do Roll20, em entregas: 4A controles (seleção em grupo, câmera, aviso no celular) e 4B redimensionar e barra de seleção, concluídas; 4C painéis (Rolagens à esquerda com rolagem em suspense, barra direita com Fichas e Mapas com pastas, larguras ajustáveis, prévia do Mestre), concluída; 4D criar tokens pela barra (arrastar a ficha para o mapa, "Colocar no mapa" no menu da ficha e "Token avulso" para NPC), concluída; 4E fichas em janelas flutuantes (várias abertas, arrastar, redimensionar e encaixar como aba nos painéis laterais), concluída.
+   4F. Tamanho do tabuleiro como no Roll20 (unidades de 70 px, sempre na proporção do mapa, tokens acompanham), mapas otimizados em WebP e importador das páginas do Roll20 com as pastas. Concluída.
 5. Dock: `SheetView` em painel, Rolagens, Tokens e card do token.
 6. Polimento: VFX, SFX, perfil de performance, revisão de design e acessibilidade.
-
-Nota para a fase 3: cada prévia de arraste (`arena:drag`) refaz a autorização no banco (até 3 consultas, limitadas a 30 por segundo por conta). Se pesar, cachear a autorização por conta e token durante o arraste (renovada no `arena:move` e nas mudanças de acesso) ou juntar tudo numa consulta.
 
 Cada fase fecha com lint, typecheck, unitários, e2e (`e2e/tests/arena.spec.ts`) e os três revisores.
 

@@ -5,6 +5,8 @@ import {
   applyMove,
   applyTreeMove,
   charactersIn,
+  buildTreeIndex,
+  reuseUnchanged,
   countLeavesDeep,
   countCharactersDeep,
   dropPositionFor,
@@ -26,6 +28,8 @@ const character = (id: string, name: string, folderId: string | null, position: 
     position,
     avatarUrl: null,
     artUrl: null,
+    avatarThumbUrl: null,
+    artThumbUrl: null,
     classKey: "arcanista",
     level: 3,
     accountIds: [],
@@ -208,6 +212,27 @@ describe("generic folder tree (scenes)", () => {
     ).toBeNull();
   });
 
+  it("indexes the tree once, in manual order, with deep counts", () => {
+    const index = buildTreeIndex({
+      folders: [
+        { id: "b", name: "B", parentId: null, position: 1 },
+        { id: "a", name: "A", parentId: null, position: 0 },
+        { id: "c", name: "C", parentId: "a", position: 0 },
+      ],
+      leaves: [
+        { id: "x", name: "X", folderId: "c", position: 0 },
+        { id: "z", name: "Z", folderId: null, position: 1 },
+        { id: "y", name: "Y", folderId: null, position: 0 },
+        { id: "w", name: "W", folderId: "a", position: 0 },
+      ],
+    });
+    expect(index.folders(null).map((folder) => folder.id)).toEqual(["a", "b"]);
+    expect(index.leaves(null).map((leaf) => leaf.id)).toEqual(["y", "z"]);
+    expect(index.deepCount("a")).toBe(2);
+    expect(index.deepCount("b")).toBe(0);
+    expect(index.folders("missing")).toEqual([]);
+  });
+
   it("counts scenes deep inside a folder", () => {
     expect(countLeavesDeep(tree, "f1")).toBe(1);
     expect(countLeavesDeep(tree, "f3")).toBe(0);
@@ -328,5 +353,27 @@ describe("parseLibraryShape", () => {
         0,
       );
     expect(count((parsed?.tree ?? []) as Counted[])).toBeLessThanOrEqual(40);
+  });
+});
+
+describe("reuseUnchanged", () => {
+  it("keeps the previous objects and array when a reload brings the same data", () => {
+    const previous = [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ];
+    const same = reuseUnchanged(previous, [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ]);
+    expect(same).toBe(previous);
+    const renamed = reuseUnchanged(previous, [
+      { id: "a", name: "A" },
+      { id: "b", name: "Bea" },
+    ]);
+    expect(renamed).not.toBe(previous);
+    expect(renamed[0]).toBe(previous[0]);
+    expect(renamed[1]).toEqual({ id: "b", name: "Bea" });
+    expect(reuseUnchanged(previous, [previous[1]!, previous[0]!])).not.toBe(previous);
   });
 });

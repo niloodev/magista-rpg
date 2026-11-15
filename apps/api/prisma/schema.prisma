@@ -107,6 +107,10 @@ model ArenaScene {
   folderId    String?           @db.Uuid
   folder      ArenaSceneFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   mapKey      String?
+  mapWidth    Int?
+  mapHeight   Int?
+  boardWidth  Float?
+  boardHeight Float?
   position    Int               @default(0)
   tokens      ArenaToken[]
   activeState ArenaState?
@@ -146,4 +150,20 @@ model ArenaState {
   updatedAt     DateTime    @updatedAt
 
   @@map("arena_state")
+}
+
+model MediaAsset {
+  id          String   @id @db.Uuid
+  hash        String   @unique
+  key         String   @unique
+  thumbKey    String?
+  width       Int
+  height      Int
+  bytes       Int
+  contentType String
+  createdAt   DateTime @default(now())
+  /// Last time an upload linked this asset (a fresh link keeps it from being deleted for a few minutes).
+  linkedAt    DateTime @default(now())
+
+  @@map("media_assets")
 }

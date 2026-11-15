@@ -12,6 +12,7 @@ import {
   type IMarkedProposal,
   type IMarkedResolution,
   type MarkedOutcome,
+  characterPortrait,
 } from "@magista/shared";
 
 import { characterModels } from "@/core/models/character";
@@ -87,7 +88,7 @@ export function createMarkedController({
         source: {
           characterId,
           name: source.name,
-          portraitUrl: sourceEntry?.portraitUrl ?? source.avatarUrl ?? source.artUrl,
+          portraitUrl: sourceEntry?.portraitUrl ?? characterPortrait(source),
         },
         trait: { name: trait.name, description: trait.description },
         targets: targets.map((entry) => ({

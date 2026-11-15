@@ -2,10 +2,12 @@ import type { z } from "zod";
 
 import {
   abilitySchema,
+  characterPortrait,
   formatModifier,
   inventoryItemSchema,
   parseDiceExpression,
   traitSchema,
+  type ICharacterImageUrls,
   type IFeatureBonusTerm,
   type ISheetAbility,
   type ISheetInventoryItem,
@@ -59,11 +61,8 @@ export function formatSigned(value: number): string {
 /**
  * Best image for small portraits: the AVATAR (round face token), falling back to the full ART.
  */
-export function portraitOf(character: {
-  avatarUrl: string | null;
-  artUrl: string | null;
-}): string | null {
-  return character.avatarUrl ?? character.artUrl;
+export function portraitOf(character: ICharacterImageUrls): string | null {
+  return characterPortrait(character);
 }
 
 type FieldErrors<T> = Partial<Record<keyof T, string>>;

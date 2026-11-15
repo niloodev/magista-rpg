@@ -31,7 +31,8 @@ export interface FolderTreeProps<L extends ITreeLeaf> {
   onToggleFolder: (folderId: string) => void;
   onExpandFolders: (folderIds: string[]) => void;
   onMove: (move: ITreeMove) => void | Promise<void>;
-  folderSummary: (folderId: string) => string;
+  /** Text under a folder name from its counts (leaves counting every subfolder, direct subfolders). */
+  folderSummary: (leaves: number, subfolders: number) => string;
   folderMenu: (folder: IFolder) => ActionMenuItem[];
   renderLeaf: (leaf: L, slots: ITreeLeafSlots) => ReactNode;
   leafPortrait: (leaf: L) => string | null;
@@ -55,7 +56,7 @@ export interface ITreeLeafView {
   id: string;
   dragId: string;
   name: string;
-  render: (slots: ITreeLeafSlots) => ReactNode;
+  leaf: ITreeLeaf;
 }
 
 export interface ITreeFolderView {
@@ -67,7 +68,7 @@ export interface ITreeFolderView {
   groupId: string;
   empty: boolean;
   menu: ActionMenuItem[];
-  onToggle: () => void;
+  /** Built only while the folder is open (a closed folder renders no rows). */
   folders: ITreeFolderView[];
   leaves: ITreeLeafView[];
 }
@@ -75,8 +76,27 @@ export interface ITreeFolderView {
 export interface ITreeDragState {
   activeId: string | null;
   keyboard: boolean;
-  excluded: string[];
+  excluded: ReadonlySet<string>;
   target: IDropTarget | null;
+}
+
+/**
+ * Drag state each row reads on its own (where the dragged item would land, which rows cannot receive it), so a
+ * pointer move only re-renders the rows whose answer changed.
+ */
+export interface ITreeRowStore {
+  set: (target: IDropTarget | null, excluded: ReadonlySet<string>) => void;
+  subscribe: (listener: () => void) => () => void;
+  positionOf: (dragId: string) => DropPosition | null;
+  isExcluded: (dragId: string) => boolean;
+}
+
+/** What every row of one tree shares, stable for the whole drag. */
+export interface ITreeRowsContext {
+  rows: ITreeRowStore;
+  labels: IFolderTreeLabels;
+  onToggleFolder: (folderId: string) => void;
+  renderLeaf: (leaf: ITreeLeaf, slots: ITreeLeafSlots) => ReactNode;
 }
 
 export interface ITreePreview {

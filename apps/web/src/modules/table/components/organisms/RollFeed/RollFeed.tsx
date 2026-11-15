@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import { Icon, Skeleton } from "@/shared/components/atoms";
 import { Panel, SkeletonRegion } from "@/shared/components/molecules";
 
@@ -12,7 +14,7 @@ import { RollCard, RollCardSkeleton, RollPendingCard } from "./subcomponents";
  * Table roll history. With `loading` (history not received yet) it draws skeleton cards in the shape of the
  * last feed seen on this device instead of a false "no rolls yet".
  */
-export function RollFeed(props: RollFeedProps) {
+export const RollFeed = memo(function RollFeed(props: RollFeedProps) {
   const {
     rolls,
     pending = [],
@@ -85,4 +87,4 @@ export function RollFeed(props: RollFeedProps) {
       )}
     </Panel>
   );
-}
+});

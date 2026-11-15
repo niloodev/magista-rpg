@@ -6,7 +6,6 @@ export const defaultArenaState: ArenaState = {
     view: null,
     error: null,
     selectedTokenIds: [],
-    previews: {},
     viewSceneId: null,
     library: { status: "idle", scenes: [], folders: [], error: null },
     expandedFolderIds: [],

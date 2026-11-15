@@ -44,7 +44,9 @@ export function useLibraryDialogs({
   onExpandFolders,
 }: LibraryDialogsProps) {
   const store = useAppStoreApi();
-  const { characters, folders, accounts } = useApp((state) => state.library);
+  const characters = useApp((state) => state.library.characters);
+  const folders = useApp((state) => state.library.folders);
+  const accounts = useApp((state) => state.library.accounts);
 
   const allFolderOptions = useMemo(() => folderOptions(folders), [folders]);
   const moveOptions = useMemo(

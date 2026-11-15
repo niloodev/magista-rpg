@@ -170,7 +170,13 @@ test.describe("arena", () => {
     expect(results.violations.map((violation) => violation.id)).toEqual([]);
   });
 
-  test("o Mestre muda o tamanho e oculta a seleção pela barra", async ({ page }) => {
+  test("o Mestre muda o tamanho e oculta a seleção pela barra", async ({ page, browser }) => {
+    const playerPage = await (await browser.newContext()).newPage();
+    await loginAs(playerPage, PLAYER);
+    await openArena(playerPage);
+    const playerMap = (count: number) =>
+      playerPage.getByRole("application", { name: `Mapa da cena ${SCENE}, ${count} tokens` });
+    await expect(playerMap(3)).toBeVisible();
     await loginAs(page, GM);
     await openArena(page);
     await page.getByRole("application", { name: /Mapa da cena/ }).focus();
@@ -187,10 +193,13 @@ test.describe("arena", () => {
     await expect
       .poll(async () => (await readArena(gm, sceneId)).tokens.every((token) => token.hidden))
       .toBe(true);
+    await expect(playerMap(0)).toBeVisible();
     await bar.getByRole("button", { name: "Mostrar" }).click();
     await expect
       .poll(async () => (await readArena(gm, sceneId)).tokens.some((token) => token.hidden))
       .toBe(false);
+    await expect(playerMap(4)).toBeVisible();
+    await playerPage.context().close();
   });
 
   test("o Mestre remove a seleção com Delete e confirmação", async ({ page }) => {

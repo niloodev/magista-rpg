@@ -22,6 +22,7 @@ export const CHARACTER_ERROR_STATUS: Record<CharacterError, number> = {
   [characterErrors.imageMissing]: 400,
   [characterErrors.imageInvalid]: 415,
   [characterErrors.imageTooLarge]: 413,
+  [characterErrors.imageTooBig]: 400,
   [characterErrors.unexpected]: 500,
 };
 

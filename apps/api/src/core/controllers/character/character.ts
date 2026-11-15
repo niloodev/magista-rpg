@@ -9,11 +9,13 @@ import {
   setCharacterAccessInputSchema,
   setFeaturesInputSchema,
   updateSheetInputSchema,
+  CHARACTER_IMAGE_MAX_SIDE,
 } from "@magista/shared";
 
 import { accountModels } from "@/core/models/account";
 import { characterModels } from "@/core/models/character";
 import { folderModels } from "@/core/models/folder";
+import { imageAssets } from "@/core/controllers/mediaAsset";
 import { characterImages, MEDIA_MAX_BYTES } from "@/core/services/media";
 
 import { canAccessCharacter } from "../controllers.utils";
@@ -31,6 +33,7 @@ export function createCharacterController({
   folders,
   accounts,
   images,
+  assets,
 }: ICharacterControllerDeps): ICharacterController {
   const failed = (action: string, error: unknown) => {
     console.error(`${action} failed:`, error);
@@ -134,9 +137,9 @@ export function createCharacterController({
       const previousAccountIds = await characters.listAccountIds(id);
       const keys = await characters.findImageKeys(id);
       await characters.remove(id);
-      const cleanup = [keys?.avatarKey, keys?.artKey]
-        .filter((key): key is string => Boolean(key))
-        .map((key) => images.remove(key));
+      const cleanup = [...new Set([keys?.avatarKey ?? null, keys?.artKey ?? null])].map((key) =>
+        assets.release(key),
+      );
       await Promise.all([images.removeAll(id), ...cleanup]).catch((error: unknown) => {
         console.error("deleteCharacter images cleanup failed:", error);
       });
@@ -166,11 +169,11 @@ export function createCharacterController({
   const replaceImage = async (id: string, kind: CharacterImageKind, key: string | null) => {
     const { images: changed, previousKey } = await characters.setImageKey(id, kind, key);
     if (previousKey && previousKey !== key) {
-      await images.remove(previousKey).catch((error: unknown) => {
+      await assets.release(previousKey).catch((error: unknown) => {
         console.error("old image cleanup failed:", error);
       });
     }
-    return { images: changed, accountIds: await characters.listAccountIds(id) };
+    return { images: changed };
   };
 
   const setImage: ICharacterController["setImage"] = async (viewer, id, upload) => {
@@ -180,14 +183,18 @@ export function createCharacterController({
     if (!kind.success) return { error: characterErrors.invalidImageKind };
     if (!upload.file || upload.file.length === 0) return { error: characterErrors.imageMissing };
     if (upload.file.length > MEDIA_MAX_BYTES) return { error: characterErrors.imageTooLarge };
+    const size = images.sizeOf(upload.file);
+    if (!size) return { error: characterErrors.imageInvalid };
+    if (size.width > CHARACTER_IMAGE_MAX_SIDE || size.height > CHARACTER_IMAGE_MAX_SIDE)
+      return { error: characterErrors.imageTooBig };
     try {
       if (!(await characters.exists(id))) return { error: characterErrors.notFound };
-      const key = await images.store(id, kind.data, upload.file);
-      if (!key) return { error: characterErrors.imageInvalid };
+      const stored = await assets.ingest(upload.file);
+      if (!stored) return { error: characterErrors.imageInvalid };
       try {
-        return { message: "Imagem salva", payload: await replaceImage(id, kind.data, key) };
+        return { message: "Imagem salva", payload: await replaceImage(id, kind.data, stored.key) };
       } catch (error) {
-        await images.remove(key).catch(() => undefined);
+        await assets.release(stored.key).catch(() => undefined);
         throw error;
       }
     } catch (error) {
@@ -251,4 +258,5 @@ export const characterController = createCharacterController({
   folders: folderModels,
   accounts: accountModels,
   images: characterImages,
+  assets: imageAssets,
 });

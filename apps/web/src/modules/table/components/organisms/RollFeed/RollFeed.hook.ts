@@ -6,7 +6,7 @@ import { useSkeletonHint, useSkeletonHintActions } from "@/modules/shell/provide
 import { FEED_HINT_KEY } from "@/modules/table/table.constants";
 import { feedHint, parseFeedHint } from "@/modules/table/table.utils";
 
-import { DEFAULT_FEED_SHAPE } from "./RollFeed.constants";
+import { DEFAULT_FEED_SHAPE, FEED_HINT_DELAY_MS } from "./RollFeed.constants";
 import type { RollFeedProps } from "./RollFeed.types";
 
 /**
@@ -25,7 +25,12 @@ export function useRollFeed({
   const shape = useMemo(() => parseFeedHint(raw) ?? DEFAULT_FEED_SHAPE, [raw]);
 
   useEffect(() => {
-    if (!loading) setHint(FEED_HINT_KEY, feedHint(rolls));
+    if (loading) return;
+    const timer = window.setTimeout(
+      () => setHint(FEED_HINT_KEY, feedHint(rolls)),
+      FEED_HINT_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
   }, [loading, rolls, setHint]);
 
   const showSkeleton = loading && shape.count > 0;

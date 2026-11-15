@@ -9,6 +9,7 @@ import type {
 import type { IAccountModels } from "@/core/models/account";
 import type { ICharacterModels } from "@/core/models/character";
 import type { IFolderModels } from "@/core/models/folder";
+import type { IImageAssets } from "@/core/controllers/mediaAsset";
 import type { ICharacterImageStore } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
@@ -19,6 +20,7 @@ export interface ICharacterControllerDeps {
   folders: Pick<IFolderModels, "findById">;
   accounts: Pick<IAccountModels, "countPlayersByIds">;
   images: ICharacterImageStore;
+  assets: Pick<IImageAssets, "ingest" | "release">;
 }
 
 export interface IImageUpload {
@@ -28,7 +30,6 @@ export interface IImageUpload {
 
 export interface IImageChange {
   images: ICharacterImages;
-  accountIds: string[];
 }
 
 export interface IAccessChange {

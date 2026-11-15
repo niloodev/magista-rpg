@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import Link from "next/link";
 import { createPortal } from "react-dom";
 
@@ -27,7 +29,7 @@ import { useSheetPage } from "./SheetPage.hook";
 import type { SheetPageProps } from "./SheetPage.types";
 import { SheetStatusBar } from "./subcomponents";
 
-export function SheetPage(props: SheetPageProps) {
+export const SheetPage = memo(function SheetPage(props: SheetPageProps) {
   const { characterId, variant = "page" } = props;
   const {
     status,
@@ -39,7 +41,6 @@ export function SheetPage(props: SheetPageProps) {
     rolls,
     rollsLoading,
     connection,
-    latencyMs,
     rollError,
     activeTab,
     activeRoll,
@@ -127,7 +128,6 @@ export function SheetPage(props: SheetPageProps) {
               saveStatus={saveStatus}
               saveError={saveError}
               connection={connection}
-              latencyMs={latencyMs}
               rollError={rollError}
               onRetrySave={onRetrySave}
             />
@@ -243,4 +243,4 @@ export function SheetPage(props: SheetPageProps) {
       </Root>
     </>
   );
-}
+});

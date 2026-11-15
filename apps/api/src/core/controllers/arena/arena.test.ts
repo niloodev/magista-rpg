@@ -1,4 +1,9 @@
-import type { IArenaFolder, IArenaScene, IArenaToken } from "@magista/shared";
+import {
+  ARENA_MAP_MAX_BYTES,
+  type IArenaFolder,
+  type IArenaScene,
+  type IArenaToken,
+} from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
@@ -33,6 +38,7 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
     characterId: null,
     name: "Lobo",
     imageUrl: null,
+    imageThumbUrl: null,
     x: 10,
     y: 10,
     size: 140,
@@ -42,10 +48,34 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
   };
 }
 
-function build(options: { active?: string | null } = {}) {
+function build(
+  options: { active?: string | null; unmeasured?: { id: string; mapKey: string }[] } = {},
+) {
   const sceneList: IArenaScene[] = [
-    { id: LIVE, name: "Ruínas", folderId: null, mapUrl: null, position: 0 },
-    { id: PREP, name: "Taverna", folderId: F_ROOT, mapUrl: null, position: 1 },
+    {
+      id: LIVE,
+      name: "Ruínas",
+      folderId: null,
+      mapUrl: null,
+      mapThumbUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
+      position: 0,
+    },
+    {
+      id: PREP,
+      name: "Taverna",
+      folderId: F_ROOT,
+      mapUrl: null,
+      mapThumbUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
+      position: 1,
+    },
   ];
   let active = options.active === undefined ? LIVE : options.active;
   let tokenList: IArenaToken[] = [
@@ -56,6 +86,7 @@ function build(options: { active?: string | null } = {}) {
     token(T_PREP, PREP, { characterId: ANA, name: "Ana" }),
   ];
   const mapKeys: Record<string, string | null> = {};
+  const unmeasured: { id: string; mapKey: string }[] = options.unmeasured ?? [];
   const scenes: IArenaSceneModels = {
     list: vi.fn(async () => sceneList),
     findById: vi.fn(async (id) => sceneList.find((scene) => scene.id === id) ?? null),
@@ -64,6 +95,11 @@ function build(options: { active?: string | null } = {}) {
       name,
       folderId,
       mapUrl: null,
+      mapThumbUrl: null,
+      width: 1750,
+      height: 1750,
+      mapWidth: null,
+      mapHeight: null,
       position: 2,
     })),
     rename: vi.fn(async (id, name) => {
@@ -74,15 +110,33 @@ function build(options: { active?: string | null } = {}) {
       if (!sceneList.some((scene) => scene.id === id)) return null;
       const tokenIds = tokenList.filter((entry) => entry.sceneId === id).map((entry) => entry.id);
       tokenList = tokenList.filter((entry) => entry.sceneId !== id);
-      return { tokenIds };
+      return { tokenIds, imageKeys: ["media/map/full.webp", "media/map/full.webp"] };
     }),
-    setMapKey: vi.fn(async (id, key) => {
+    setMapKey: vi.fn(async (id, key, size) => {
       const scene = sceneList.find((entry) => entry.id === id);
       if (!scene) return null;
       const previousKey = mapKeys[id] ?? null;
       mapKeys[id] = key;
-      return { scene: { ...scene, mapUrl: `/media/${key}` }, previousKey };
+      const mapped = { mapUrl: `/media/${key}`, mapWidth: size.width, mapHeight: size.height };
+      return { scene: { ...scene, ...mapped }, previousKey };
     }),
+    setBoard: vi.fn(async (id, request) => {
+      const scene = sceneList.find((entry) => entry.id === id);
+      return scene ? { ...scene, width: request.width, height: request.height ?? 0 } : null;
+    }),
+    setMapSize: vi.fn(async (id, size) => {
+      const scene = sceneList.find((entry) => entry.id === id);
+      return scene ? { ...scene, mapWidth: size.width, mapHeight: size.height } : null;
+    }),
+    findUnmeasuredMaps: vi.fn(async () => unmeasured),
+    findBoards: vi.fn(
+      async (ids) =>
+        new Map(
+          sceneList
+            .filter((scene) => ids.includes(scene.id))
+            .map((scene) => [scene.id, { width: scene.width, height: scene.height }]),
+        ),
+    ),
     findActiveSceneId: vi.fn(async () => active),
     setActiveScene: vi.fn(async (id) => {
       active = id;
@@ -112,7 +166,7 @@ function build(options: { active?: string | null } = {}) {
       const found = tokenList.find((entry) => entry.id === id);
       if (!found) return null;
       tokenList = tokenList.filter((entry) => entry.id !== id);
-      return { id, sceneId: found.sceneId, hidden: found.hidden };
+      return { id, sceneId: found.sceneId, hidden: found.hidden, imageKey: "media/npc/full.webp" };
     }),
     updateMany: vi.fn(async (patches: { id: string; patch: Partial<IArenaToken> }[]) =>
       patches.flatMap(({ id, patch }) => {
@@ -123,7 +177,7 @@ function build(options: { active?: string | null } = {}) {
     removeMany: vi.fn(async (ids: string[]) =>
       tokenList
         .filter((entry) => ids.includes(entry.id))
-        .map(({ id, sceneId, hidden }) => ({ id, sceneId, hidden })),
+        .map(({ id, sceneId, hidden }) => ({ id, sceneId, hidden, imageKey: null })),
     ),
     setImageKey: vi.fn(async (id, key) => {
       const found = tokenList.find((entry) => entry.id === id);
@@ -151,28 +205,34 @@ function build(options: { active?: string | null } = {}) {
     moveScene: vi.fn(async () => undefined),
   };
   const images: IArenaImageStore = {
+    readMapSize: vi.fn(async () => ({ width: 1024, height: 512 })),
     sizeOf: vi.fn((body: Buffer) =>
       body.toString() === "huge" ? { width: 20_000, height: 100 } : { width: 2400, height: 1600 },
     ),
-    storeMap: vi.fn(async (sceneId, body) =>
-      body.toString() === "not-an-image" ? null : `arena/maps/${sceneId}/map-new.png`,
-    ),
-    storeToken: vi.fn(async (tokenId) => `arena/tokens/${tokenId}/token-new.png`),
     remove: vi.fn(async () => undefined),
     removeScene: vi.fn(async () => undefined),
     removeToken: vi.fn(async () => undefined),
+  };
+  const assets = {
+    ingest: vi.fn(async (body: Buffer) =>
+      body.toString() === "not-an-image"
+        ? null
+        : { key: "media/new/full.webp", width: 2400, height: 1600 },
+    ),
+    release: vi.fn(async () => undefined),
   };
   const controller = createArenaController({
     scenes,
     folders,
     tokens,
     images,
+    assets,
     characters: {
       exists: vi.fn(async (id) => [ANA, BRUNO].includes(id)),
       listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
     },
   });
-  return { controller, scenes, tokens, images, folders };
+  return { controller, scenes, tokens, images, folders, assets };
 }
 
 const png = Buffer.from("png-bytes");
@@ -281,32 +341,6 @@ describe("arena controller: movement", () => {
     expect(await controller.move(gm, { moves: [] })).toEqual({ error: arenaErrors.invalidMove });
     expect(await controller.move(gm, one(MISSING))).toEqual({ error: arenaErrors.tokenNotFound });
   });
-
-  it("relays drag previews grouped by audience and never persists them", async () => {
-    const { controller, tokens } = build();
-    expect(await controller.drag(alice, one(T_ANA, 40, 50))).toEqual({
-      message: "Arrastando",
-      payload: {
-        groups: [{ audience: "table", event: { moves: [{ tokenId: T_ANA, x: 40, y: 50 }] } }],
-      },
-    });
-    const mixed = await controller.drag(gm, {
-      moves: [
-        { tokenId: T_WOLF, x: 1, y: 1 },
-        { tokenId: T_HIDDEN, x: 2, y: 2 },
-      ],
-    });
-    expect(mixed).toMatchObject({
-      payload: {
-        groups: [
-          { audience: "table", event: { moves: [{ tokenId: T_WOLF }] } },
-          { audience: "gm", event: { moves: [{ tokenId: T_HIDDEN }] } },
-        ],
-      },
-    });
-    expect(await controller.drag(alice, one(T_BRUNO))).toEqual({ error: arenaErrors.forbidden });
-    expect(tokens.moveMany).not.toHaveBeenCalled();
-  });
 });
 
 describe("arena controller: GM tools", () => {
@@ -356,17 +390,19 @@ describe("arena controller: GM tools", () => {
   });
 
   it("deletes a scene with its media", async () => {
-    const { controller, images } = build();
+    const { controller, images, assets } = build();
     expect(await controller.deleteScene(gm, LIVE)).toEqual({
       message: "Cena excluída",
       payload: { sceneId: LIVE, audience: "table" },
     });
     expect(images.removeScene).toHaveBeenCalledWith(LIVE);
     expect(images.removeToken).toHaveBeenCalledTimes(4);
+    expect(assets.release).toHaveBeenCalledTimes(1);
+    expect(assets.release).toHaveBeenCalledWith("media/map/full.webp");
   });
 
   it("stores a map, replaces the old one and refuses non images", async () => {
-    const { controller, images } = build();
+    const { controller, assets } = build();
     expect(await controller.setSceneMap(gm, LIVE, { file: undefined })).toEqual({
       error: arenaErrors.imageMissing,
     });
@@ -376,16 +412,16 @@ describe("arena controller: GM tools", () => {
     await controller.setSceneMap(gm, LIVE, { file: png });
     const second = await controller.setSceneMap(gm, LIVE, { file: png });
     expect(second).toMatchObject({ payload: { audience: "table" } });
-    expect(images.remove).not.toHaveBeenCalledWith(`arena/maps/${LIVE}/map-new.png`);
+    expect(assets.release).not.toHaveBeenCalledWith("media/new/full.webp");
   });
 
   it("refuses oversized maps before storing them", async () => {
-    const { controller, images } = build();
-    const huge = Buffer.alloc(25 * 1024 * 1024 + 1);
+    const { controller, assets } = build();
+    const huge = Buffer.alloc(ARENA_MAP_MAX_BYTES + 1);
     expect(await controller.setSceneMap(gm, LIVE, { file: huge })).toEqual({
       error: arenaErrors.mapTooLarge,
     });
-    expect(images.storeMap).not.toHaveBeenCalled();
+    expect(assets.ingest).not.toHaveBeenCalled();
   });
 
   it("creates character and NPC tokens", async () => {
@@ -435,14 +471,14 @@ describe("arena controller: GM tools", () => {
   });
 
   it("gives own images only to NPC tokens", async () => {
-    const { controller, images } = build();
+    const { controller, assets } = build();
     expect(await controller.setTokenImage(gm, T_ANA, { file: png })).toEqual({
       error: arenaErrors.npcOnly,
     });
     expect(await controller.setTokenImage(gm, T_WOLF, { file: png })).toMatchObject({
-      payload: { token: { imageUrl: `/media/arena/tokens/${T_WOLF}/token-new.png` } },
+      payload: { token: { imageUrl: "/media/media/new/full.webp" } },
     });
-    expect(images.remove).toHaveBeenCalledWith("old");
+    expect(assets.release).toHaveBeenCalledWith("old");
   });
 });
 
@@ -607,6 +643,11 @@ describe("arena controller: scene library", () => {
       name: "Ruínas",
       folderId: F_ROOT,
       mapUrl: null,
+      mapThumbUrl: null,
+      width: 2000,
+      height: 1000,
+      mapWidth: null,
+      mapHeight: null,
       position: 0,
     });
     expect(await controller.getView(alice)).toMatchObject({
@@ -622,10 +663,91 @@ describe("arena controller: scene library", () => {
   });
 
   it("refuses maps too big for the table GPUs", async () => {
-    const { controller, images } = build();
+    const { controller, assets } = build();
     expect(await controller.setSceneMap(gm, LIVE, { file: Buffer.from("huge") })).toEqual({
       error: arenaErrors.mapTooBig,
     });
-    expect(images.storeMap).not.toHaveBeenCalled();
+    expect(assets.ingest).not.toHaveBeenCalled();
+  });
+});
+
+describe("arena controller: image assets", () => {
+  it("lets go of the NPC image when its token is removed", async () => {
+    const { controller, assets } = build();
+    await controller.deleteToken(gm, T_WOLF);
+    expect(assets.release).toHaveBeenCalledWith("media/npc/full.webp");
+  });
+});
+
+describe("arena controller: board size", () => {
+  it("keeps resizing the board for the GM and validates the size", async () => {
+    const { controller, scenes } = build();
+    expect(await controller.setSceneBoard(alice, LIVE, { width: 1400 })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.setSceneBoard(gm, "x", { width: 1400 })).toEqual({
+      error: arenaErrors.sceneNotFound,
+    });
+    expect(await controller.setSceneBoard(gm, LIVE, { width: 10 })).toEqual({
+      error: arenaErrors.invalidBoard,
+    });
+    expect(await controller.setSceneBoard(gm, LIVE, { width: 50_000 })).toEqual({
+      error: arenaErrors.invalidBoard,
+    });
+    expect(await controller.setSceneBoard(gm, MISSING, { width: 1400 })).toEqual({
+      error: arenaErrors.sceneNotFound,
+    });
+    expect(scenes.setBoard).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the board and tells who sees the scene", async () => {
+    const { controller, scenes } = build();
+    const result = await controller.setSceneBoard(gm, PREP, { width: 1400, height: 700 });
+    expect(result).toMatchObject({ payload: { scene: { id: PREP, width: 1400 }, audience: "gm" } });
+    expect(scenes.setBoard).toHaveBeenCalledWith(PREP, { width: 1400, height: 700 });
+  });
+
+  it("stores the natural size of a new map", async () => {
+    const { controller, scenes } = build();
+    await controller.setSceneMap(gm, LIVE, { file: png });
+    expect(scenes.setMapKey).toHaveBeenCalledWith(LIVE, "media/new/full.webp", {
+      width: 2400,
+      height: 1600,
+    });
+  });
+
+  it("stops looking for old maps once a pass found none", async () => {
+    const { controller, scenes } = build();
+    await controller.listLibrary(gm);
+    await controller.listLibrary(gm);
+    await controller.getView(gm);
+    expect(scenes.findUnmeasuredMaps).toHaveBeenCalledTimes(1);
+  });
+
+  it("measures old maps once when loading the Arena", async () => {
+    const { controller, scenes, images } = build({
+      unmeasured: [{ id: PREP, mapKey: "arena/maps/old.png" }],
+    });
+    await controller.listLibrary(gm);
+    expect(images.readMapSize).toHaveBeenCalledWith("arena/maps/old.png");
+    expect(scenes.setMapSize).toHaveBeenCalledWith(PREP, { width: 1024, height: 512 });
+  });
+
+  it("does not download again a map it could not measure", async () => {
+    const { controller, images } = build({
+      unmeasured: [{ id: PREP, mapKey: "arena/maps/gone.png" }],
+    });
+    vi.mocked(images.readMapSize).mockResolvedValue(null);
+    await Promise.all([controller.listLibrary(gm), controller.getView(gm)]);
+    await controller.getView(alice);
+    expect(images.readMapSize).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps moved and new tokens inside the board", async () => {
+    const { controller, tokens } = build();
+    await controller.move(gm, { moves: [{ tokenId: T_WOLF, x: 5000, y: 120 }] });
+    expect(tokens.moveMany).toHaveBeenCalledWith([{ tokenId: T_WOLF, x: 2000, y: 120 }], undefined);
+    await controller.createToken(gm, LIVE, { name: "Lobo", x: 9000, y: 9000 });
+    expect(tokens.create).toHaveBeenCalledWith(LIVE, expect.objectContaining({ x: 2000, y: 1000 }));
   });
 });

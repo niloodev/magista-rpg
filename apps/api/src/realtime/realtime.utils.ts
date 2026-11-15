@@ -1,13 +1,18 @@
-import type { IRollPending, IRollResult } from "@magista/shared";
+import type { IArenaTokenRemovedEvent, IRollPending, IRollResult } from "@magista/shared";
+
+import type {
+  ArenaAudience,
+  IArenaTokenChange,
+  IArenaTokenRemoval,
+} from "@/core/controllers/arena";
 
 import {
-  ARENA_DRAG_LIMIT,
-  ARENA_DRAG_WINDOW_MS,
   ARENA_MOVE_LIMIT,
   ARENA_MOVE_WINDOW_MS,
   ROLL_BURST_LIMIT,
   ROLL_BURST_WINDOW_MS,
 } from "./realtime.constants";
+import type { IArenaTokenBatches } from "./realtime.types";
 
 /**
  * Room that holds every socket of one account, used to force logout.
@@ -62,11 +67,6 @@ export const gateFor = createGateRegistry(ROLL_BURST_LIMIT, ROLL_BURST_WINDOW_MS
 export const arenaMoveGateFor = createGateRegistry(ARENA_MOVE_LIMIT, ARENA_MOVE_WINDOW_MS);
 
 /**
- * Per-account window for drag previews in the Arena, summing every socket of the account (extra previews are dropped).
- */
-export const arenaDragGateFor = createGateRegistry(ARENA_DRAG_LIMIT, ARENA_DRAG_WINDOW_MS);
-
-/**
  * What the table may know about a roll before it is revealed: who rolls what, and when the result comes.
  */
 export function pendingOf(roll: IRollResult, revealInMs: number, now = Date.now()): IRollPending {
@@ -81,4 +81,31 @@ export function pendingOf(roll: IRollResult, revealInMs: number, now = Date.now(
     subtitle: roll.subtitle,
     revealAt: new Date(now + revealInMs).toISOString(),
   };
+}
+
+/**
+ * Splits token changes by who receives them, so every socket gets one event per batch: the players get the
+ * tokens they may see (`players`), the GM gets every token (`gm`), and the players also learn which tokens left
+ * their view (hidden).
+ */
+export function groupTokenChanges(changes: IArenaTokenChange[]): IArenaTokenBatches {
+  const batches: IArenaTokenBatches = { players: [], gm: [], hiddenFromTable: [] };
+  for (const { token, audience, previousAudience } of changes) {
+    batches.gm.push(token);
+    if (audience === "table") batches.players.push(token);
+    if (audience === "gm" && previousAudience === "table")
+      batches.hiddenFromTable.push({ id: token.id, sceneId: token.sceneId });
+  }
+  return batches;
+}
+
+/**
+ * Splits token removals by who could see each token, so a batch delete becomes one event per room.
+ */
+export function groupTokenRemovals(
+  removals: IArenaTokenRemoval[],
+): Record<ArenaAudience, IArenaTokenRemovedEvent[]> {
+  const groups: Record<ArenaAudience, IArenaTokenRemovedEvent[]> = { table: [], gm: [] };
+  for (const { event, audience } of removals) groups[audience].push(event);
+  return groups;
 }

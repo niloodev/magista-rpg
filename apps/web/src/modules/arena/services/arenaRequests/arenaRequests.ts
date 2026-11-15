@@ -51,21 +51,21 @@ export function uploadArenaTokenImage(
 }
 
 /**
- * Applies size, visibility or name changes to several tokens (GM); the table receives each one via "arena:token".
+ * Applies size, visibility or name changes to several tokens (GM); the table receives them in one "arena:tokens" (or "arena:token" for a single one).
  */
 export function updateArenaTokens(updates: IArenaTokenPatch[]): Promise<ControllerResult<unknown>> {
   return apiRequest("/arena/tokens", { method: "PATCH", body: { updates } });
 }
 
 /**
- * Removes several tokens (GM); the table receives each removal via "arena:token-removed".
+ * Removes several tokens (GM); the table receives them in one "arena:tokens-removed" (or "arena:token-removed" for a single one).
  */
 export function deleteArenaTokens(ids: string[]): Promise<ControllerResult<unknown>> {
   return apiRequest("/arena/tokens", { method: "DELETE", body: { ids } });
 }
 
 /**
- * Stores the final position of one or more tokens; the others receive each one via "arena:token". Tokens the
+ * Stores the final position of one or more tokens; the others receive them in one "arena:tokens" (or "arena:token" for a single one). Tokens the
  * account may not move come back in `refused`.
  */
 export async function moveArenaTokens(
@@ -83,11 +83,4 @@ export async function moveArenaTokens(
   } catch {
     return { ok: false, error: TABLE_OFFLINE_ERROR };
   }
-}
-
-/**
- * Shares a live drag position with the others (fire and forget; dropped when the connection is busy).
- */
-export function emitArenaDrag(socket: TableSocket | null, request: IMoveArenaTokensInput): void {
-  if (socket?.connected) socket.volatile.emit("arena:drag", request);
 }

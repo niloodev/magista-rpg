@@ -6,7 +6,7 @@ import {
   type ICharacterSummary,
 } from "@magista/shared";
 
-import { mediaUrlOf } from "@/core/services/media";
+import { characterImageUrls } from "@/core/services/media";
 import type { Character } from "@/generated/prisma/client";
 
 /**
@@ -16,8 +16,7 @@ export function toCharacter(row: Character): ICharacter {
   return {
     id: row.id,
     name: row.name,
-    avatarUrl: mediaUrlOf(row.avatarKey),
-    artUrl: mediaUrlOf(row.artKey),
+    ...characterImageUrls(row.avatarKey, row.artKey),
     sheet: migrateSheet(row.sheet, row.sheetVersion),
     sheetVersion: Math.max(row.sheetVersion, 1),
     features: normalizeFeatures(row.features),
@@ -57,8 +56,7 @@ export function toCharacterSummary(row: SummaryRow): ICharacterSummary {
   return {
     id: row.id,
     name: row.name,
-    avatarUrl: mediaUrlOf(row.avatarKey),
-    artUrl: mediaUrlOf(row.artKey),
+    ...characterImageUrls(row.avatarKey, row.artKey),
     classKey: identity.class,
     level: identity.level,
     folderId: row.folderId,

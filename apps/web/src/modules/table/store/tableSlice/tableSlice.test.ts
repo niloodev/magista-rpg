@@ -52,3 +52,18 @@ describe("table slice", () => {
     expect(store.getState().table.pendingRolls).toEqual([]);
   });
 });
+
+describe("tableSlice without churn", () => {
+  it("keeps the state when latency or members repeat", () => {
+    const store = createAppStore();
+    store.getState().setLatency(40);
+    const before = store.getState().table;
+    store.getState().setLatency(40);
+    expect(store.getState().table).toBe(before);
+    const members = [{ accountId: "a", login: "Ana", role: "PLAYER" as const }];
+    store.getState().setMembers(members);
+    const withMembers = store.getState().table;
+    store.getState().setMembers([{ ...members[0]! }]);
+    expect(store.getState().table).toBe(withMembers);
+  });
+});

@@ -15,7 +15,6 @@ export function SheetStatusBar({
   saveStatus,
   saveError,
   connection,
-  latencyMs,
   rollError,
   onRetrySave,
 }: SheetStatusBarProps) {
@@ -33,7 +32,7 @@ export function SheetStatusBar({
       <span className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full ${CONNECTION_LABELS[connection].dot}`} />
         <span aria-live="polite">{CONNECTION_LABELS[connection].label}</span>
-        <LatencyBadge latencyMs={connection === "connected" ? latencyMs : null} />
+        <LatencyBadge connected={connection === "connected"} />
       </span>
       <span aria-live="polite" className={saveStatus === "error" ? "text-error" : ""}>
         {saveStatus === "error"

@@ -8,5 +8,6 @@ export * from "./ArenaSkeleton";
 export * from "./ArenaStage";
 export * from "./ArenaTopBar";
 export * from "./NpcTokenDialog";
+export * from "./SceneBoardDialog";
 export * from "./SceneFormDialog";
 export * from "./SceneLibrary";

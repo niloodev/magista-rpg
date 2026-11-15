@@ -1,7 +1,12 @@
-import { CHARACTER_SHEET_VERSION, createEmptySheet, normalizeFeatures } from "@magista/shared";
+import {
+  CHARACTER_SHEET_VERSION,
+  characterPortrait,
+  createEmptySheet,
+  normalizeFeatures,
+} from "@magista/shared";
 
 import { getDatabase } from "@/core/services/database";
-import { mediaUrlOf } from "@/core/services/media";
+import { characterImageUrls } from "@/core/services/media";
 import type { Prisma } from "@/generated/prisma/client";
 
 import { SUMMARY_SELECT } from "./character.constants";
@@ -148,7 +153,7 @@ const setImageKey: ICharacterModels["setImageKey"] = async (id, kind, key) =>
     const avatarKey = kind === "avatar" ? key : locked.avatarKey;
     const artKey = kind === "art" ? key : locked.artKey;
     return {
-      images: { id, avatarUrl: mediaUrlOf(avatarKey), artUrl: mediaUrlOf(artKey) },
+      images: { id, ...characterImageUrls(avatarKey, artKey) },
       previousKey: kind === "avatar" ? locked.avatarKey : locked.artKey,
     };
   });
@@ -206,7 +211,7 @@ const listByFeature: ICharacterModels["listByFeature"] = async (feature) => {
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
-    portraitUrl: mediaUrlOf(row.avatarKey) ?? mediaUrlOf(row.artKey),
+    portraitUrl: characterPortrait(characterImageUrls(row.avatarKey, row.artKey)),
   }));
 };
 

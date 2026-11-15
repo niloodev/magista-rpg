@@ -31,6 +31,7 @@ import {
   ARENA_LITE_FRAME_MS,
   ARENA_SETTLE_DISTANCE,
   ARENA_TOKEN_LERP,
+  ARENA_MAP_TEXTURE_MAX,
   ARENA_TOKEN_TEXTURE_SIZE,
   ARENA_WHEEL_SENSITIVITY,
 } from "./arenaRenderer.constants";
@@ -44,6 +45,8 @@ import type {
 } from "./arenaRenderer.types";
 import {
   approach,
+  clampZoom,
+  labelScale,
   centerCamera,
   fitCamera,
   fitTextureSize,
@@ -112,16 +115,37 @@ interface IPanState {
 async function loadTexture(url: string, maxSize: number): Promise<ILoadedTexture<Texture>> {
   const blob = await fetchMediaBlob(url);
   const original = await createImageBitmap(blob);
-  const target = fitTextureSize(original.width, original.height, maxSize);
-  const bitmap = target.scaled
-    ? await createImageBitmap(blob, {
-        resizeWidth: target.width,
-        resizeHeight: target.height,
-        resizeQuality: "high",
-      })
-    : original;
-  if (bitmap !== original) original.close();
-  return { texture: Texture.from(bitmap, true), width: original.width, height: original.height };
+  const { width, height } = original;
+  const target = fitTextureSize(width, height, maxSize);
+  if (!target.scaled) {
+    try {
+      return { texture: Texture.from(original, true), width, height };
+    } catch (error) {
+      original.close();
+      throw error;
+    }
+  }
+  try {
+    const bitmap = await createImageBitmap(blob, {
+      resizeWidth: target.width,
+      resizeHeight: target.height,
+      resizeQuality: "high",
+    });
+    return { texture: Texture.from(bitmap, true), width, height };
+  } finally {
+    original.close();
+  }
+}
+
+/**
+ * Destroys a texture and closes the decoded bitmap behind it (Pixi only drops its reference, leaving the
+ * memory of a large map until the garbage collector runs).
+ */
+function destroyTexture(texture: Texture | null | undefined): void {
+  if (!texture) return;
+  const resource: unknown = texture.source.resource;
+  texture.destroy(true);
+  if (typeof ImageBitmap !== "undefined" && resource instanceof ImageBitmap) resource.close();
 }
 
 /**
@@ -161,6 +185,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private lastFrame = 0;
   private saveTimer = 0;
   private sceneVersion = 0;
+  private loadingMap = false;
   private destroyed = false;
 
   private constructor(
@@ -230,45 +255,89 @@ export class ArenaRenderer implements IArenaRenderer {
     canvas.setAttribute("aria-hidden", "true");
     host.appendChild(canvas);
     const gl = "gl" in app.renderer ? (app.renderer.gl as WebGLRenderingContext) : null;
-    const maxTexture = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : 4096;
+    const gpuMax = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : ARENA_MAP_TEXTURE_MAX;
+    const maxTexture = Math.min(gpuMax, ARENA_MAP_TEXTURE_MAX);
     return new ArenaRenderer(app, host, options, maxTexture);
   }
 
   setScene = async (scene: IArenaRenderScene | null): Promise<void> => {
     const sceneChanged = (scene?.id ?? null) !== this.sceneId;
     const mapUrl = scene?.mapUrl ?? null;
-    if (!sceneChanged && mapUrl === this.mapUrl) return;
+    if (!sceneChanged && mapUrl === this.mapUrl) {
+      if (!scene) return;
+      if (this.loadingMap) this.scene = scene;
+      else this.resizeBoard(scene);
+      return;
+    }
     const version = ++this.sceneVersion;
     this.scene = scene;
+    this.loadingMap = true;
     this.sceneId = scene?.id ?? null;
     this.mapUrl = mapUrl;
     let loaded: ILoadedTexture<Texture> | null = null;
     if (mapUrl) {
       loaded = await loadTexture(mapUrl, this.maxTextureSize).catch(() => null);
       if (this.destroyed || version !== this.sceneVersion) {
-        loaded?.texture.destroy(true);
+        destroyTexture(loaded?.texture);
         return;
       }
       if (!loaded) this.mapUrl = undefined;
     }
+    this.loadingMap = false;
+    const current = this.scene;
     this.options.callbacks.onMapError(Boolean(mapUrl) && !loaded);
     this.mapLayer.removeChildren().forEach((child) => child.destroy());
-    this.mapTexture?.destroy(true);
+    destroyTexture(this.mapTexture);
     this.mapTexture = loaded?.texture ?? null;
-    if (loaded) {
-      const sprite = new Sprite(loaded.texture);
-      sprite.width = loaded.width;
-      sprite.height = loaded.height;
-      this.mapLayer.addChild(sprite);
-      this.bounds = { width: loaded.width, height: loaded.height };
-    } else {
-      this.bounds = ARENA_EMPTY_BOUNDS;
-      this.mapLayer.addChild(this.drawEmptyGround());
-    }
+    this.bounds = current ? { width: current.width, height: current.height } : ARENA_EMPTY_BOUNDS;
+    this.mapLayer.addChild(loaded ? new Sprite(loaded.texture) : new Graphics());
+    this.drawBoard();
     if (sceneChanged) this.camera = this.storedCamera() ?? this.fittedCamera();
     this.applyCamera();
     this.options.callbacks.onSceneReady(this.bounds);
   };
+
+  /**
+   * Applies a new board size to the scene on screen: the map stretches to it and the camera zoom compensates,
+   * so the map stays where it was on screen and only the tokens change size against it. When the zoom limits cut
+   * that compensation, the same spot of the map stays at the center of the view.
+   */
+  private resizeBoard(scene: IArenaRenderScene): void {
+    const previous = this.bounds;
+    if (previous.width === scene.width && previous.height === scene.height) return;
+    this.scene = scene;
+    this.bounds = { width: scene.width, height: scene.height };
+    this.drawBoard();
+    if (previous.width > 0 && previous.height > 0) {
+      const center = visibleCenterPoint(this.viewport(), this.insets());
+      const before = screenToWorld(this.camera, center);
+      const scale = clampZoom((this.camera.scale * previous.width) / scene.width);
+      const world = {
+        x: (before.x / previous.width) * scene.width,
+        y: (before.y / previous.height) * scene.height,
+      };
+      this.camera = { scale, x: center.x - world.x * scale, y: center.y - world.y * scale };
+    }
+    this.applyCamera();
+    this.options.callbacks.onSceneReady(this.bounds);
+  }
+
+  /** Stretches the map image (or draws the empty ground) over the whole board. */
+  private drawBoard(): void {
+    const ground = this.mapLayer.children[0];
+    const { width, height } = this.bounds;
+    if (ground instanceof Sprite) {
+      ground.width = width;
+      ground.height = height;
+    } else if (ground instanceof Graphics) {
+      ground
+        .clear()
+        .rect(0, 0, width, height)
+        .fill({ color: ARENA_COLORS.void800 })
+        .stroke({ width: 4, color: ARENA_COLORS.ruby500, alpha: 0.25 });
+    }
+    this.invalidate();
+  }
 
   setTokens = (list: IArenaRenderToken[]): void => {
     const seen = new Set<string>();
@@ -283,14 +352,20 @@ export class ArenaRenderer implements IArenaRenderer {
       if (!this.drag?.offsets.has(data.id)) view.target = { x: data.x, y: data.y };
       if (!existing) view.display = { ...view.target };
       this.drawToken(view);
-      this.tokenLayer.addChild(view.container);
+      if (!existing) this.tokenLayer.addChild(view.container);
     }
+    list.forEach((data, index) => {
+      const view = this.tokens.get(data.id);
+      if (view && this.tokenLayer.getChildAt(index) !== view.container)
+        this.tokenLayer.setChildIndex(view.container, index);
+    });
     for (const [id, view] of this.tokens) {
       if (seen.has(id)) continue;
       view.container.destroy({ children: true });
       this.tokens.delete(id);
       this.drag?.offsets.delete(id);
     }
+    this.prunePortraits();
     for (const id of this.drag?.offsets.keys() ?? []) {
       const dragged = this.tokens.get(id);
       if (dragged) this.tokenLayer.addChild(dragged.container);
@@ -378,9 +453,9 @@ export class ArenaRenderer implements IArenaRenderer {
     this.app.stage.removeChildren();
     this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
-    this.mapTexture?.destroy(true);
+    destroyTexture(this.mapTexture);
     for (const pending of this.portraits.values())
-      void pending.then((texture) => texture?.destroy(true));
+      void pending.then((texture) => destroyTexture(texture));
     this.portraits.clear();
     this.app.destroy({ removeView: true });
   };
@@ -474,14 +549,6 @@ export class ArenaRenderer implements IArenaRenderer {
     }
   }
 
-  private drawEmptyGround(): Graphics {
-    const { width, height } = ARENA_EMPTY_BOUNDS;
-    return new Graphics()
-      .rect(0, 0, width, height)
-      .fill({ color: ARENA_COLORS.void800 })
-      .stroke({ width: 4, color: ARENA_COLORS.ruby500, alpha: 0.25 });
-  }
-
   private createToken(data: IArenaRenderToken): ITokenView {
     const container = new Container();
     const shadow = new Graphics();
@@ -521,6 +588,20 @@ export class ArenaRenderer implements IArenaRenderer {
     return view;
   }
 
+  /**
+   * Frees the portrait textures no token on the board uses anymore (another scene, a replaced image), so the
+   * GPU memory follows the tokens on screen instead of growing for the whole session.
+   */
+  private prunePortraits(): void {
+    const used = new Set<string>();
+    for (const view of this.tokens.values()) if (view.data.imageUrl) used.add(view.data.imageUrl);
+    for (const [url, pending] of this.portraits) {
+      if (used.has(url)) continue;
+      this.portraits.delete(url);
+      void pending.then((texture) => destroyTexture(texture));
+    }
+  }
+
   private resetPortrait(view: ITokenView): void {
     view.portrait?.destroy();
     view.portrait = null;
@@ -533,14 +614,22 @@ export class ArenaRenderer implements IArenaRenderer {
     if (!url) return;
     let pending = this.portraits.get(url);
     if (!pending) {
-      pending = loadTexture(url, ARENA_TOKEN_TEXTURE_SIZE)
+      const loading: Promise<Texture | null> = loadTexture(url, ARENA_TOKEN_TEXTURE_SIZE)
         .then((loaded) => loaded.texture)
-        .catch(() => null);
+        .catch(() => {
+          if (this.portraits.get(url) === loading) this.portraits.delete(url);
+          return null;
+        });
+      pending = loading;
       this.portraits.set(url, pending);
     }
     const texture = await pending;
     if (!texture || this.destroyed || view.container.destroyed || view.data.imageUrl !== url)
       return;
+    if (this.portraits.get(url) !== pending) {
+      void this.attachPortrait(view);
+      return;
+    }
     view.portrait?.destroy();
     view.portrait = new Sprite(texture);
     view.portrait.anchor.set(0.5);
@@ -606,7 +695,7 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private scaleLabel(view: ITokenView): void {
     const fontSize = Number(view.label.style.fontSize) || ARENA_LABEL_MIN_SCREEN_PX;
-    view.label.scale.set(Math.max(1, ARENA_LABEL_MIN_SCREEN_PX / (fontSize * this.camera.scale)));
+    view.label.scale.set(labelScale(fontSize, this.camera.scale));
   }
 
   private worldPoint(event: FederatedPointerEvent): IArenaPoint {
@@ -731,7 +820,6 @@ export class ArenaRenderer implements IArenaRenderer {
         view.display = { ...point };
         return [{ tokenId, ...point }];
       });
-      this.options.callbacks.onDragMove(drag.moves);
       this.invalidate();
       return;
     }
@@ -898,13 +986,6 @@ export class ArenaRenderer implements IArenaRenderer {
   }
 
   private cancelGesture(): void {
-    if (this.drag?.moved) {
-      const originals = [...this.drag.offsets.keys()].flatMap((tokenId) => {
-        const view = this.tokens.get(tokenId);
-        return view ? [{ tokenId, x: view.data.x, y: view.data.y }] : [];
-      });
-      if (originals.length > 0) this.options.callbacks.onDragMove(originals);
-    }
     if (this.resize) {
       for (const [id, size] of this.resize.sizes) {
         const view = this.tokens.get(id);

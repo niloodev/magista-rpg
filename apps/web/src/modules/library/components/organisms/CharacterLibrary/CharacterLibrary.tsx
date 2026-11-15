@@ -1,7 +1,10 @@
 "use client";
 
+import { memo } from "react";
+
 import { LibraryRowsSkeleton } from "@/modules/library/components/molecules";
 import { LIBRARY_SIDEBAR_FRAME, LIBRARY_TITLES } from "@/modules/library/library.constants";
+import { folderSummary } from "@/modules/library/library.utils";
 import { Skeleton, Text } from "@/shared/components/atoms";
 import { Panel, SectionHeader } from "@/shared/components/molecules";
 
@@ -14,14 +17,9 @@ import {
 import { useCharacterLibrary } from "./CharacterLibrary.hook";
 import type { CharacterLibraryProps } from "./CharacterLibrary.types";
 import { FolderTree } from "../FolderTree";
-import {
-  CharacterRowList,
-  CharacterTreeLeaf,
-  LibraryEmptyTree,
-  LibraryToolbar,
-} from "./subcomponents";
+import { CharacterRowList, LibraryEmptyTree, LibraryToolbar } from "./subcomponents";
 
-export function CharacterLibrary({
+export const CharacterLibrary = memo(function CharacterLibrary({
   className,
   variant = "page",
   onOpenCharacter,
@@ -45,7 +43,6 @@ export function CharacterLibrary({
     expandedFolderIds,
     toggleFolder,
     expandFolders,
-    accountLogins,
     resultLabel,
     totalLabel,
     dialog,
@@ -59,10 +56,10 @@ export function CharacterLibrary({
     noticeClassName,
     setNotice,
     onTreeMove,
-    folderSummaryOf,
     folderMenuOf,
     portraitUrlOf,
-  } = useCharacterLibrary(onPlaceCharacter);
+    renderLeaf,
+  } = useCharacterLibrary({ onPlaceCharacter, onOpenCharacter });
   const sidebar = variant === "sidebar";
   return (
     <Panel
@@ -113,7 +110,7 @@ export function CharacterLibrary({
             onToggleFolder={toggleFolder}
             onExpandFolders={expandFolders}
             onMove={onTreeMove}
-            folderSummary={folderSummaryOf}
+            folderSummary={folderSummary}
             folderMenu={folderMenuOf}
             leafPortrait={portraitUrlOf}
             labels={CHARACTER_TREE_LABELS}
@@ -121,16 +118,7 @@ export function CharacterLibrary({
             onDropOutside={onDropCharacter}
             outsidePreview={dropPreview}
             empty={<LibraryEmptyTree onNewFolder={newFolder} onNewCharacter={newCharacter} />}
-            renderLeaf={(character, slots) => (
-              <CharacterTreeLeaf
-                character={character}
-                slots={slots}
-                accountLogins={accountLogins}
-                onDialog={openDialog}
-                onOpen={onOpenCharacter}
-                onPlace={onPlaceCharacter}
-              />
-            )}
+            renderLeaf={renderLeaf}
           />
         )}
         {status === "ready" && (!isGm || searching) && (
@@ -154,4 +142,4 @@ export function CharacterLibrary({
       )}
     </Panel>
   );
-}
+});

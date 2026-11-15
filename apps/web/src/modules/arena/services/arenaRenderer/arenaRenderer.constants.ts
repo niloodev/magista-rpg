@@ -31,6 +31,9 @@ export const ARENA_LITE_FRAME_MS = 33;
 
 export const ARENA_TOKEN_TEXTURE_SIZE = 256;
 
+/** Largest side of the map texture on the GPU (a 16384 px texture would take about 1 GB of video memory). */
+export const ARENA_MAP_TEXTURE_MAX = 8192;
+
 export const ARENA_CLICK_SLOP = 4;
 
 export const ARENA_CAMERA_STORAGE_PREFIX = "magista-arena-camera:";
@@ -40,6 +43,9 @@ export const ARENA_CAMERA_SAVE_DELAY_MS = 300;
 export const ARENA_LABEL_GAP = 6;
 
 export const ARENA_LABEL_MIN_SCREEN_PX = 12;
+
+/** Largest height of a token name on screen, so zooming into a small map does not blow the names up. */
+export const ARENA_LABEL_MAX_SCREEN_PX = 18;
 
 export const ARENA_HANDLE_SIZE = 10;
 

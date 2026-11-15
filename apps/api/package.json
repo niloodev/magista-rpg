@@ -17,6 +17,8 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "import:roll20": "tsx --env-file-if-exists=.env src/cli/importRoll20/importRoll20.ts",
+    "media:assets": "tsx --env-file-if-exists=.env src/cli/mediaAssets/mediaAssets.ts",
+    "import:roll20-pages": "tsx --env-file-if-exists=.env src/cli/importRoll20Pages/importRoll20Pages.ts",
     "account:password": "tsx --env-file-if-exists=.env src/cli/setPassword/setPassword.ts",
     "storage:dump": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts dump",
     "storage:restore": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts restore",
@@ -36,6 +38,7 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
+    "sharp": "^0.35.5",
     "socket.io": "^4.8.4",
     "zod": "^4.6.7"
   },

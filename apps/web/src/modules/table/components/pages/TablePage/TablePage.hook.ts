@@ -19,7 +19,10 @@ export function useTablePage() {
   const router = useRouter();
   const session = useApp((state) => state.session.data);
   const setSession = useApp((state) => state.setSession);
-  const { connection, members, rolls, rollsLoaded } = useApp((state) => state.table);
+  const connection = useApp((state) => state.table.connection);
+  const members = useApp((state) => state.table.members);
+  const rolls = useApp((state) => state.table.rolls);
+  const rollsLoaded = useApp((state) => state.table.rollsLoaded);
   const [leaving, setLeaving] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const presenceHint = useSkeletonHint(PRESENCE_HINT_KEY);

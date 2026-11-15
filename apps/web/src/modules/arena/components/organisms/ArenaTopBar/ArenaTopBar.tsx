@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import Link from "next/link";
 
 import {
@@ -14,10 +16,9 @@ import { ArenaConnectionStatus } from "../../molecules";
 import { ARENA_BACK_LINK_CLASSES, ARENA_TOP_BAR_CLASSES } from "./ArenaTopBar.constants";
 import type { ArenaTopBarProps } from "./ArenaTopBar.types";
 
-export function ArenaTopBar({
+export const ArenaTopBar = memo(function ArenaTopBar({
   sceneName,
   status,
-  latencyMs,
   memberCount,
   broadcast,
   onGoLive,
@@ -73,7 +74,7 @@ export function ArenaTopBar({
           )}
         </div>
       )}
-      <ArenaConnectionStatus status={status} latencyMs={latencyMs} />
+      <ArenaConnectionStatus status={status} />
       <span className="flex shrink-0 items-center gap-1.5 font-sans text-sm text-muted-strong">
         <Icon name="users" size={16} aria-hidden="true" />
         <span className="sr-only">{ARENA_MEMBERS_LABEL(memberCount)}</span>
@@ -90,4 +91,4 @@ export function ArenaTopBar({
       </Button>
     </header>
   );
-}
+});

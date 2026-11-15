@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type {
   arenaFolderSchema,
   arenaLibrarySchema,
+  arenaBoardInputSchema,
   arenaSceneSchema,
   createArenaFolderInputSchema,
   moveArenaLibraryItemInputSchema,
@@ -62,11 +63,6 @@ export interface IArenaMoveResult {
   refused: string[];
 }
 
-/** Live drag preview relayed to the other tabs (never persisted). */
-export interface IArenaDragEvent {
-  moves: IMoveArenaTokenInput[];
-}
-
 export interface IArenaTokenRemovedEvent {
   id: string;
   sceneId: string;
@@ -78,3 +74,5 @@ export interface IArenaSceneEvent {
   /** Only the GM scene library changed (folders, order); the Arena view itself is the same. */
   libraryOnly?: boolean;
 }
+
+export type IArenaBoardInput = z.infer<typeof arenaBoardInputSchema>;

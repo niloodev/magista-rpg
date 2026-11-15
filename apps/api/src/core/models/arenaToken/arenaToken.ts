@@ -1,4 +1,5 @@
 import { getDatabase } from "@/core/services/database";
+import { Prisma } from "@/generated/prisma/client";
 
 import { TOKEN_INCLUDE, TOKEN_ORDER } from "./arenaToken.constants";
 import type { IArenaTokenModels } from "./arenaToken.types";
@@ -27,20 +28,23 @@ const findManyByIds: IArenaTokenModels["findManyByIds"] = async (ids) => {
   return rows.map(toArenaToken);
 };
 
+/**
+ * Moves a batch of tokens in one statement (the guard keeps a player's moves on visible tokens of the live scene).
+ */
 const moveMany: IArenaTokenModels["moveMany"] = async (moves, guard) => {
   if (moves.length === 0) return [];
-  const movedIds = await getDatabase().$transaction(async (tx) => {
-    const ids: string[] = [];
-    for (const { tokenId, x, y } of moves) {
-      const where = guard
-        ? { id: tokenId, sceneId: guard.sceneId, hidden: false }
-        : { id: tokenId };
-      const { count } = await tx.arenaToken.updateMany({ where, data: { x, y } });
-      if (count === 1) ids.push(tokenId);
-    }
-    return ids;
-  });
-  return findManyByIds(movedIds);
+  const values = Prisma.join(
+    moves.map(({ tokenId, x, y }) => Prisma.sql`(${tokenId}::uuid, ${x}::float8, ${y}::float8)`),
+  );
+  const guardSql = guard
+    ? Prisma.sql`AND t."sceneId" = ${guard.sceneId}::uuid AND t."hidden" = false`
+    : Prisma.empty;
+  const moved = await getDatabase().$queryRaw<{ id: string }[]>`
+    UPDATE "arena_tokens" t SET "x" = v."x", "y" = v."y", "updatedAt" = ${new Date()}
+    FROM (VALUES ${values}) AS v("id", "x", "y")
+    WHERE t."id" = v."id" ${guardSql}
+    RETURNING t."id"`;
+  return findManyByIds(moved.map((row) => row.id));
 };
 
 const create: IArenaTokenModels["create"] = async (sceneId, input) => {
@@ -63,7 +67,7 @@ const remove: IArenaTokenModels["remove"] = async (id) =>
   getDatabase().$transaction(async (tx) => {
     const row = await tx.arenaToken.findUnique({
       where: { id },
-      select: { id: true, sceneId: true, hidden: true },
+      select: { id: true, sceneId: true, hidden: true, imageKey: true },
     });
     if (!row) return null;
     await tx.arenaToken.delete({ where: { id } });
@@ -88,7 +92,7 @@ const removeMany: IArenaTokenModels["removeMany"] = async (ids) => {
   return getDatabase().$transaction(async (tx) => {
     const rows = await tx.arenaToken.findMany({
       where: { id: { in: ids } },
-      select: { id: true, sceneId: true, hidden: true },
+      select: { id: true, sceneId: true, hidden: true, imageKey: true },
     });
     await tx.arenaToken.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });
     return rows;

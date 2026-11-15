@@ -1,5 +1,5 @@
 import type { IArenaToken, IArenaView } from "@magista/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   arenaHint,
@@ -15,6 +15,7 @@ import {
   roundPoint,
   selectionSummary,
   toRenderTokens,
+  dockedTabsOf,
 } from "./arena.utils";
 
 function token(id: string, characterId: string | null): IArenaToken {
@@ -24,6 +25,7 @@ function token(id: string, characterId: string | null): IArenaToken {
     characterId,
     name: id,
     imageUrl: characterId ? `/media/${id}.png` : null,
+    imageThumbUrl: null,
     x: 10,
     y: 20,
     size: 140,
@@ -34,7 +36,18 @@ function token(id: string, characterId: string | null): IArenaToken {
 
 const view: IArenaView = {
   activeSceneId: "s",
-  scene: { id: "s", name: "Cena", folderId: null, mapUrl: null, position: 0 },
+  scene: {
+    id: "s",
+    name: "Cena",
+    folderId: null,
+    mapUrl: null,
+    mapThumbUrl: null,
+    width: 1750,
+    height: 1750,
+    mapWidth: null,
+    mapHeight: null,
+    position: 0,
+  },
   tokens: [token("ana", "c-ana"), token("bruno", "c-bruno"), token("lobo", null)],
   controllableCharacterIds: ["c-ana"],
 };
@@ -43,7 +56,7 @@ const media = (path: string | null) => (path ? `http://api${path}` : null);
 
 describe("arena utils", () => {
   it("marks what a player controls and owns", () => {
-    const tokens = toRenderTokens(view, {}, false, media);
+    const tokens = toRenderTokens(view, false, media);
     expect(tokens.map((entry) => [entry.id, entry.controllable, entry.tone])).toEqual([
       ["ana", true, "own"],
       ["bruno", false, "other"],
@@ -53,14 +66,9 @@ describe("arena utils", () => {
   });
 
   it("lets the GM control everything and highlights NPCs as theirs", () => {
-    const tokens = toRenderTokens(view, {}, true, media);
+    const tokens = toRenderTokens(view, true, media);
     expect(tokens.every((entry) => entry.controllable)).toBe(true);
     expect(tokens.map((entry) => entry.tone)).toEqual(["other", "other", "own"]);
-  });
-
-  it("uses live drag previews over stored positions", () => {
-    const [ana] = toRenderTokens(view, { ana: { x: 99, y: 98 } }, false, media);
-    expect(ana).toMatchObject({ x: 99, y: 98 });
   });
 
   it("keeps only counts and widths in the skeleton hint and reads it back safely", () => {
@@ -176,5 +184,23 @@ describe("arena utils", () => {
     expect(fitPanels(520, 560, 1024)).toEqual({ left: 320, right: 344 });
     expect(fitPanels(0, 560, 1024)).toEqual({ left: 0, right: 560 });
     expect(fitPanels(520, 560, 700)).toEqual({ left: 320, right: 300 });
+  });
+});
+
+describe("docked tabs", () => {
+  it("lists the docked sheets of a side with their names", () => {
+    const show = vi.fn();
+    const tabs = dockedTabsOf(
+      "left",
+      { left: ["c1"], right: [] },
+      { left: "c1", right: null },
+      {},
+      [{ id: "c1", name: "Ana" }],
+      show,
+    );
+    expect(tabs.sheets).toEqual([{ id: "c1", name: "Ana" }]);
+    expect(tabs.active).toBe("c1");
+    tabs.onShow(null);
+    expect(show).toHaveBeenCalledWith("left", null);
   });
 });

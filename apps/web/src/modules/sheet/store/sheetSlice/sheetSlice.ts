@@ -85,10 +85,10 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
         saveError: null,
       })),
     ),
-  applySheetImages: ({ id, avatarUrl, artUrl }) =>
+  applySheetImages: ({ id, ...images }) =>
     set((state) =>
       updateEntry(state, id, (entry) =>
-        entry.character ? { ...entry, character: { ...entry.character, avatarUrl, artUrl } } : null,
+        entry.character ? { ...entry, character: { ...entry.character, ...images } } : null,
       ),
     ),
   applySheetFeatures: ({ id, features }) =>

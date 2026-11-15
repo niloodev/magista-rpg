@@ -1,9 +1,10 @@
 import type { StateCreator } from "zustand";
 
-import { applyMove } from "@/modules/library/library.utils";
+import { applyMove, reuseUnchanged } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultLibraryState } from "./librarySlice.constants";
+import { keptFolderIds } from "./librarySlice.utils";
 import type { LibrarySlice } from "./librarySlice.types";
 
 export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = (set, get) => ({
@@ -22,12 +23,10 @@ export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = 
         ...state.library,
         status: "ready",
         error: null,
-        characters,
-        folders,
-        accounts,
-        expandedFolderIds: state.library.expandedFolderIds.filter((id) =>
-          folders.some((folder) => folder.id === id),
-        ),
+        characters: reuseUnchanged(state.library.characters, characters),
+        folders: reuseUnchanged(state.library.folders, folders),
+        accounts: reuseUnchanged(state.library.accounts, accounts),
+        expandedFolderIds: keptFolderIds(state.library.expandedFolderIds, folders),
       },
     })),
   failLibraryLoad: (error) =>
@@ -54,24 +53,32 @@ export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = 
   setExpandedLibraryFolders: (expandedFolderIds) =>
     set((state) => ({ library: { ...state.library, expandedFolderIds } })),
   setLibraryQuery: (query) => set((state) => ({ library: { ...state.library, query } })),
-  applyLibraryImages: ({ id, avatarUrl, artUrl }) =>
-    set((state) => ({
-      library: {
-        ...state.library,
-        characters: state.library.characters.map((character) =>
-          character.id === id ? { ...character, avatarUrl, artUrl } : character,
-        ),
-      },
-    })),
+  applyLibraryImages: ({ id, ...images }) =>
+    set((state) =>
+      state.library.characters.some((character) => character.id === id)
+        ? {
+            library: {
+              ...state.library,
+              characters: state.library.characters.map((character) =>
+                character.id === id ? { ...character, ...images } : character,
+              ),
+            },
+          }
+        : state,
+    ),
   applyLibraryFeatures: ({ id, features }) =>
-    set((state) => ({
-      library: {
-        ...state.library,
-        characters: state.library.characters.map((character) =>
-          character.id === id ? { ...character, features } : character,
-        ),
-      },
-    })),
+    set((state) =>
+      state.library.characters.some((character) => character.id === id)
+        ? {
+            library: {
+              ...state.library,
+              characters: state.library.characters.map((character) =>
+                character.id === id ? { ...character, features } : character,
+              ),
+            },
+          }
+        : state,
+    ),
   applyLibraryMove: (move) => {
     const { characters, folders } = get().library;
     const next = applyMove({ characters, folders }, move);

@@ -1,14 +1,21 @@
 "use client";
 
 import {
-  childFolders,
   isErrorResult,
   matchesSearch,
   type ICharacterSummary,
   type IFolder,
   type IMoveLibraryItemInput,
 } from "@magista/shared";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createElement,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useLibraryShapeHint } from "@/modules/library/hooks";
 import {
@@ -17,13 +24,7 @@ import {
   SEARCH_SHORTCUT,
 } from "@/modules/library/library.constants";
 import type { ITreeMove, LibraryDialog } from "@/modules/library/library.types";
-import {
-  characterSubtitle,
-  countCharactersDeep,
-  folderSummary,
-  libraryShape,
-  searchCharacters,
-} from "@/modules/library/library.utils";
+import { characterSubtitle, libraryShape, searchCharacters } from "@/modules/library/library.utils";
 import { portraitOf } from "@/modules/sheet/sheet.utils";
 import { toMediaUrl } from "@/core/services/http";
 import { fetchLibrary, moveLibraryItem } from "@/modules/library/services";
@@ -39,13 +40,18 @@ import {
   folderMenu,
   isTypingTarget,
 } from "./CharacterLibrary.utils";
-import type { ICharacterRowItem } from "./subcomponents";
+import type { CharacterLibraryProps } from "./CharacterLibrary.types";
+import { CharacterTreeLeaf, type ICharacterRowItem } from "./subcomponents";
+import type { ITreeLeafSlots } from "../FolderTree";
 
 /**
  * Loads the character library (and reloads it when the server says it changed), owns search,
  * dialogs, notices and the optimistic move used by drag and drop.
  */
-export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSummary) => void) {
+export function useCharacterLibrary({
+  onPlaceCharacter,
+  onOpenCharacter,
+}: Pick<CharacterLibraryProps, "onPlaceCharacter" | "onOpenCharacter">) {
   const store = useAppStoreApi();
   const socket = useTableSocket();
   const role = useApp((state) => state.session.data?.account.role);
@@ -146,7 +152,8 @@ export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSum
     [moveItem],
   );
 
-  const searching = library.query.trim().length > 0;
+  const query = useDeferredValue(library.query);
+  const searching = query.trim().length > 0;
   const data = useMemo(
     () => ({ characters: library.characters, folders: library.folders }),
     [library.characters, library.folders],
@@ -155,23 +162,15 @@ export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSum
   const { setHint } = useSkeletonHintActions();
 
   const results = useMemo(
-    () => (searching ? searchCharacters(data, library.query) : []),
-    [searching, data, library.query],
+    () => (searching ? searchCharacters(data, query) : []),
+    [searching, data, query],
   );
   const playerCharacters = useMemo(
     () =>
       library.characters
-        .filter((character) => matchesSearch(character.name, library.query))
+        .filter((character) => matchesSearch(character.name, query))
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
-    [library.characters, library.query],
-  );
-  const folderSummaryOf = useCallback(
-    (folderId: string) =>
-      folderSummary(
-        countCharactersDeep(data, folderId),
-        childFolders(data.folders, folderId).length,
-      ),
-    [data],
+    [library.characters, query],
   );
   const folderMenuOf = useCallback((folder: IFolder) => folderMenu(folder, setDialog), []);
   const portraitUrlOf = useCallback(
@@ -193,10 +192,7 @@ export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSum
   }, [data, library.expandedFolderIds, library.status, accountLogins, isGm, setHint]);
 
   const gridItems = useMemo<ICharacterRowItem[]>(() => {
-    const toItem = (
-      character: (typeof library.characters)[number],
-      path?: string,
-    ): ICharacterRowItem => ({
+    const toItem = (character: ICharacterSummary, path?: string): ICharacterRowItem => ({
       id: character.id,
       name: character.name,
       subtitle: characterSubtitle(character),
@@ -209,7 +205,20 @@ export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSum
     });
     if (!isGm) return playerCharacters.map((character) => toItem(character));
     return results.map(({ character, path }) => toItem(character, path));
-  }, [isGm, playerCharacters, results, accountLogins, library, onPlaceCharacter]);
+  }, [isGm, playerCharacters, results, accountLogins, onPlaceCharacter]);
+
+  const renderLeaf = useCallback(
+    (character: ICharacterSummary, slots: ITreeLeafSlots) =>
+      createElement(CharacterTreeLeaf, {
+        character,
+        slots,
+        accountLogins,
+        onDialog: setDialog,
+        onOpen: onOpenCharacter,
+        onPlace: onPlaceCharacter,
+      }),
+    [accountLogins, onOpenCharacter, onPlaceCharacter],
+  );
 
   const loading = library.status === "idle" || library.status === "loading";
   const visibleCount = isGm ? (searching ? results.length : null) : playerCharacters.length;
@@ -247,8 +256,8 @@ export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSum
     setNotice,
     moveItem,
     onTreeMove,
-    folderSummaryOf,
     folderMenuOf,
+    renderLeaf,
     portraitUrlOf,
   };
 }

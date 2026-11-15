@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { toMediaUrl } from "@/core/services/http";
 import {
   CRITICAL_BADGE_LABEL,
@@ -13,7 +15,7 @@ import type { RollCardProps } from "./RollCard.types";
 import { formatTime } from "./RollCard.utils";
 import { RollRow } from "./subcomponents";
 
-export function RollCard({ roll }: RollCardProps) {
+export const RollCard = memo(function RollCard({ roll }: RollCardProps) {
   const notes = splitNotes(roll.notes);
   const critical = hasCritical(roll.rows);
   const variant = critical ? "critical" : roll.kind === "levelUp" ? "levelUp" : "normal";
@@ -73,4 +75,4 @@ export function RollCard({ roll }: RollCardProps) {
       </div>
     </li>
   );
-}
+});

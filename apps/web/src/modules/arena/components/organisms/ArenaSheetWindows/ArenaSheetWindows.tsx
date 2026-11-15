@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import {
   ARENA_DOCK_TEXTS,
   ARENA_SHEET_WINDOW_LAYOUT,
@@ -18,7 +20,7 @@ import type { ArenaSheetWindowsProps } from "./ArenaSheetWindows.types";
  * Sheets open over the Arena in floating windows (several at once, the pressed one comes to the front), each
  * with the full sheet in its panel layout and a button to move it to a browser window.
  */
-export function ArenaSheetWindows(props: ArenaSheetWindowsProps) {
+export const ArenaSheetWindows = memo(function ArenaSheetWindows(props: ArenaSheetWindowsProps) {
   const {
     windows,
     dropZone,
@@ -86,4 +88,4 @@ export function ArenaSheetWindows(props: ArenaSheetWindowsProps) {
       {dropZone && <ArenaDockHint side={dropZone} width={dropWidth} />}
     </>
   );
-}
+});

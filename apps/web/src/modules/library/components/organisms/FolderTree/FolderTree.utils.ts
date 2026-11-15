@@ -14,34 +14,67 @@ import { ROOT_DROP_KIND } from "@/modules/library/library.constants";
 import type { ITreeData } from "@/modules/library/library.types";
 import { dropPositionFor, fromDragId, toDragId } from "@/modules/library/library.utils";
 
-import type { IDropTarget } from "./FolderTree.types";
+import type { IDropTarget, ITreeRowStore } from "./FolderTree.types";
+
+/**
+ * A tiny external store for the per-row drag state (see `ITreeRowStore`).
+ */
+export function createTreeRowStore(): ITreeRowStore {
+  let target: IDropTarget | null = null;
+  let excluded: ReadonlySet<string> = new Set();
+  const listeners = new Set<() => void>();
+  return {
+    set: (nextTarget, nextExcluded) => {
+      const same =
+        nextExcluded === excluded &&
+        nextTarget?.dragId === target?.dragId &&
+        nextTarget?.position === target?.position;
+      target = nextTarget;
+      excluded = nextExcluded;
+      if (!same) for (const listener of listeners) listener();
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    positionOf: (dragId) => (target?.dragId === dragId ? target.position : null),
+    isExcluded: (dragId) => excluded.has(dragId),
+  };
+}
 
 /**
  * Drag ids that cannot receive the dragged item: itself and, for folders, everything inside it.
  */
-export function excludedDropIds(tree: ITreeData, leafKind: string, activeDragId: string): string[] {
+export function excludedDropIds(
+  tree: ITreeData,
+  leafKind: string,
+  activeDragId: string,
+): ReadonlySet<string> {
   const { kind, id } = fromDragId(activeDragId);
-  if (kind !== "folder") return [activeDragId];
-  const folders = tree.folders
-    .filter((folder) => isSameOrDescendant(tree.folders, folder.id, id))
-    .map((folder) => folder.id);
-  return [
-    ...folders.map((folderId) => toDragId({ kind: "folder", id: folderId })),
+  if (kind !== "folder") return new Set([activeDragId]);
+  const folders = new Set(
+    tree.folders
+      .filter((folder) => isSameOrDescendant(tree.folders, folder.id, id))
+      .map((folder) => folder.id),
+  );
+  return new Set([
+    ...[...folders].map((folderId) => toDragId({ kind: "folder", id: folderId })),
     ...tree.leaves
-      .filter((leaf) => leaf.folderId !== null && folders.includes(leaf.folderId))
+      .filter((leaf) => leaf.folderId !== null && folders.has(leaf.folderId))
       .map((leaf) => toDragId({ kind: leafKind, id: leaf.id })),
-  ];
+  ]);
 }
 
 /**
  * Pointer drags use the row under the pointer; keyboard drags the row closest to the moved item.
  * Rows that cannot receive the item are ignored.
  */
-export function treeCollision(excluded: string[]): CollisionDetection {
+export function treeCollision(excluded: ReadonlySet<string>): CollisionDetection {
   return (args) => {
-    const droppableContainers = args.droppableContainers.filter(
-      (container) => !excluded.includes(String(container.id)),
-    );
+    const droppableContainers =
+      excluded.size === 0
+        ? args.droppableContainers
+        : args.droppableContainers.filter((container) => !excluded.has(String(container.id)));
     if (args.pointerCoordinates) return pointerWithin({ ...args, droppableContainers });
     return closestCenter({ ...args, droppableContainers });
   };

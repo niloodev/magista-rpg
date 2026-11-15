@@ -41,3 +41,11 @@ export type ISetCharacterAccessInput = z.infer<typeof setCharacterAccessInputSch
 export type CharacterImageKind = z.infer<typeof characterImageKindSchema>;
 
 export type ICharacterImages = z.infer<typeof characterImagesSchema>;
+
+/** The image URLs of a character (full images and their thumbnails). */
+export interface ICharacterImageUrls {
+  avatarUrl: string | null;
+  artUrl: string | null;
+  avatarThumbUrl?: string | null;
+  artThumbUrl?: string | null;
+}

@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { excludedDropIds, keyboardSlots, nextSlot, releasePoint } from "./FolderTree.utils";
+import {
+  createTreeRowStore,
+  excludedDropIds,
+  keyboardSlots,
+  nextSlot,
+  releasePoint,
+} from "./FolderTree.utils";
 
 const rect = (top: number, height = 100) => ({ top, height });
 
@@ -39,6 +45,8 @@ describe("folder tree utils", () => {
           position: 0,
           avatarUrl: null,
           artUrl: null,
+          avatarThumbUrl: null,
+          artThumbUrl: null,
           classKey: "sem-classe" as const,
           level: 1,
           accountIds: [],
@@ -46,10 +54,10 @@ describe("folder tree utils", () => {
         },
       ],
     };
-    expect(excludedDropIds(data, "character", "folder:a").sort()).toEqual(
+    expect([...excludedDropIds(data, "character", "folder:a")].sort()).toEqual(
       ["character:x", "folder:a", "folder:b"].sort(),
     );
-    expect(excludedDropIds(data, "character", "character:x")).toEqual(["character:x"]);
+    expect([...excludedDropIds(data, "character", "character:x")]).toEqual(["character:x"]);
   });
 
   it("offers leaf stops for any leaf kind", () => {
@@ -62,5 +70,22 @@ describe("folder tree utils", () => {
     const pointer = { clientX: 10, clientY: 20 } as unknown as Event;
     expect(releasePoint(pointer, { x: 5, y: -3 })).toEqual({ x: 15, y: 17 });
     expect(releasePoint({ key: "Enter" } as unknown as Event, { x: 1, y: 1 })).toBeNull();
+  });
+});
+
+describe("createTreeRowStore", () => {
+  it("answers per row and notifies only when the drag state changes", () => {
+    const rows = createTreeRowStore();
+    const listener = vi.fn();
+    rows.subscribe(listener);
+    const excluded = new Set(["folder:a"]);
+    rows.set({ dragId: "character:x", position: "before" }, excluded);
+    expect(rows.positionOf("character:x")).toBe("before");
+    expect(rows.positionOf("character:y")).toBeNull();
+    expect(rows.isExcluded("folder:a")).toBe(true);
+    rows.set({ dragId: "character:x", position: "before" }, excluded);
+    expect(listener).toHaveBeenCalledTimes(1);
+    rows.set({ dragId: "character:x", position: "after" }, excluded);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

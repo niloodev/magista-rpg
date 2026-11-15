@@ -14,6 +14,7 @@ import {
   type IRollResult,
   type IRollSpec,
   type RollResultKind,
+  characterPortrait,
 } from "@magista/shared";
 
 import { characterModels } from "@/core/models/character";
@@ -41,7 +42,7 @@ export function createRollController(deps: IRollControllerDeps): IRollController
       kind,
       characterId: character.id,
       characterName: character.name,
-      portraitUrl: character.avatarUrl ?? character.artUrl,
+      portraitUrl: characterPortrait(character),
       rolledByGm: viewer.role === "GM",
       title: spec.title,
       subtitle: spec.subtitle,

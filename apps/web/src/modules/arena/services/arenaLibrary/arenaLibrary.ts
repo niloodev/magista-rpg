@@ -1,6 +1,7 @@
 import {
   ARENA_IMAGE_FIELD,
   type ControllerResult,
+  type IArenaBoardInput,
   type IArenaFolder,
   type IArenaLibrary,
   type IArenaScene,
@@ -36,6 +37,13 @@ export function uploadArenaSceneMap(
   const formData = new FormData();
   formData.append(ARENA_IMAGE_FIELD, file);
   return apiRequest(`/arena/scenes/${sceneId}/map`, { method: "PUT", formData });
+}
+
+export function setArenaSceneBoard(
+  sceneId: string,
+  board: IArenaBoardInput,
+): Promise<ControllerResult<unknown>> {
+  return apiRequest(`/arena/scenes/${sceneId}/board`, { method: "PUT", body: board });
 }
 
 export function renameArenaScene(

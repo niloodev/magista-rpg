@@ -11,6 +11,8 @@ const character = (id: string, position: number) =>
     position,
     avatarUrl: null,
     artUrl: null,
+    avatarThumbUrl: null,
+    artThumbUrl: null,
     classKey: "sem-classe",
     level: 1,
     accountIds: [],
@@ -40,10 +42,21 @@ describe("library slice", () => {
       folders: [],
       accounts: [],
     });
-    store.getState().applyLibraryImages({ id: "b", avatarUrl: "/media/x.png", artUrl: null });
+    store.getState().applyLibraryImages({
+      id: "b",
+      avatarUrl: "/media/x.png",
+      artUrl: null,
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
     const [a, b] = store.getState().library.characters;
     expect(a).toMatchObject({ avatarUrl: null });
-    expect(b).toMatchObject({ avatarUrl: "/media/x.png", artUrl: null });
+    expect(b).toMatchObject({
+      avatarUrl: "/media/x.png",
+      artUrl: null,
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
   });
 
   it("applies new feature tags to the matching character only", () => {
@@ -76,5 +89,20 @@ describe("library slice", () => {
     expect(store.getState().library.expandedFolderIds).toEqual(["g"]);
     store.getState().finishLibraryLoad({ characters: [], folders: [], accounts: [] });
     expect(store.getState().library.expandedFolderIds).toEqual([]);
+  });
+});
+
+describe("library slice without churn", () => {
+  it("keeps the open folders and the list when nothing changed", () => {
+    const store = createAppStore();
+    const folder = { id: "f", name: "F", parentId: null, position: 0 };
+    store.getState().finishLibraryLoad({ characters: [], folders: [folder], accounts: [] });
+    store.getState().setExpandedLibraryFolders(["f"]);
+    const open = store.getState().library.expandedFolderIds;
+    store.getState().finishLibraryLoad({ characters: [], folders: [folder], accounts: [] });
+    expect(store.getState().library.expandedFolderIds).toBe(open);
+    const before = store.getState().library;
+    store.getState().applyLibraryFeatures({ id: "missing", features: [] });
+    expect(store.getState().library).toBe(before);
   });
 });

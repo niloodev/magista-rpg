@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { toMediaUrl } from "@/core/services/http";
 import { characterSubtitle } from "@/modules/library/library.utils";
@@ -14,9 +14,11 @@ export function useCharacterTreeLeaf({
   character,
   accountLogins,
   onDialog,
+  onOpen,
   onPlace,
-}: Omit<CharacterTreeLeafProps, "slots" | "onOpen">) {
-  return useMemo(
+}: Omit<CharacterTreeLeafProps, "slots">) {
+  const openRow = useCallback(() => onOpen?.(character.id), [onOpen, character.id]);
+  const row = useMemo(
     () => ({
       subtitle: characterSubtitle(character),
       href: `/ficha/${character.id}`,
@@ -26,4 +28,5 @@ export function useCharacterTreeLeaf({
     }),
     [character, accountLogins, onDialog, onPlace],
   );
+  return { ...row, openRow };
 }

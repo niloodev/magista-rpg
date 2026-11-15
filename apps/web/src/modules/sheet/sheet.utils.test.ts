@@ -19,8 +19,17 @@ describe("sheet utils", () => {
   });
 
   it("prefers the round token for portraits", () => {
-    expect(portraitOf({ avatarUrl: "/t.png", artUrl: "/a.png" })).toBe("/t.png");
-    expect(portraitOf({ avatarUrl: null, artUrl: "/a.png" })).toBe("/a.png");
+    expect(
+      portraitOf({
+        avatarUrl: "/t.png",
+        artUrl: "/a.png",
+        avatarThumbUrl: null,
+        artThumbUrl: null,
+      }),
+    ).toBe("/t.png");
+    expect(
+      portraitOf({ avatarUrl: null, artUrl: "/a.png", avatarThumbUrl: null, artThumbUrl: null }),
+    ).toBe("/a.png");
   });
 
   it("creates blank entries with unique ids", () => {

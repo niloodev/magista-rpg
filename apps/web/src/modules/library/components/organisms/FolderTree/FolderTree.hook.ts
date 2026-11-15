@@ -10,7 +10,6 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { childFolders } from "@magista/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -19,12 +18,18 @@ import {
   ROOT_DROP_KIND,
 } from "@/modules/library/library.constants";
 import type { ITreeLeaf } from "@/modules/library/library.types";
-import { fromDragId, leavesIn, moveForTreeDrop, toDragId } from "@/modules/library/library.utils";
+import {
+  buildTreeIndex,
+  fromDragId,
+  moveForTreeDrop,
+  toDragId,
+} from "@/modules/library/library.utils";
 import { useDocumentBody, usePrefersReducedMotion } from "@/shared/hooks";
 
 import {
   IDLE_TREE_DRAG,
-  POINTER_ACTIVATION_DISTANCE,
+  KEYBOARD_SENSOR_OPTIONS,
+  POINTER_SENSOR_OPTIONS,
   POSITION_LABELS,
   POST_DROP_CLICK_GUARD_MS,
   TREE_INSTRUCTIONS,
@@ -36,14 +41,15 @@ import type {
   ITreeFolderView,
   ITreeLeafView,
   ITreePreview,
+  ITreeRowsContext,
 } from "./FolderTree.types";
 import {
   blockNextClick,
+  createTreeRowStore,
   dropTargetOf,
   excludedDropIds,
   releasePoint,
   treeCollision,
-  treeKeyboardCoordinates,
 } from "./FolderTree.utils";
 
 /**
@@ -98,8 +104,8 @@ export function useFolderTree<L extends ITreeLeaf>({
   const reducedMotion = usePrefersReducedMotion();
   const overlayRoot = useDocumentBody();
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: POINTER_ACTIVATION_DISTANCE } }),
-    useSensor(KeyboardSensor, { coordinateGetter: treeKeyboardCoordinates }),
+    useSensor(PointerSensor, POINTER_SENSOR_OPTIONS),
+    useSensor(KeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
   const tree = useMemo(() => ({ folders: folderList, leaves }), [folderList, leaves]);
 
@@ -116,47 +122,57 @@ export function useFolderTree<L extends ITreeLeaf>({
   }, []);
 
   const folders = useMemo(() => {
+    const index = buildTreeIndex(tree);
+    const expanded = new Set(expandedFolderIds);
     const leafView = (leaf: L): ITreeLeafView => ({
       id: leaf.id,
       dragId: toDragId({ kind: leafKind, id: leaf.id }),
       name: leaf.name,
-      render: (slots) => renderLeaf(leaf, slots),
+      leaf,
     });
     const build = (parentId: string | null): ITreeFolderView[] =>
-      childFolders(folderList, parentId).map((folder) => {
-        const children = build(folder.id);
-        const contents = leavesIn(leaves, folder.id).map(leafView);
+      index.folders(parentId).map((folder) => {
+        const open = expanded.has(folder.id);
+        const childCount = index.folders(folder.id).length;
         return {
           id: folder.id,
           dragId: toDragId({ kind: "folder", id: folder.id }),
           name: folder.name,
-          summary: folderSummary(folder.id),
-          expanded: expandedFolderIds.includes(folder.id),
+          summary: folderSummary(index.deepCount(folder.id), childCount),
+          expanded: open,
           groupId: `tree-folder-${folder.id}`,
           menu: folderMenu(folder),
-          onToggle: () => onToggleFolder(folder.id),
-          empty: children.length === 0 && contents.length === 0,
-          folders: children,
-          leaves: contents,
+          empty: childCount === 0 && index.leaves(folder.id).length === 0,
+          folders: open ? build(folder.id) : [],
+          leaves: open ? index.leaves(folder.id).map(leafView) : [],
         };
       });
-    return { root: build(null), rootLeaves: leavesIn(leaves, null).map(leafView) };
-  }, [
-    folderList,
-    leaves,
-    leafKind,
-    expandedFolderIds,
-    folderSummary,
-    folderMenu,
-    onToggleFolder,
-    renderLeaf,
-  ]);
+    return { root: build(null), rootLeaves: index.leaves(null).map(leafView) };
+  }, [tree, leafKind, expandedFolderIds, folderSummary, folderMenu]);
+
+  const names = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const folder of folderList)
+      map.set(toDragId({ kind: "folder", id: folder.id }), folder.name);
+    for (const leaf of leaves) map.set(toDragId({ kind: leafKind, id: leaf.id }), leaf.name);
+    return map;
+  }, [folderList, leaves, leafKind]);
+
+  const [rowStore] = useState(createTreeRowStore);
+  const excludedRef = useRef(IDLE_TREE_DRAG.excluded);
+  const rowsContext = useMemo<ITreeRowsContext>(
+    () => ({
+      rows: rowStore,
+      labels,
+      onToggleFolder,
+      renderLeaf: renderLeaf as ITreeRowsContext["renderLeaf"],
+    }),
+    [rowStore, labels, onToggleFolder, renderLeaf],
+  );
 
   const nameOf = (dragId: string | number) => {
-    const { kind, id } = fromDragId(dragId);
-    if (kind === ROOT_DROP_KIND) return labels.rootIdle;
-    if (kind === "folder") return folderList.find((folder) => folder.id === id)?.name ?? "";
-    return leaves.find((leaf) => leaf.id === id)?.name ?? "";
+    if (fromDragId(dragId).kind === ROOT_DROP_KIND) return labels.rootIdle;
+    return names.get(String(dragId)) ?? "";
   };
 
   const describe = (activeId: string | number, target: IDropTarget | null) =>
@@ -193,10 +209,13 @@ export function useFolderTree<L extends ITreeLeaf>({
     stopTrackingPointer();
     if (onDropOutside && !(activatorEvent instanceof KeyboardEvent))
       window.addEventListener("pointermove", trackPointer.current);
+    const excluded = excludedDropIds(tree, leafKind, String(active.id));
+    excludedRef.current = excluded;
+    rowStore.set(null, excluded);
     setDrag({
       activeId: String(active.id),
       keyboard: activatorEvent instanceof KeyboardEvent,
-      excluded: excludedDropIds(tree, leafKind, String(active.id)),
+      excluded,
       target: null,
     });
   };
@@ -205,6 +224,7 @@ export function useFolderTree<L extends ITreeLeaf>({
     const target = dropTargetOf({ ...event, keyboard: drag.keyboard });
     targetRef.current = target;
     scheduleExpand(target);
+    rowStore.set(target, excludedRef.current);
     if (target?.dragId !== drag.target?.dragId || target?.position !== drag.target?.position)
       setDrag((current) => ({ ...current, target }));
   };
@@ -212,6 +232,8 @@ export function useFolderTree<L extends ITreeLeaf>({
   const finish = () => {
     clearExpandTimer();
     stopTrackingPointer();
+    excludedRef.current = IDLE_TREE_DRAG.excluded;
+    rowStore.set(null, IDLE_TREE_DRAG.excluded);
     setDrag(IDLE_TREE_DRAG);
   };
 
@@ -235,17 +257,6 @@ export function useFolderTree<L extends ITreeLeaf>({
     void onMove(move);
   };
 
-  const announcements: Announcements = {
-    onDragStart: ({ active }) => `Pegou ${nameOf(active.id)}.`,
-    onDragOver: ({ active }) => describe(active.id, targetRef.current),
-    onDragMove: ({ active }) => describe(active.id, targetRef.current),
-    onDragEnd: ({ active }) =>
-      targetRef.current
-        ? `Soltou ${describe(active.id, targetRef.current)}`
-        : `${nameOf(active.id)} solto.`,
-    onDragCancel: ({ active }) => `Movimento de ${nameOf(active.id)} cancelado.`,
-  };
-
   const preview = useMemo((): ITreePreview | null => {
     if (!drag.activeId) return null;
     const { kind, id } = fromDragId(drag.activeId);
@@ -256,6 +267,25 @@ export function useFolderTree<L extends ITreeLeaf>({
     const leaf = leaves.find((item) => item.id === id);
     return leaf ? { kind: "leaf", name: leaf.name, portraitUrl: leafPortrait(leaf) } : null;
   }, [drag.activeId, folderList, leaves, leafPortrait]);
+
+  const collision = useMemo(() => treeCollision(drag.excluded), [drag.excluded]);
+  const announcementsRef = useRef({ nameOf, describe });
+  useEffect(() => {
+    announcementsRef.current = { nameOf, describe };
+  });
+  const accessibility = useMemo(() => {
+    const name = (id: string | number) => announcementsRef.current.nameOf(id);
+    const say = (id: string | number) => announcementsRef.current.describe(id, targetRef.current);
+    const announcements: Announcements = {
+      onDragStart: ({ active }) => `Pegou ${name(active.id)}.`,
+      onDragOver: ({ active }) => say(active.id),
+      onDragMove: ({ active }) => say(active.id),
+      onDragEnd: ({ active }) =>
+        targetRef.current ? `Soltou ${say(active.id)}` : `${name(active.id)} solto.`,
+      onDragCancel: ({ active }) => `Movimento de ${name(active.id)} cancelado.`,
+    };
+    return { announcements, screenReaderInstructions: { draggable: TREE_INSTRUCTIONS } };
+  }, []);
 
   const outsideLeaf =
     outsideStart && outsidePreview && drag.activeId
@@ -272,16 +302,15 @@ export function useFolderTree<L extends ITreeLeaf>({
     leaves: folders.rootLeaves,
     isEmpty: folders.root.length === 0 && folders.rootLeaves.length === 0,
     dragging: drag.activeId !== null,
-    target: drag.target,
-    excluded: drag.excluded,
     rootDropId: ROOT_DROP_ID,
     rootDropActive: drag.target?.dragId === ROOT_DROP_ID,
     preview,
     overlayRoot,
     sensors,
-    collision: treeCollision(drag.excluded),
+    collision,
     reducedMotion,
-    accessibility: { announcements, screenReaderInstructions: { draggable: TREE_INSTRUCTIONS } },
+    accessibility,
+    rowsContext,
     onDragStart,
     onDragMove,
     onDragEnd,

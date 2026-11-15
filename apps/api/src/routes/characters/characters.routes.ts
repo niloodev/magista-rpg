@@ -121,7 +121,6 @@ characterRoutes.put("/:id/images/:kind", async (req, res: AuthedResponse) => {
   const changed = sendResult(res, result, CHARACTER_ERROR_STATUS);
   if (!changed) return;
   broadcastCharacterImages(changed.images);
-  broadcastLibraryChanged(changed.accountIds);
   broadcastArenaRefresh();
 });
 
@@ -134,6 +133,5 @@ characterRoutes.delete("/:id/images/:kind", async (req, res: AuthedResponse) => 
   const changed = sendResult(res, result, CHARACTER_ERROR_STATUS);
   if (!changed) return;
   broadcastCharacterImages(changed.images);
-  broadcastLibraryChanged(changed.accountIds);
   broadcastArenaRefresh();
 });

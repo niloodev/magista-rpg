@@ -1,6 +1,5 @@
 import type {
   ControllerResult,
-  IArenaDragEvent,
   IArenaFolder,
   IArenaLibrary,
   IArenaScene,
@@ -13,6 +12,7 @@ import type { IArenaSceneModels } from "@/core/models/arenaScene";
 import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import type { IArenaTokenModels } from "@/core/models/arenaToken";
 import type { ICharacterModels } from "@/core/models/character";
+import type { IImageAssets } from "@/core/controllers/mediaAsset";
 import type { IArenaImageStore } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
@@ -24,6 +24,7 @@ export interface IArenaControllerDeps {
   tokens: IArenaTokenModels;
   characters: Pick<ICharacterModels, "exists" | "listAccessibleIds">;
   images: IArenaImageStore;
+  assets: Pick<IImageAssets, "ingest" | "release">;
 }
 
 /** Who may see a change: the whole table (visible token of the live scene) or only the GM. */
@@ -64,15 +65,6 @@ export interface IArenaMoveChanges {
   refused: string[];
 }
 
-export interface IArenaDragGroup {
-  event: IArenaDragEvent;
-  audience: ArenaAudience;
-}
-
-export interface IArenaDragRelay {
-  groups: IArenaDragGroup[];
-}
-
 type Result<T> = Promise<ControllerResult<T, ArenaError>>;
 
 export interface IArenaController {
@@ -87,6 +79,7 @@ export interface IArenaController {
   renameScene: (viewer: IViewer, id: string, input: unknown) => Result<IArenaSceneChange>;
   deleteScene: (viewer: IViewer, id: string) => Result<IArenaSceneRemoval>;
   setSceneMap: (viewer: IViewer, id: string, upload: IArenaUpload) => Result<IArenaSceneChange>;
+  setSceneBoard: (viewer: IViewer, id: string, input: unknown) => Result<IArenaSceneChange>;
   setActiveScene: (viewer: IViewer, input: unknown) => Result<IArenaActiveChange>;
   createToken: (viewer: IViewer, sceneId: string, input: unknown) => Result<IArenaTokenChange>;
   updateToken: (viewer: IViewer, id: string, input: unknown) => Result<IArenaTokenChange>;
@@ -95,5 +88,4 @@ export interface IArenaController {
   move: (viewer: IViewer, input: unknown) => Result<IArenaMoveChanges>;
   updateTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenChange[]>;
   deleteTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenRemoval[]>;
-  drag: (viewer: IViewer, input: unknown) => Result<IArenaDragRelay>;
 }

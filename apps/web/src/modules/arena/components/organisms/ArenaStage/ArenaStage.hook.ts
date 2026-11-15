@@ -25,7 +25,6 @@ export function useArenaStage({
   selectedTokenIds,
   controlsRef,
   onSelect,
-  onDragMove,
   onDrop,
   onResize,
   resizable,
@@ -36,13 +35,13 @@ export function useArenaStage({
 }: ArenaStageHookProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<IArenaRenderer | null>(null);
-  const callbacksRef = useRef({ onSelect, onDragMove, onDrop, onResize, onBounds, onMapError });
+  const callbacksRef = useRef({ onSelect, onDrop, onResize, onBounds, onMapError });
   const [renderer, setRenderer] = useState<IArenaRenderer | null>(null);
   const [status, setStatus] = useState<ArenaStageStatus>("loading");
   const lite = usePrefersReducedMotion();
 
   useEffect(() => {
-    callbacksRef.current = { onSelect, onDragMove, onDrop, onResize, onBounds, onMapError };
+    callbacksRef.current = { onSelect, onDrop, onResize, onBounds, onMapError };
   });
 
   useEffect(() => {
@@ -63,7 +62,6 @@ export function useArenaStage({
           fontFamily,
           callbacks: {
             onSelect: (ids, mode) => callbacksRef.current.onSelect(ids, mode),
-            onDragMove: (moves) => callbacksRef.current.onDragMove(moves),
             onDrop: (moves) => callbacksRef.current.onDrop(moves),
             onResize: (updates) => callbacksRef.current.onResize(updates),
             onMapError: (failed) => {
@@ -99,14 +97,19 @@ export function useArenaStage({
 
   const sceneId = scene?.id ?? null;
   const mapUrl = scene?.mapUrl ?? null;
+  const boardWidth = scene?.width ?? 0;
+  const boardHeight = scene?.height ?? 0;
 
   useEffect(() => {
     renderer?.setSideInsets(insetLeft, insetRight);
   }, [renderer, insetLeft, insetRight]);
 
   useEffect(() => {
-    if (renderer) void renderer.setScene(sceneId ? { id: sceneId, mapUrl } : null);
-  }, [renderer, sceneId, mapUrl]);
+    if (!renderer) return;
+    void renderer.setScene(
+      sceneId ? { id: sceneId, mapUrl, width: boardWidth, height: boardHeight } : null,
+    );
+  }, [renderer, sceneId, mapUrl, boardWidth, boardHeight]);
 
   useEffect(() => {
     renderer?.setTokens(tokens);

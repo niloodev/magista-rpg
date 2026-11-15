@@ -98,7 +98,7 @@ Duas imagens distintas, enviadas pelo Mestre (na criação da ficha ou pelo moda
 - **Avatar**: rosto em círculo (o token do Roll20). Usado nos retratos pequenos (biblioteca, feed, cabeçalho) e, no futuro, como token na Arena.
 - **Arte**: arte completa do personagem, aberta em "Ver arte completa".
 
-Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`artKey` no banco; o DTO traz `avatarUrl`/`artUrl`).
+Sem avatar, os retratos usam a arte. Guardadas no storage como assets compartilhados: cada imagem existe uma vez só (pelo conteúdo), regravada em WebP e com uma miniatura de 256 px usada nos retratos pequenos (`avatarKey`/`artKey` no banco; o DTO traz `avatarUrl`/`artUrl` e as miniaturas `avatarThumbUrl`/`artThumbUrl`).
 
 ## Inventário e Traços
 
@@ -114,7 +114,9 @@ Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`ar
 
 ## Arena
 
-Tabuleiro da mesa (estudo completo em `docs/ARENA.md`). O Mestre cria **cenas**, cada uma com um mapa (imagem até 25 MB, no máximo 16384 px de lado e 64 megapixels), organizadas numa biblioteca com pastas aninhadas (mesma ordem manual da biblioteca de fichas), e escolhe a **cena ativa**, a única que os jogadores veem; ele pode abrir outra cena em prévia sem os jogadores verem. Sem grid por enquanto: tokens têm posição livre em pixels do mapa original.
+Tabuleiro da mesa (estudo completo em `docs/ARENA.md`). O Mestre cria **cenas**, cada uma com um mapa (imagem até 60 MB, no máximo 16384 px de lado e 64 megapixels, otimizada em WebP ao enviar), organizadas numa biblioteca com pastas aninhadas (mesma ordem manual da biblioteca de fichas), e escolhe a **cena ativa**, a única que os jogadores veem; ele pode abrir outra cena em prévia sem os jogadores verem. Sem grid por enquanto: tokens têm posição livre em pixels do tabuleiro.
+
+- **Tamanho do tabuleiro** (como no Roll20): o Mestre define largura e altura em **unidades de 70 px** (o quadrado do Roll20) e o mapa se estica para o tabuleiro, sempre na **proporção da imagem** (mudar a largura recalcula a altura e vice-versa). Limites: 5 a 285 unidades de lado. Sem escolha, o tabuleiro tem o tamanho natural da imagem; cena sem mapa tem 25 × 25 unidades e lados livres. Ao mudar o tamanho (ou trocar o mapa), os tokens **continuam no mesmo ponto do mapa** e mantêm o tamanho em px, então ficam maiores ou menores em relação ao mapa. Trocar o mapa mantém a largura do tabuleiro.
 
 - **Tokens**: de ficha (nome e retrato da ficha: avatar, ou a arte) ou de NPC (nome e imagem próprios). Cada token tem tamanho (diâmetro de 40 a 600 px do mapa) e pode ficar **oculto** (só o Mestre vê).
 - **Criar tokens**: o Mestre arrasta uma ficha da barra lateral para o mapa (o token nasce onde foi solto), usa "Colocar no mapa" no menu da ficha (centro da vista) ou cria um "Token avulso" de NPC com nome e imagem. Uma ficha pode ter vários tokens na mesma cena.

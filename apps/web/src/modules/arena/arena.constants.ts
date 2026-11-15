@@ -1,4 +1,4 @@
-import type { IArenaBounds } from "@magista/shared";
+import { ARENA_UNIT_PX, type IArenaBounds } from "@magista/shared";
 
 import type { IArenaSidebarState } from "./arena.types";
 
@@ -60,10 +60,6 @@ export const ARENA_NUDGE_STEP = 10;
 export const ARENA_NUDGE_STEP_LARGE = 50;
 
 export const ARENA_NUDGE_COMMIT_MS = 350;
-
-export const ARENA_DRAG_EMIT_MS = 50;
-
-export const ARENA_PREVIEW_STALE_MS = 2000;
 
 export const ARENA_SKELETON_LABEL = "Carregando a Arena";
 
@@ -147,6 +143,18 @@ export const SCENE_TEXTS = {
   goLive: "Colocar no ar",
   rename: "Renomear",
   changeMap: "Trocar mapa",
+  board: "Tamanho do tabuleiro",
+  boardWidth: "Largura",
+  boardHeight: "Altura",
+  boardUnit: "unidades",
+  boardRatio: "Proporção do mapa mantida",
+  boardPixels: (width: number, height: number) =>
+    `${width.toLocaleString("pt-BR")} × ${height.toLocaleString("pt-BR")} px · 1 unidade = ${ARENA_UNIT_PX} px`,
+  boardMapSize: (width: number, height: number) =>
+    `Imagem original: ${width.toLocaleString("pt-BR")} × ${height.toLocaleString("pt-BR")} px`,
+  boardOriginal: "Tamanho original da imagem",
+  boardTokens: "Os tokens continuam no mesmo ponto do mapa e mantêm o tamanho deles.",
+  boardInvalid: "Use de 5 a 285 unidades por lado.",
   remove: "Excluir",
   newSceneHere: "Nova cena aqui",
   newFolderHere: "Nova pasta aqui",
@@ -155,8 +163,8 @@ export const SCENE_TEXTS = {
   sceneName: "Nome da cena",
   folderName: "Nome da pasta",
   map: "Mapa",
-  mapHint: "PNG, JPG, WEBP ou GIF, até 25 MB e 16384 px de lado.",
-  mapTooLarge: "O mapa passa do limite de 25 MB.",
+  mapHint: "PNG, JPG, WEBP ou GIF, até 60 MB e 16384 px de lado. O mapa é otimizado ao enviar.",
+  mapTooLarge: "O mapa passa do limite de 60 MB.",
   nameRequired: "Informe um nome.",
   mapRequired: "Escolha a imagem do mapa.",
   mapNotSent: "A cena foi criada, mas o mapa não foi enviado:",

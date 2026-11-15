@@ -20,6 +20,16 @@ export interface ITreeData<L extends ITreeLeaf = ITreeLeaf> {
   leaves: L[];
 }
 
+/** A tree grouped for fast lookups (see `buildTreeIndex`). */
+export interface ITreeIndex<L extends ITreeLeaf = ITreeLeaf> {
+  /** Subfolders of a folder (null is the root), in manual order. */
+  folders: (parentId: string | null) => IFolder[];
+  /** Leaves directly inside a folder (null is the root), in manual order. */
+  leaves: (folderId: string | null) => L[];
+  /** Leaves under a folder, counting every subfolder. */
+  deepCount: (folderId: string) => number;
+}
+
 /** A tree item: "folder" or the tree's leaf kind ("character", "scene"). */
 export interface ITreeItemRef {
   kind: string;

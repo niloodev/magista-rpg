@@ -14,7 +14,6 @@ export interface ArenaStageHookProps {
   selectedTokenIds: string[];
   controlsRef: RefObject<IArenaStageControls | null>;
   onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
-  onDragMove: (moves: IMoveArenaTokenInput[]) => void;
   onDrop: (moves: IMoveArenaTokenInput[]) => void;
   onResize: (updates: IArenaSizeUpdate[]) => void;
   resizable: boolean;

@@ -39,6 +39,11 @@ export function sceneMenu(
       onSelect: () => handlers.open({ type: "changeMap", scene }),
     },
     {
+      label: SCENE_TEXTS.board,
+      icon: "ruler",
+      onSelect: () => handlers.open({ type: "board", scene }),
+    },
+    {
       label: SCENE_TEXTS.remove,
       icon: "trash-2",
       destructive: true,

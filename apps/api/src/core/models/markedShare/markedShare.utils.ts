@@ -1,6 +1,6 @@
-import type { IMarkedShare } from "@magista/shared";
+import { characterPortrait, type IMarkedShare } from "@magista/shared";
 
-import { mediaUrlOf } from "@/core/services/media";
+import { characterImageUrls } from "@/core/services/media";
 
 interface MarkedShareRow {
   id: string;
@@ -19,7 +19,7 @@ export function toMarkedShare(row: MarkedShareRow): IMarkedShare {
     source: {
       characterId: row.source.id,
       name: row.source.name,
-      portraitUrl: mediaUrlOf(row.source.avatarKey) ?? mediaUrlOf(row.source.artKey),
+      portraitUrl: characterPortrait(characterImageUrls(row.source.avatarKey, row.source.artKey)),
     },
     trait: { name: row.traitName, description: row.traitDescription },
     startedAt: row.startedAt.toISOString(),

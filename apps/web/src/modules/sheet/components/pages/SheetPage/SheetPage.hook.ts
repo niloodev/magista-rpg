@@ -25,7 +25,7 @@ import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
 import { pingEntry, requestRoll } from "@/modules/table/services";
 
-import { SHEET_TABS_ID } from "./SheetPage.constants";
+import { NO_SHEET_ROLLS, SHEET_TABS_ID } from "./SheetPage.constants";
 import type { SheetPageProps } from "./SheetPage.types";
 import { saveExclusively, saveWithReconcile } from "./SheetPage.utils";
 
@@ -47,11 +47,10 @@ export function useSheetPage({ characterId, variant = "page" }: SheetPageProps) 
       ? entry
       : EMPTY_SHEET_ENTRY;
   });
-  const rolls = useApp((state) => state.table.rolls);
-  const rollsLoaded = useApp((state) => state.table.rollsLoaded);
+  const rolls = useApp((state) => (variant === "panel" ? NO_SHEET_ROLLS : state.table.rolls));
+  const rollsLoaded = useApp((state) => variant === "panel" || state.table.rollsLoaded);
   const { setHint } = useSkeletonHintActions();
   const connection = useApp((state) => state.table.connection);
-  const latencyMs = useApp((state) => state.table.latencyMs);
   const [rollError, setRollError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SheetTab>("geral");
   const [activeRoll, setActiveRoll] = useState<IRollResult | null>(null);
@@ -204,7 +203,6 @@ export function useSheetPage({ characterId, variant = "page" }: SheetPageProps) 
     rolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
     connection,
-    latencyMs,
     rollError,
     activeTab,
     activeRoll,

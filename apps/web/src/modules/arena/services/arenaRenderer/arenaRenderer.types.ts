@@ -38,11 +38,13 @@ export interface IArenaRenderToken {
 export interface IArenaRenderScene {
   id: string;
   mapUrl: string | null;
+  /** Board size in world pixels; the map image is stretched to it. */
+  width: number;
+  height: number;
 }
 
 export interface IArenaRendererCallbacks {
   onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
-  onDragMove: (moves: IMoveArenaTokenInput[]) => void;
   onDrop: (moves: IMoveArenaTokenInput[]) => void;
   onResize: (updates: IArenaSizeUpdate[]) => void;
   onSceneReady: (bounds: IArenaBounds) => void;

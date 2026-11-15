@@ -23,6 +23,7 @@ import type {
   ArenaDockSide,
   ArenaSidebarTab,
   IArenaDockedSheet,
+  IArenaDockedTabs,
   IArenaHint,
   IArenaSelectionSummary,
   IArenaSidebarState,
@@ -32,12 +33,11 @@ import type { IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
 import type { TabItem } from "@/shared/components/molecules";
 
 /**
- * Turns the loaded view into what the board draws: live drag previews win over stored positions, and the ring
- * tone tells the viewer what is theirs (a player's own tokens, the GM's NPCs) apart from the rest.
+ * Turns the loaded view into what the board draws; the ring tone tells the viewer what is theirs (a player's
+ * own tokens, the GM's NPCs) apart from the rest.
  */
 export function toRenderTokens(
   view: IArenaView,
-  previews: Record<string, IArenaPoint>,
   isGm: boolean,
   mediaUrl: (path: string | null) => string | null,
 ): IArenaRenderToken[] {
@@ -45,13 +45,12 @@ export function toRenderTokens(
   return view.tokens.map((token) => {
     const controllable = canControlToken(viewer, token, view.controllableCharacterIds);
     const own = isGm ? token.characterId === null : controllable;
-    const preview = previews[token.id];
     return {
       id: token.id,
       name: token.name,
-      imageUrl: mediaUrl(token.imageUrl),
-      x: preview?.x ?? token.x,
-      y: preview?.y ?? token.y,
+      imageUrl: mediaUrl(token.imageThumbUrl ?? token.imageUrl),
+      x: token.x,
+      y: token.y,
       size: token.size,
       hidden: token.hidden,
       controllable,
@@ -265,6 +264,24 @@ export function sheetNameOf(
   return (
     names[characterId] ?? characters.find((character) => character.id === characterId)?.name ?? null
   );
+}
+
+/**
+ * Docked sheet tabs of one side panel, with their names (the renderer of each tab is added by the page).
+ */
+export function dockedTabsOf(
+  side: ArenaDockSide,
+  docked: Record<ArenaDockSide, string[]>,
+  dockTab: Record<ArenaDockSide, string | null>,
+  names: Record<string, string | null>,
+  characters: { id: string; name: string }[],
+  showTab: (side: ArenaDockSide, characterId: string | null) => void,
+): Omit<IArenaDockedTabs, "render"> {
+  return {
+    sheets: docked[side].map((id) => ({ id, name: sheetNameOf(id, names, characters) })),
+    active: dockTab[side],
+    onShow: (characterId) => showTab(side, characterId),
+  };
 }
 
 /**

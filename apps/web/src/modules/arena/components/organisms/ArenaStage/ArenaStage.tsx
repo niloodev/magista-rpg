@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { memo, useId } from "react";
 
 import {
   ARENA_MAP_LOADING_LABEL,
@@ -13,7 +13,12 @@ import { ArenaMapPlaceholder, ArenaNotice } from "../../molecules";
 import { useArenaStage } from "./ArenaStage.hook";
 import type { ArenaStageProps } from "./ArenaStage.types";
 
-export function ArenaStage({ label, onKeyDown, className, ...hookProps }: ArenaStageProps) {
+export const ArenaStage = memo(function ArenaStage({
+  label,
+  onKeyDown,
+  className,
+  ...hookProps
+}: ArenaStageProps) {
   const { hostRef, status } = useArenaStage(hookProps);
   const hintId = useId();
   return (
@@ -53,4 +58,4 @@ export function ArenaStage({ label, onKeyDown, className, ...hookProps }: ArenaS
       )}
     </div>
   );
-}
+});

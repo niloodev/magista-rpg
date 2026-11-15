@@ -11,6 +11,8 @@ const character = {
   position: 0,
   avatarUrl: null,
   artUrl: null,
+  avatarThumbUrl: null,
+  artThumbUrl: null,
   classKey: "arcanista",
   level: 1,
   accountIds: [],

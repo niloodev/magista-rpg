@@ -15,6 +15,20 @@ export function upsertToken(tokens: IArenaToken[], token: IArenaToken): IArenaTo
 }
 
 /**
+ * Inserts or replaces several tokens in one pass (one copy and one sort for the whole batch).
+ */
+export function upsertTokens(tokens: IArenaToken[], incoming: IArenaToken[]): IArenaToken[] {
+  const byId = new Map(incoming.map((token) => [token.id, token]));
+  const next = tokens.map((token) => {
+    const replacement = byId.get(token.id);
+    if (!replacement) return token;
+    byId.delete(token.id);
+    return replacement;
+  });
+  return [...next, ...byId.values()].sort((a, b) => a.position - b.position);
+}
+
+/**
  * Copy of a record without one key.
  */
 export function omitKey<T>(record: Record<string, T>, key: string): Record<string, T> {

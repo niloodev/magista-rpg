@@ -4,8 +4,9 @@ import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
 
 import type { ITreeLeaf } from "@/modules/library/library.types";
-import { lockToVerticalAxis } from "@/shared/components/organisms";
 
+import { FREE_AXIS, VERTICAL_AXIS } from "./FolderTree.constants";
+import { TreeRowsProvider } from "./FolderTree.context";
 import { useFolderTree } from "./FolderTree.hook";
 import type { FolderTreeProps } from "./FolderTree.types";
 import { DragPreview, RootDropZone, TreeFolder, TreeLeaf } from "./subcomponents";
@@ -17,8 +18,6 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
     leaves,
     isEmpty,
     dragging,
-    target,
-    excluded,
     rootDropId,
     rootDropActive,
     preview,
@@ -29,6 +28,7 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
     collision,
     reducedMotion,
     accessibility,
+    rowsContext,
     onDragStart,
     onDragMove,
     onDragEnd,
@@ -38,7 +38,7 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
     <DndContext
       sensors={sensors}
       collisionDetection={collision}
-      modifiers={freeAxis ? [] : [lockToVerticalAxis]}
+      modifiers={freeAxis ? FREE_AXIS : VERTICAL_AXIS}
       accessibility={accessibility}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
@@ -56,26 +56,16 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
         {isEmpty ? (
           empty
         ) : (
-          <ul aria-label={labels.list} className="space-y-2">
-            {folders.map((folder) => (
-              <TreeFolder
-                key={folder.id}
-                folder={folder}
-                target={target}
-                excluded={excluded}
-                labels={labels}
-              />
-            ))}
-            {leaves.map((leaf) => (
-              <TreeLeaf
-                key={leaf.id}
-                leaf={leaf}
-                target={target}
-                excluded={excluded}
-                labels={labels}
-              />
-            ))}
-          </ul>
+          <TreeRowsProvider value={rowsContext}>
+            <ul aria-label={labels.list} className="space-y-2">
+              {folders.map((folder) => (
+                <TreeFolder key={folder.id} folder={folder} />
+              ))}
+              {leaves.map((leaf) => (
+                <TreeLeaf key={leaf.id} leaf={leaf} />
+              ))}
+            </ul>
+          </TreeRowsProvider>
         )}
       </div>
       {overlayRoot &&

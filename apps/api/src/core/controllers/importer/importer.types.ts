@@ -1,8 +1,8 @@
 import type { ControllerResult } from "@magista/shared";
 
 import type { IAccountModels } from "@/core/models/account";
+import type { IImageAssets } from "@/core/controllers/mediaAsset";
 import type { ICharacterModels } from "@/core/models/character";
-import type { ICharacterImageStore } from "@/core/services/media";
 
 import type { ImporterError } from "./importer.errors";
 
@@ -28,7 +28,7 @@ export interface IImporterControllerDeps {
   characters: Pick<ICharacterModels, "upsertCharacter" | "findByAccountAndName" | "setImageKey">;
   hashPassword: (password: string) => Promise<string>;
   generatePassword: () => string;
-  images: Pick<ICharacterImageStore, "store" | "remove">;
+  assets: Pick<IImageAssets, "ingest" | "release">;
 }
 
 export interface IImporterController {

@@ -3,13 +3,14 @@ import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 import { apiAs, payloadOf } from "../support/api";
-import { openArena, readArena, setLiveScene } from "../support/arena";
+import { createArenaScene, openArena, readArena, setLiveScene } from "../support/arena";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
 
 const SCENE = "Cripta de teste";
 const FOLDER = "Arco de teste";
+const BOARD_SCENE = "Tabuleiro de teste";
 const MAP = readFileSync(new URL("../fixtures/map.png", import.meta.url));
 
 interface Library {
@@ -29,7 +30,7 @@ test.describe("arena: ferramentas do Mestre", () => {
   test.afterAll(async () => {
     await setLiveScene(gm, previousLive);
     const library = await payloadOf<Library>(await gm.get("/arena/library"));
-    for (const scene of library.scenes.filter((entry) => entry.name === SCENE))
+    for (const scene of library.scenes.filter((entry) => [SCENE, BOARD_SCENE].includes(entry.name)))
       await gm.delete(`/arena/scenes/${scene.id}`);
     for (const folder of library.folders.filter((entry) => entry.name === FOLDER))
       await gm.delete(`/arena/folders/${folder.id}`);
@@ -77,6 +78,34 @@ test.describe("arena: ferramentas do Mestre", () => {
     await gmPage.getByRole("button", { name: "Colocar no ar" }).click();
     await expect(gmPage.getByText("Ao vivo").first()).toBeVisible();
     await expect(playerPage.getByRole("heading", { level: 1, name: SCENE })).toBeVisible();
+  });
+
+  test("o Mestre muda o tamanho do tabuleiro na proporção do mapa e os tokens acompanham", async ({
+    page,
+  }) => {
+    const { sceneId, tokens } = await createArenaScene(gm, BOARD_SCENE, [
+      { name: "Marco", x: 800, y: 500 },
+    ]);
+    await loginAs(page, GM);
+    await openArena(page);
+    await page.getByRole("tab", { name: "Mapas" }).click();
+    await page.getByRole("button", { name: `Ações da cena ${BOARD_SCENE}` }).click();
+    await page.getByRole("menuitem", { name: "Tamanho do tabuleiro" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Tamanho do tabuleiro" });
+    await expect(dialog.getByLabel("Largura (unidades)")).toHaveValue("22,86");
+    await expect(dialog.getByText("Proporção do mapa mantida")).toBeVisible();
+    await dialog.getByLabel("Largura (unidades)").fill("40");
+    await expect(dialog.getByLabel("Altura (unidades)")).toHaveValue("25");
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    const view = await readArena(gm, sceneId);
+    expect(view.scene).toMatchObject({ width: 2800, height: 1750 });
+    expect(view.tokens.find((token) => token.id === tokens[0]?.id)).toMatchObject({
+      x: 1400,
+      y: 875,
+    });
   });
 
   test("o Mestre tira a cena da pasta arrastando para a raiz", async ({ page }) => {
