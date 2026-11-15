@@ -1,13 +1,12 @@
 "use client";
 
 import {
-  childFolders,
   isErrorResult,
   type IArenaBoardInput,
   type IArenaFolder,
   type IArenaScene,
 } from "@magista/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { toMediaUrl } from "@/core/services/http";
 import { ARENA_FOLDERS_STORAGE_KEY, SCENE_TEXTS } from "@/modules/arena/arena.constants";
@@ -24,13 +23,14 @@ import {
   uploadArenaSceneMap,
 } from "@/modules/arena/services";
 import type { ITreeMove } from "@/modules/library/library.types";
-import { countLeavesDeep } from "@/modules/library/library.utils";
+import type { ITreeLeafSlots } from "@/modules/library/components";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
 
 import type { ISceneFormValues } from "../SceneFormDialog";
 import type { SceneDialog, SceneLibraryProps } from "./SceneLibrary.types";
-import { parseExpandedFolders, sceneFolderMenu, sceneMenu } from "./SceneLibrary.utils";
+import { parseExpandedFolders, sceneFolderMenu } from "./SceneLibrary.utils";
+import { SceneTreeLeaf } from "./subcomponents";
 
 /**
  * The GM scene library: loads scenes and folders (again on every Arena change), keeps the open folders on
@@ -38,7 +38,12 @@ import { parseExpandedFolders, sceneFolderMenu, sceneMenu } from "./SceneLibrary
  * create, rename, map and delete dialogs. Opening a scene shows it on the GM screen only; "Colocar no ar"
  * shows it to the whole table.
  */
-export function useSceneLibrary({ liveSceneId, onPreview, onGoLive }: SceneLibraryProps) {
+export function useSceneLibrary({
+  liveSceneId,
+  viewingSceneId,
+  onPreview,
+  onGoLive,
+}: SceneLibraryProps) {
   const store = useAppStoreApi();
   const socket = useTableSocket();
   const library = useApp((state) => state.arena.library);
@@ -108,23 +113,21 @@ export function useSceneLibrary({ liveSceneId, onPreview, onGoLive }: SceneLibra
     [store, load],
   );
 
-  const folderSummary = useCallback(
-    (folderId: string) =>
-      SCENE_TEXTS.summary(
-        countLeavesDeep({ folders: library.folders, leaves: library.scenes }, folderId),
-        childFolders(library.folders, folderId).length,
-      ),
-    [library.folders, library.scenes],
-  );
-
   const folderMenu = useCallback((folder: IArenaFolder) => sceneFolderMenu(folder, setDialog), []);
 
-  const menuOf = (scene: IArenaScene) =>
-    sceneMenu(scene, scene.id === liveSceneId, {
-      open: setDialog,
-      preview: onPreview,
-      goLive: onGoLive,
-    });
+  const renderLeaf = useCallback(
+    (scene: IArenaScene, slots: ITreeLeafSlots) =>
+      createElement(SceneTreeLeaf, {
+        scene,
+        slots,
+        live: scene.id === liveSceneId,
+        viewing: scene.id === viewingSceneId,
+        onDialog: setDialog,
+        onPreview,
+        onGoLive,
+      }),
+    [liveSceneId, viewingSceneId, onPreview, onGoLive],
+  );
 
   const portraitOf = useCallback((scene: IArenaScene) => toMediaUrl(scene.mapUrl), []);
 
@@ -200,9 +203,9 @@ export function useSceneLibrary({ liveSceneId, onPreview, onGoLive }: SceneLibra
     toggleFolder,
     expandFolders,
     onMove,
-    folderSummary,
+    folderSummary: SCENE_TEXTS.summary,
     folderMenu,
-    menuOf,
+    renderLeaf,
     portraitOf,
     dialog,
     closeDialog: () => setDialog(null),

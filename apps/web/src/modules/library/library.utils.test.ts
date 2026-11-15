@@ -5,6 +5,7 @@ import {
   applyMove,
   applyTreeMove,
   charactersIn,
+  buildTreeIndex,
   countLeavesDeep,
   countCharactersDeep,
   dropPositionFor,
@@ -206,6 +207,27 @@ describe("generic folder tree (scenes)", () => {
     expect(
       moveForTreeDrop(tree, { kind: "scene", id: "s1" }, { kind: "character", id: "a" }, "before"),
     ).toBeNull();
+  });
+
+  it("indexes the tree once, in manual order, with deep counts", () => {
+    const index = buildTreeIndex({
+      folders: [
+        { id: "b", name: "B", parentId: null, position: 1 },
+        { id: "a", name: "A", parentId: null, position: 0 },
+        { id: "c", name: "C", parentId: "a", position: 0 },
+      ],
+      leaves: [
+        { id: "x", name: "X", folderId: "c", position: 0 },
+        { id: "z", name: "Z", folderId: null, position: 1 },
+        { id: "y", name: "Y", folderId: null, position: 0 },
+        { id: "w", name: "W", folderId: "a", position: 0 },
+      ],
+    });
+    expect(index.folders(null).map((folder) => folder.id)).toEqual(["a", "b"]);
+    expect(index.leaves(null).map((leaf) => leaf.id)).toEqual(["y", "z"]);
+    expect(index.deepCount("a")).toBe(2);
+    expect(index.deepCount("b")).toBe(0);
+    expect(index.folders("missing")).toEqual([]);
   });
 
   it("counts scenes deep inside a folder", () => {

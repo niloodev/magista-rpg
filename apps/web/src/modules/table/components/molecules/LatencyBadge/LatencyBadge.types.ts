@@ -1,4 +1,5 @@
 export interface LatencyBadgeProps {
-  latencyMs: number | null;
+  /** Shows the last measure only while the table is connected. */
+  connected: boolean;
   className?: string;
 }

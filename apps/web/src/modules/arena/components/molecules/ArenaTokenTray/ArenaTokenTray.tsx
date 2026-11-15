@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Avatar } from "@/shared/components/atoms";
 
 import {
@@ -14,7 +16,7 @@ import type { ArenaTokenTrayProps } from "./ArenaTokenTray.types";
  * Portraits of the tokens the viewer controls: picking one selects it and centers the camera on it, which is
  * also the keyboard way into the board (then the arrows move it).
  */
-export function ArenaTokenTray({
+export const ArenaTokenTray = memo(function ArenaTokenTray({
   label,
   tokens,
   selectedId,
@@ -50,4 +52,4 @@ export function ArenaTokenTray({
       </ul>
     </nav>
   );
-}
+});

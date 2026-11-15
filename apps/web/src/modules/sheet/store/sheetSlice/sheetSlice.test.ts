@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { createAppStore } from "@/modules/shell/store/appSlice/appSlice";
 
+import { sheetNames } from "./sheetSlice.utils";
+
 const character: ICharacter = {
   id: "c1",
   name: "Zarkov",
@@ -202,5 +204,13 @@ describe("sheet slice", () => {
     other.getState().setSession({ account: { id: "outra", login: "outra", role: "PLAYER" } });
     other.getState().startSheetLoad("c1");
     expect(entry(other)).toMatchObject({ status: "loading", character: null, accountId: "outra" });
+  });
+});
+
+describe("sheetNames", () => {
+  it("is computed once per sheets object", () => {
+    const sheets = {};
+    expect(sheetNames(sheets)).toBe(sheetNames(sheets));
+    expect(sheetNames({})).not.toBe(sheetNames(sheets));
   });
 });

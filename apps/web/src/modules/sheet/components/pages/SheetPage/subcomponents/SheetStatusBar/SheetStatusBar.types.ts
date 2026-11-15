@@ -8,7 +8,6 @@ export interface SheetStatusBarProps {
   saveStatus: SaveStatus;
   saveError: string | null;
   connection: ConnectionStatus;
-  latencyMs: number | null;
   rollError: string | null;
   onRetrySave: () => void;
 }

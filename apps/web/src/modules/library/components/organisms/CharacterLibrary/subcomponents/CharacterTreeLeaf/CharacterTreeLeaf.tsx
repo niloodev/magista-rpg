@@ -1,12 +1,14 @@
 "use client";
 
+import { memo } from "react";
+
 import { CharacterRow } from "@/modules/library/components/molecules";
 import { ActionMenu } from "@/shared/components/molecules";
 
 import { useCharacterTreeLeaf } from "./CharacterTreeLeaf.hook";
 import type { CharacterTreeLeafProps } from "./CharacterTreeLeaf.types";
 
-export function CharacterTreeLeaf({
+export const CharacterTreeLeaf = memo(function CharacterTreeLeaf({
   character,
   slots,
   accountLogins,
@@ -14,10 +16,11 @@ export function CharacterTreeLeaf({
   onOpen,
   onPlace,
 }: CharacterTreeLeafProps) {
-  const { subtitle, href, portraitUrl, accountLabels, menu } = useCharacterTreeLeaf({
+  const { subtitle, href, portraitUrl, accountLabels, menu, openRow } = useCharacterTreeLeaf({
     character,
     accountLogins,
     onDialog,
+    onOpen,
     onPlace,
   });
   return (
@@ -26,7 +29,7 @@ export function CharacterTreeLeaf({
       name={character.name}
       subtitle={subtitle}
       href={href}
-      onOpen={onOpen && (() => onOpen(character.id))}
+      onOpen={onOpen && openRow}
       portraitUrl={portraitUrl}
       accountLabels={accountLabels}
       features={character.features}
@@ -36,4 +39,4 @@ export function CharacterTreeLeaf({
       actions={<ActionMenu label={`Ações de ${character.name}`} items={menu} />}
     />
   );
-}
+});

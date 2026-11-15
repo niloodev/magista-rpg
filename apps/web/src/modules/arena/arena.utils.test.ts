@@ -1,5 +1,5 @@
 import type { IArenaToken, IArenaView } from "@magista/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   arenaHint,
@@ -15,6 +15,9 @@ import {
   roundPoint,
   selectionSummary,
   toRenderTokens,
+  dockedTabsOf,
+  livePreviews,
+  withPreviews,
 } from "./arena.utils";
 
 function token(id: string, characterId: string | null): IArenaToken {
@@ -186,5 +189,49 @@ describe("arena utils", () => {
     expect(fitPanels(520, 560, 1024)).toEqual({ left: 320, right: 344 });
     expect(fitPanels(0, 560, 1024)).toEqual({ left: 0, right: 560 });
     expect(fitPanels(520, 560, 700)).toEqual({ left: 320, right: 300 });
+  });
+});
+
+describe("drag previews and docked tabs", () => {
+  const token = {
+    id: "t",
+    name: "Ana",
+    imageUrl: null,
+    x: 1,
+    y: 2,
+    size: 140,
+    hidden: false,
+    controllable: true,
+    tone: "own" as const,
+  };
+
+  it("applies live previews and keeps the same list without any", () => {
+    const list = [token];
+    expect(withPreviews(list, {})).toBe(list);
+    expect(withPreviews(list, { t: { x: 9, y: 8 } })[0]).toMatchObject({ x: 9, y: 8 });
+  });
+
+  it("drops queued previews whose stale timer already fired", () => {
+    const queued = new Map([
+      ["a", { tokenId: "a", x: 1, y: 1 }],
+      ["b", { tokenId: "b", x: 2, y: 2 }],
+    ]);
+    expect(livePreviews(queued, new Map([["a", 1]])).map((move) => move.tokenId)).toEqual(["a"]);
+  });
+
+  it("lists the docked sheets of a side with their names", () => {
+    const show = vi.fn();
+    const tabs = dockedTabsOf(
+      "left",
+      { left: ["c1"], right: [] },
+      { left: "c1", right: null },
+      {},
+      [{ id: "c1", name: "Ana" }],
+      show,
+    );
+    expect(tabs.sheets).toEqual([{ id: "c1", name: "Ana" }]);
+    expect(tabs.active).toBe("c1");
+    tabs.onShow(null);
+    expect(show).toHaveBeenCalledWith("left", null);
   });
 });

@@ -23,6 +23,7 @@ import type {
   ArenaDockSide,
   ArenaSidebarTab,
   IArenaDockedSheet,
+  IArenaDockedTabs,
   IArenaHint,
   IArenaSelectionSummary,
   IArenaSidebarState,
@@ -57,6 +58,31 @@ export function toRenderTokens(
       controllable,
       tone: own ? "own" : "other",
     };
+  });
+}
+
+/**
+ * Drag previews queued for the next frame that are still live (their stale timer did not fire), so a preview
+ * that arrives late, after the token was saved or the preview expired, is not put back.
+ */
+export function livePreviews<M extends { tokenId: string }>(
+  queued: Map<string, M>,
+  timers: Map<string, number>,
+): M[] {
+  return [...queued.values()].filter((move) => timers.has(move.tokenId));
+}
+
+/**
+ * Tokens with the live drag previews of other tabs applied (the same list when there is no preview).
+ */
+export function withPreviews(
+  tokens: IArenaRenderToken[],
+  previews: Record<string, IArenaPoint>,
+): IArenaRenderToken[] {
+  if (Object.keys(previews).length === 0) return tokens;
+  return tokens.map((token) => {
+    const preview = previews[token.id];
+    return preview ? { ...token, x: preview.x, y: preview.y } : token;
   });
 }
 
@@ -265,6 +291,24 @@ export function sheetNameOf(
   return (
     names[characterId] ?? characters.find((character) => character.id === characterId)?.name ?? null
   );
+}
+
+/**
+ * Docked sheet tabs of one side panel, with their names (the renderer of each tab is added by the page).
+ */
+export function dockedTabsOf(
+  side: ArenaDockSide,
+  docked: Record<ArenaDockSide, string[]>,
+  dockTab: Record<ArenaDockSide, string | null>,
+  names: Record<string, string | null>,
+  characters: { id: string; name: string }[],
+  showTab: (side: ArenaDockSide, characterId: string | null) => void,
+): Omit<IArenaDockedTabs, "render"> {
+  return {
+    sheets: docked[side].map((id) => ({ id, name: sheetNameOf(id, names, characters) })),
+    active: dockTab[side],
+    onShow: (characterId) => showTab(side, characterId),
+  };
 }
 
 /**

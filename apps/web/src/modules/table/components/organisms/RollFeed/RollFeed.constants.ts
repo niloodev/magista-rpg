@@ -47,3 +47,6 @@ export const FEED_EMPTY_HINT =
   "Clique em um atributo, perícia, bloqueio ou habilidade para rolar, ou mostre um traço ou item na mesa.";
 
 export const FEED_TITLE = "Rolagens da mesa";
+
+/** Wait before remembering the feed shape, so a burst of rolls writes the hints cookie once. */
+export const FEED_HINT_DELAY_MS = 1500;

@@ -1,6 +1,6 @@
 export interface ArenaDockedSheetProps {
   characterId: string;
   name: string | null;
-  onUndock: () => void;
-  onClose: () => void;
+  onUndock: (characterId: string) => void;
+  onClose: (characterId: string) => void;
 }

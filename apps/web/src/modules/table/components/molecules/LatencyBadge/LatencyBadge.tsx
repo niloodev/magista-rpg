@@ -1,6 +1,9 @@
+"use client";
+
 import { LATENCY_LABEL, LATENCY_PLACEHOLDER } from "@/modules/table/table.constants";
 import { latencyText, latencyTone } from "@/modules/table/table.utils";
 
+import { useLatencyBadge } from "./LatencyBadge.hook";
 import type { LatencyBadgeProps } from "./LatencyBadge.types";
 
 /**
@@ -8,7 +11,8 @@ import type { LatencyBadgeProps } from "./LatencyBadge.types";
  * placeholder is always reserved, so nothing shifts when the first measure arrives. Not announced (it changes
  * every few seconds); the value stays in the title and in the accessible text.
  */
-export function LatencyBadge({ latencyMs, className }: LatencyBadgeProps) {
+export function LatencyBadge({ connected, className }: LatencyBadgeProps) {
+  const latencyMs = useLatencyBadge(connected);
   const text = latencyText(latencyMs);
   return (
     <span

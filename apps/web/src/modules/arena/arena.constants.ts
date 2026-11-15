@@ -1,4 +1,4 @@
-import { ARENA_UNIT_PX, type IArenaBounds } from "@magista/shared";
+import { ARENA_UNIT_PX, type IArenaBounds, type IArenaPoint } from "@magista/shared";
 
 import type { IArenaSidebarState } from "./arena.types";
 
@@ -294,3 +294,6 @@ export const ARENA_MAP_MIN_WIDTH = 360;
 
 /** Screen diameter limits of the token drag preview, in CSS pixels. */
 export const ARENA_TOKEN_PREVIEW_LIMITS = { min: 40, max: 200 } as const;
+
+/** No drag previews (the page builds tokens without them; the stage applies the live previews). */
+export const NO_PREVIEWS: Readonly<Record<string, IArenaPoint>> = Object.freeze({});

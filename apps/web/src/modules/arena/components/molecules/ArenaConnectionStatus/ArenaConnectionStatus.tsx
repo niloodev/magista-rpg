@@ -8,7 +8,7 @@ import type { ArenaConnectionStatusProps } from "./ArenaConnectionStatus.types";
  * Connection dot and label. Every label is laid out in the same cell (only the current one visible), so the bar
  * keeps the width of the longest one and never shifts when the state changes.
  */
-export function ArenaConnectionStatus({ status, latencyMs = null }: ArenaConnectionStatusProps) {
+export function ArenaConnectionStatus({ status }: ArenaConnectionStatusProps) {
   return (
     <span className="flex shrink-0 items-center gap-2 font-sans text-sm text-muted-strong">
       <span className={`h-2 w-2 rounded-full ${CONNECTION_LABELS[status].dot}`} />
@@ -19,10 +19,7 @@ export function ArenaConnectionStatus({ status, latencyMs = null }: ArenaConnect
           </span>
         ))}
       </span>
-      <LatencyBadge
-        latencyMs={status === "connected" ? latencyMs : null}
-        className="max-md:hidden"
-      />
+      <LatencyBadge connected={status === "connected"} className="max-md:hidden" />
     </span>
   );
 }

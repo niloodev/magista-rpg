@@ -27,6 +27,7 @@ import type {
   DropPosition,
   ILibraryData,
   ITreeData,
+  ITreeIndex,
   ITreeItemRef,
   ITreeLeaf,
   ITreeMove,
@@ -56,14 +57,52 @@ export function leavesIn<L extends ITreeLeaf>(leaves: L[], folderId: string | nu
 }
 
 /**
+ * The tree grouped in one pass: subfolders by parent and leaves by folder (both in manual order, null is the
+ * root) and the number of leaves under each folder counting every subfolder. Building the tree from it costs
+ * O(folders + leaves) instead of filtering the whole lists once per folder.
+ */
+export function buildTreeIndex<L extends ITreeLeaf>(tree: ITreeData<L>): ITreeIndex<L> {
+  const foldersByParent = new Map<string | null, IFolder[]>();
+  const leavesByFolder = new Map<string | null, L[]>();
+  for (const folder of tree.folders) {
+    const list = foldersByParent.get(folder.parentId) ?? [];
+    list.push(folder);
+    foldersByParent.set(folder.parentId, list);
+  }
+  for (const leaf of tree.leaves) {
+    const list = leavesByFolder.get(leaf.folderId) ?? [];
+    list.push(leaf);
+    leavesByFolder.set(leaf.folderId, list);
+  }
+  for (const list of foldersByParent.values()) list.sort(byPosition);
+  for (const list of leavesByFolder.values()) list.sort(byPosition);
+  const deepCount = new Map<string, number>();
+  const visiting = new Set<string>();
+  const count = (folderId: string): number => {
+    const known = deepCount.get(folderId);
+    if (known !== undefined) return known;
+    if (visiting.has(folderId)) return 0;
+    visiting.add(folderId);
+    const total = (foldersByParent.get(folderId) ?? []).reduce(
+      (sum, child) => sum + count(child.id),
+      leavesByFolder.get(folderId)?.length ?? 0,
+    );
+    deepCount.set(folderId, total);
+    return total;
+  };
+  for (const folder of tree.folders) count(folder.id);
+  return {
+    folders: (parentId) => foldersByParent.get(parentId) ?? [],
+    leaves: (folderId) => leavesByFolder.get(folderId) ?? [],
+    deepCount: (folderId) => deepCount.get(folderId) ?? 0,
+  };
+}
+
+/**
  * Number of leaves inside a folder, counting every subfolder.
  */
 export function countLeavesDeep(tree: ITreeData, folderId: string): number {
-  const direct = tree.leaves.filter((leaf) => leaf.folderId === folderId).length;
-  return childFolders(tree.folders, folderId).reduce(
-    (total, child) => total + countLeavesDeep(tree, child.id),
-    direct,
-  );
+  return buildTreeIndex(tree).deepCount(folderId);
 }
 
 /**
@@ -314,20 +353,21 @@ export function libraryShape(
         ]),
     };
   let budget = LIBRARY_SHAPE_MAX_ROWS;
+  const index = buildTreeIndex(toTreeData(data));
+  const expanded = new Set(expandedFolderIds);
   const build = (parentId: string | null): LibraryShapeHintNode[] => {
     const nodes: LibraryShapeHintNode[] = [];
-    for (const folder of childFolders(data.folders, parentId)) {
+    for (const folder of index.folders(parentId)) {
       if (budget <= 0) return nodes;
       budget -= 1;
-      const open = expandedFolderIds.includes(folder.id);
       nodes.push([
         -clampLength(folder.name.length),
-        countCharactersDeep(data, folder.id),
-        childFolders(data.folders, folder.id).length,
-        open ? build(folder.id) : 0,
+        index.deepCount(folder.id),
+        index.folders(folder.id).length,
+        expanded.has(folder.id) ? build(folder.id) : 0,
       ]);
     }
-    for (const character of charactersIn(data.characters, parentId)) {
+    for (const character of index.leaves(parentId)) {
       if (budget <= 0) return nodes;
       budget -= 1;
       nodes.push([

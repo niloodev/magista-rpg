@@ -1,7 +1,9 @@
+import { memo } from "react";
+
 import type { RichTextProps } from "./RichText.types";
 import { toParagraphs, toSegments } from "./RichText.utils";
 
-export function RichText({ text, className }: RichTextProps) {
+export const RichText = memo(function RichText({ text, className }: RichTextProps) {
   return (
     <div
       className={`space-y-2 font-sans text-[15px] leading-relaxed text-muted-strong ${className ?? ""}`}
@@ -26,4 +28,4 @@ export function RichText({ text, className }: RichTextProps) {
       ))}
     </div>
   );
-}
+});

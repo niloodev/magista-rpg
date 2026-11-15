@@ -1,18 +1,19 @@
 "use client";
 
+import { memo } from "react";
+
 import { SCENE_TEXTS, SCENE_TREE_LABELS } from "@/modules/arena/arena.constants";
 import { FolderTree } from "@/modules/library/components";
 import { Button, Icon } from "@/shared/components/atoms";
-import { ActionMenu, ConfirmDialog } from "@/shared/components/molecules";
+import { ConfirmDialog } from "@/shared/components/molecules";
 
-import { SceneLibrarySkeleton, SceneRow } from "../../molecules";
+import { SceneLibrarySkeleton } from "../../molecules";
 import { SceneBoardDialog } from "../SceneBoardDialog";
 import { SceneFormDialog } from "../SceneFormDialog";
 import { useSceneLibrary } from "./SceneLibrary.hook";
 import type { SceneLibraryProps } from "./SceneLibrary.types";
 
-export function SceneLibrary(props: SceneLibraryProps) {
-  const { liveSceneId, viewingSceneId, onPreview } = props;
+export const SceneLibrary = memo(function SceneLibrary(props: SceneLibraryProps) {
   const {
     status,
     error,
@@ -24,7 +25,7 @@ export function SceneLibrary(props: SceneLibraryProps) {
     onMove,
     folderSummary,
     folderMenu,
-    menuOf,
+    renderLeaf,
     portraitOf,
     dialog,
     closeDialog,
@@ -112,21 +113,7 @@ export function SceneLibrary(props: SceneLibraryProps) {
               {SCENE_TEXTS.emptyLibrary}
             </p>
           }
-          renderLeaf={(scene, slots) => (
-            <SceneRow
-              name={scene.name}
-              mapUrl={portraitOf(scene)}
-              live={scene.id === liveSceneId}
-              viewing={scene.id === viewingSceneId}
-              onOpen={() => onPreview(scene.id)}
-              handle={slots.handle}
-              dropPosition={slots.dropPosition}
-              dimmed={slots.dimmed}
-              actions={
-                <ActionMenu label={SCENE_TEXTS.sceneActions(scene.name)} items={menuOf(scene)} />
-              }
-            />
-          )}
+          renderLeaf={renderLeaf}
         />
       )}
       {dialog?.type === "createScene" && (
@@ -196,4 +183,4 @@ export function SceneLibrary(props: SceneLibraryProps) {
       />
     </div>
   );
-}
+});

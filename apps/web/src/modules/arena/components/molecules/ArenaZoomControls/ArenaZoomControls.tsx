@@ -1,10 +1,12 @@
+import { memo } from "react";
+
 import { ARENA_ZOOM_GROUP_LABEL, ARENA_ZOOM_LABELS } from "@/modules/arena/arena.constants";
 import { Icon } from "@/shared/components/atoms";
 
 import { ARENA_TOOL_BUTTON_CLASSES, ARENA_TOOL_GROUP_CLASSES } from "./ArenaZoomControls.constants";
 import type { ArenaZoomControlsProps } from "./ArenaZoomControls.types";
 
-export function ArenaZoomControls({
+export const ArenaZoomControls = memo(function ArenaZoomControls({
   onZoomIn,
   onZoomOut,
   onFit,
@@ -45,4 +47,4 @@ export function ArenaZoomControls({
       </button>
     </div>
   );
-}
+});

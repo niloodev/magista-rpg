@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { ARENA_TOKEN_SIZE_MAX, ARENA_TOKEN_SIZE_MIN } from "@magista/shared";
 
 import { ARENA_SELECTION_TEXTS, ARENA_SIZE_STEP } from "@/modules/arena/arena.constants";
@@ -10,7 +12,7 @@ import type { ArenaSelectionBarProps } from "./ArenaSelectionBar.types";
  * Actions for the selected tokens: size (applied to all of them, the keyboard way to resize), hide or show,
  * open the sheet of a single character token and remove. Players only get "Abrir ficha".
  */
-export function ArenaSelectionBar({
+export const ArenaSelectionBar = memo(function ArenaSelectionBar({
   label,
   isGm,
   size,
@@ -76,4 +78,4 @@ export function ArenaSelectionBar({
       )}
     </section>
   );
-}
+});

@@ -54,6 +54,8 @@ import {
   toRenderTokens,
   dockSideOf,
   fitPanels,
+  dockedTabsOf,
+  livePreviews,
   sheetNameOf,
 } from "@/modules/arena/arena.utils";
 import {
@@ -65,11 +67,12 @@ import {
   updateArenaTokens,
 } from "@/modules/arena/services";
 import { useArenaTokenPlacement } from "@/modules/arena/hooks";
+import { NO_PREVIEWS } from "@/modules/arena/arena.constants";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
-import { useIsDesktopViewport, useViewportWidth } from "@/shared/hooks";
+import { useIsDesktopViewport, useStableCallback, useViewportWidth } from "@/shared/hooks";
 
 /**
  * Drives the Arena: loads what this account may see, follows the live events (tokens created, changed, removed,
@@ -81,10 +84,17 @@ export function useArenaPage() {
   const store = useAppStoreApi();
   const isGm = useApp((state) => state.session.data?.account.role === "GM");
   const connection = useApp((state) => state.table.connection);
-  const latencyMs = useApp((state) => state.table.latencyMs);
   const memberCount = useApp((state) => state.table.members.length);
-  const { status, view, error, selectedTokenIds, previews, viewSceneId, docked, dockTab } = useApp(
-    (state) => state.arena,
+  const { status, view, error, selectedTokenIds, viewSceneId, docked, dockTab } = useApp(
+    useShallow((state) => ({
+      status: state.arena.status,
+      view: state.arena.view,
+      error: state.arena.error,
+      selectedTokenIds: state.arena.selectedTokenIds,
+      viewSceneId: state.arena.viewSceneId,
+      docked: state.arena.docked,
+      dockTab: state.arena.dockTab,
+    })),
   );
   const namesById = useApp(useShallow((state) => sheetNames(state.sheets)));
   const libraryCharacters = useApp((state) => state.library.characters);
@@ -186,31 +196,53 @@ export function useArenaPage() {
     const onScene = (event: IArenaSceneEvent) => {
       if (!event.libraryOnly) void load();
     };
+    const queued = new Map<string, IArenaDragEvent["moves"][number]>();
+    let frame = 0;
+    const flush = () => {
+      frame = 0;
+      const moves = livePreviews(queued, timers);
+      queued.clear();
+      if (moves.length > 0) applyArenaDrag({ moves });
+    };
+    const onToken = (event: Parameters<typeof applyArenaToken>[0]) => {
+      queued.delete(event.id);
+      applyArenaToken(event);
+    };
+    const onTokenRemoved = (event: Parameters<typeof removeArenaToken>[0]) => {
+      queued.delete(event.id);
+      removeArenaToken(event);
+    };
     const onDragging = (event: IArenaDragEvent) => {
-      applyArenaDrag(event);
+      for (const move of event.moves) queued.set(move.tokenId, move);
+      if (!frame) frame = window.requestAnimationFrame(flush);
       for (const { tokenId } of event.moves) {
         window.clearTimeout(timers.get(tokenId));
         timers.set(
           tokenId,
-          window.setTimeout(() => clearArenaDrag(tokenId), ARENA_PREVIEW_STALE_MS),
+          window.setTimeout(() => {
+            timers.delete(tokenId);
+            queued.delete(tokenId);
+            clearArenaDrag(tokenId);
+          }, ARENA_PREVIEW_STALE_MS),
         );
       }
     };
     socket.on("arena:scene", onScene);
-    socket.on("arena:token", applyArenaToken);
-    socket.on("arena:token-removed", removeArenaToken);
+    socket.on("arena:token", onToken);
+    socket.on("arena:token-removed", onTokenRemoved);
     socket.on("arena:dragging", onDragging);
     return () => {
       socket.off("arena:scene", onScene);
-      socket.off("arena:token", applyArenaToken);
-      socket.off("arena:token-removed", removeArenaToken);
+      socket.off("arena:token", onToken);
+      socket.off("arena:token-removed", onTokenRemoved);
       socket.off("arena:dragging", onDragging);
+      window.cancelAnimationFrame(frame);
     };
   }, [socket, store, load]);
 
   const renderTokens = useMemo(
-    () => (view ? toRenderTokens(view, previews, isGm, toMediaUrl) : []),
-    [view, previews, isGm],
+    () => (view ? toRenderTokens(view, NO_PREVIEWS, isGm, toMediaUrl) : []),
+    [view, isGm],
   );
 
   const trayTokens = useMemo(
@@ -367,7 +399,7 @@ export function useArenaPage() {
     return true;
   };
 
-  const onStageKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const onStageKeyDown = useStableCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const delta = arrowDelta(event.key);
     if (delta) {
       if (nudgeSelected(delta, event.shiftKey)) event.preventDefault();
@@ -401,13 +433,14 @@ export function useArenaPage() {
     if (!action) return;
     event.preventDefault();
     action();
-  };
+  });
 
   const liveSceneId = view?.activeSceneId ?? null;
   const viewingSceneId = view?.scene?.id ?? null;
 
-  const onPreviewScene = (sceneId: string) =>
-    store.getState().setArenaViewScene(sceneId === liveSceneId ? null : sceneId);
+  const onPreviewScene = useStableCallback((sceneId: string) =>
+    store.getState().setArenaViewScene(sceneId === liveSceneId ? null : sceneId),
+  );
 
   const onGoLive = async (sceneId: string) => {
     const result = await setArenaLiveScene(sceneId);
@@ -442,12 +475,12 @@ export function useArenaPage() {
     [],
   );
 
-  const onDock = (characterId: string, side: ArenaDockSide) => {
+  const onDock = useStableCallback((characterId: string, side: ArenaDockSide) => {
     store.getState().dockArenaSheet(characterId, side);
     updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
-  };
+  });
 
-  const openSheet = (characterId: string) => {
+  const openSheet = useStableCallback((characterId: string) => {
     const side = dockSideOf(docked, characterId);
     if (!side) {
       store.getState().openArenaSheet(characterId);
@@ -455,16 +488,28 @@ export function useArenaPage() {
     }
     store.getState().showDockTab(side, characterId);
     updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
-  };
-
-  const dockedTabs = (side: ArenaDockSide) => ({
-    sheets: docked[side].map((id) => ({
-      id,
-      name: sheetNameOf(id, namesById, libraryCharacters),
-    })),
-    active: dockTab[side],
-    onShow: (characterId: string | null) => store.getState().showDockTab(side, characterId),
   });
+
+  const showDockTab = useApp((state) => state.showDockTab);
+  const dockedLeft = useMemo(
+    () => dockedTabsOf("left", docked, dockTab, namesById, libraryCharacters, showDockTab),
+    [docked, dockTab, namesById, libraryCharacters, showDockTab],
+  );
+  const dockedRight = useMemo(
+    () => dockedTabsOf("right", docked, dockTab, namesById, libraryCharacters, showDockTab),
+    [docked, dockTab, namesById, libraryCharacters, showDockTab],
+  );
+  const windowPanels = useMemo(
+    () => ({ left: insetLeft, right: insetRight }),
+    [insetLeft, insetRight],
+  );
+  const onUndock = useStableCallback((characterId: string) =>
+    store.getState().undockArenaSheet(characterId),
+  );
+  const onCloseDocked = useStableCallback((characterId: string) =>
+    store.getState().closeDockedSheet(characterId),
+  );
+  const onGoLiveStable = useStableCallback((sceneId: string) => void onGoLive(sceneId));
 
   const scene = view?.scene ?? null;
   const placement = useArenaTokenPlacement({
@@ -474,6 +519,9 @@ export function useArenaPage() {
     boundsRef,
     onError: setActionError,
   });
+  const onPlaceCharacter = useStableCallback(placement.placeCharacter);
+  const onDropCharacter = useStableCallback(placement.dropCharacter);
+  const onNewNpc = useStableCallback(placement.openNpcDialog);
   const stageScene = useMemo(
     () =>
       scene
@@ -506,7 +554,6 @@ export function useArenaPage() {
     selectedTokenId: selectedTokenIds.length === 1 ? (selectedTokenIds[0] ?? null) : null,
     desktop,
     connection,
-    latencyMs,
     memberCount,
     controlsRef,
     announcement,
@@ -561,20 +608,20 @@ export function useArenaPage() {
     onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
     onSidebarOpen: (open: boolean) => updateSidebar({ open }),
     onOpenCharacter: openSheet,
-    dockedLeft: dockedTabs("left"),
-    dockedRight: dockedTabs("right"),
-    windowPanels: { left: insetLeft, right: insetRight },
+    dockedLeft,
+    dockedRight,
+    windowPanels,
     onDock,
-    onUndock: (characterId: string) => store.getState().undockArenaSheet(characterId),
+    onUndock,
     sheetNameFor: (characterId: string) => sheetNameOf(characterId, namesById, libraryCharacters),
-    onCloseDocked: (characterId: string) => store.getState().closeDockedSheet(characterId),
+    onCloseDocked,
     canPlace: Boolean(scene) && status === "ready",
     isOverMap,
     tokenPreviewSize,
-    onPlaceCharacter: placement.placeCharacter,
-    onDropCharacter: placement.dropCharacter,
+    onPlaceCharacter,
+    onDropCharacter,
     npcDialogOpen: placement.npcDialogOpen,
-    onNewNpc: placement.openNpcDialog,
+    onNewNpc,
     onCloseNpc: placement.closeNpcDialog,
     selectionSlotClassName: `${ARENA_SELECTION_BAR_SLOT.base} ${
       trayTokens.length > 0
@@ -585,7 +632,7 @@ export function useArenaPage() {
     liveSceneId,
     viewingSceneId,
     onPreviewScene,
-    onGoLive: (sceneId: string) => void onGoLive(sceneId),
+    onGoLive: onGoLiveStable,
     rolls,
     pendingRolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
