@@ -119,4 +119,18 @@
     );
     animation: marked-border-turn 6s linear infinite;
   }
+
+  .arena-vignette {
+    background:
+      radial-gradient(
+        ellipse at center,
+        transparent 58%,
+        color-mix(in srgb, var(--magista-ruby-900) 38%, transparent) 100%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--magista-void-900) 55%, transparent),
+        transparent 7rem
+      );
+  }
 }

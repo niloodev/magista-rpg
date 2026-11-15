@@ -31,3 +31,13 @@ export async function apiRequest<T>(
 export function toMediaUrl(path: string | null): string | null {
   return path ? `${API_URL}${path}` : null;
 }
+
+/**
+ * Downloads a public media file (absolute URL from `toMediaUrl`) without credentials, as needed for WebGL
+ * textures (CORS-clean images).
+ */
+export async function fetchMediaBlob(url: string): Promise<Blob> {
+  const response = await fetch(url, { mode: "cors", credentials: "omit" });
+  if (!response.ok) throw new Error(`Mídia indisponível (${response.status})`);
+  return response.blob();
+}

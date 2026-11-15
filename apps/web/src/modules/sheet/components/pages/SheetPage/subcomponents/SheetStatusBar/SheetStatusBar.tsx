@@ -2,9 +2,9 @@ import Link from "next/link";
 
 import { SAVE_STATUS_LABELS } from "@/modules/sheet/sheet.constants";
 import { PopoutButton } from "@/modules/shell/components";
+import { CONNECTION_LABELS } from "@/modules/table/table.constants";
 import { Icon } from "@/shared/components/atoms";
 
-import { CONNECTION_LABELS } from "./SheetStatusBar.constants";
 import type { SheetStatusBarProps } from "./SheetStatusBar.types";
 
 export function SheetStatusBar({

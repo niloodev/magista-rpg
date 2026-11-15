@@ -52,6 +52,11 @@ import {
   CircleX,
   CircleCheck,
   Link2,
+  Map as MapIcon,
+  Maximize,
+  Swords,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 export const ICONS = {
@@ -108,4 +113,9 @@ export const ICONS = {
   "circle-x": CircleX,
   "circle-check": CircleCheck,
   "link-2": Link2,
+  map: MapIcon,
+  maximize: Maximize,
+  swords: Swords,
+  "zoom-in": ZoomIn,
+  "zoom-out": ZoomOut,
 } as const;

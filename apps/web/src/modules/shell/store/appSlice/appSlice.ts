@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 
+import { createArenaSlice } from "@/modules/arena/store";
 import { createSessionSlice } from "@/modules/auth/store";
 import { createLibrarySlice } from "@/modules/library/store";
 import { createMarkedSlice } from "@/modules/marked/store";
@@ -18,5 +19,6 @@ export function createAppStore() {
     ...createSheetSlice(...args),
     ...createLibrarySlice(...args),
     ...createMarkedSlice(...args),
+    ...createArenaSlice(...args),
   }));
 }

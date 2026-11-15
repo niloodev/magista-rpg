@@ -1,3 +1,5 @@
+import type { ConnectionStatus } from "./table.types";
+
 export const ROLL_FEED_LIMIT = 50;
 
 export const HEXAGON = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
@@ -51,3 +53,9 @@ export const TABLE_ACK_TIMEOUT_MS = 8000;
 export const SERVER_DISCONNECT_REASON = "io server disconnect";
 
 export const SESSION_RECHECK_DELAY_MS = 1500;
+
+export const CONNECTION_LABELS: Record<ConnectionStatus, { label: string; dot: string }> = {
+  connecting: { label: "Conectando à mesa", dot: "bg-ruby-400 animate-pulse" },
+  connected: { label: "Mesa conectada", dot: "bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)]" },
+  disconnected: { label: "Mesa desconectada", dot: "bg-destructive" },
+};
