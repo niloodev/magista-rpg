@@ -173,7 +173,7 @@ export function createCharacterController({
         console.error("old image cleanup failed:", error);
       });
     }
-    return { images: changed, accountIds: await characters.listAccountIds(id) };
+    return { images: changed };
   };
 
   const setImage: ICharacterController["setImage"] = async (viewer, id, upload) => {

@@ -40,7 +40,7 @@ export interface IArenaTokenModels {
   /** Appends a token on top of the scene's others. */
   create: (sceneId: string, input: ICreateArenaTokenRow) => Promise<IArenaToken>;
   update: (id: string, input: IUpdateArenaTokenRow) => Promise<IArenaToken | null>;
-  /** Moves several tokens in one transaction; with a guard, only those still visible on that scene. */
+  /** Moves several tokens in one statement; with a guard, only those still visible on that scene. */
   moveMany: (moves: IArenaTokenMove[], guard?: IArenaMoveGuard) => Promise<IArenaToken[]>;
   remove: (id: string) => Promise<IRemovedArenaToken | null>;
   /** Applies several patches in one transaction and returns the tokens as stored (missing ids are skipped). */

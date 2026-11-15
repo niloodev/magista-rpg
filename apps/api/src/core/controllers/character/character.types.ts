@@ -30,7 +30,6 @@ export interface IImageUpload {
 
 export interface IImageChange {
   images: ICharacterImages;
-  accountIds: string[];
 }
 
 export interface IAccessChange {

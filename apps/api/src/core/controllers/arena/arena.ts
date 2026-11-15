@@ -32,6 +32,7 @@ import { arenaImages } from "@/core/services/media";
 import type { IViewer } from "../controllers.types";
 import { arenaErrors } from "./arena.errors";
 import type { IArenaController, IArenaControllerDeps } from "./arena.types";
+import { ARENA_DRAG_AUTH_CACHE_MAX, ARENA_DRAG_AUTH_TTL_MS } from "./arena.constants";
 import { sceneAudience, tokenAudience } from "./arena.utils";
 
 /**
@@ -94,6 +95,28 @@ export function createArenaController({
     const visible = found.filter((token) => token.sceneId === activeSceneId && !token.hidden);
     const allowed = visible.filter((token) => canControlToken(viewer, token, accessible));
     return { allowed, forbidden: visible.length > allowed.length, activeSceneId };
+  };
+
+  const dragAuth = new Map<string, { expires: number; auth: ReturnType<typeof authorizeMany> }>();
+
+  /**
+   * Authorization of a drag preview, reused for a moment: a drag sends ~20 previews a second for the same tokens,
+   * and each would cost the same queries. Previews are never saved, and the move that saves always checks again.
+   */
+  const authorizeDrag = (viewer: IViewer, ids: string[]) => {
+    const now = Date.now();
+    const key = `${viewer.accountId}|${viewer.role}|${[...ids].sort().join(",")}`;
+    const cached = dragAuth.get(key);
+    if (cached && cached.expires > now) return cached.auth;
+    if (dragAuth.size >= ARENA_DRAG_AUTH_CACHE_MAX)
+      for (const [entry, value] of dragAuth) if (value.expires <= now) dragAuth.delete(entry);
+    if (dragAuth.size >= ARENA_DRAG_AUTH_CACHE_MAX) dragAuth.clear();
+    const auth = authorizeMany(viewer, ids);
+    dragAuth.set(key, { expires: now + ARENA_DRAG_AUTH_TTL_MS, auth });
+    auth.catch(() => {
+      if (dragAuth.get(key)?.auth === auth) dragAuth.delete(key);
+    });
+    return auth;
   };
 
   const getView: IArenaController["getView"] = async (viewer, requestedSceneId) => {
@@ -321,6 +344,7 @@ export function createArenaController({
     try {
       if (sceneId && !(await scenes.findById(sceneId))) return { error: arenaErrors.sceneNotFound };
       await scenes.setActiveScene(sceneId);
+      dragAuth.clear();
       return { message: "Cena ativa atualizada", payload: { activeSceneId: sceneId } };
     } catch (error) {
       return failed("setActiveScene", error);
@@ -363,6 +387,7 @@ export function createArenaController({
       const patch = existing.characterId || name === undefined ? rest : { ...rest, name };
       if (Object.keys(patch).length === 0) return { error: arenaErrors.characterName };
       const token = await tokens.update(id, patch);
+      dragAuth.clear();
       if (!token) return { error: arenaErrors.tokenNotFound };
       const activeSceneId = await scenes.findActiveSceneId();
       return {
@@ -400,6 +425,7 @@ export function createArenaController({
           error: existing.length > 0 ? arenaErrors.characterName : arenaErrors.tokenNotFound,
         };
       const updated = await tokens.updateMany(patches);
+      dragAuth.clear();
       const activeSceneId = await scenes.findActiveSceneId();
       const changes = updated.map((token) => {
         const before = byId.get(token.id) ?? token;
@@ -421,6 +447,7 @@ export function createArenaController({
     if (!parsed.success) return { error: arenaErrors.invalidToken };
     try {
       const removed = await tokens.removeMany(parsed.data.ids);
+      dragAuth.clear();
       if (removed.length === 0) return { error: arenaErrors.tokenNotFound };
       for (const { id } of removed) await cleanup(images.removeToken(id));
       const imageKeys = new Set(removed.flatMap((token) => token.imageKey ?? []));
@@ -441,6 +468,7 @@ export function createArenaController({
     if (!isId(id)) return { error: arenaErrors.tokenNotFound };
     try {
       const removed = await tokens.remove(id);
+      dragAuth.clear();
       if (!removed) return { error: arenaErrors.tokenNotFound };
       await cleanup(images.removeToken(id));
       await cleanup(assets.release(removed.imageKey));
@@ -532,7 +560,7 @@ export function createArenaController({
     if (!parsed.success) return { error: arenaErrors.invalidMove };
     const { moves } = parsed.data;
     try {
-      const auth = await authorizeMany(
+      const auth = await authorizeDrag(
         viewer,
         moves.map((entry) => entry.tokenId),
       );

@@ -325,7 +325,6 @@ describe("character controller", () => {
     expect(result).toMatchObject({
       payload: {
         images: { avatarUrl: "/media/media/new/full.webp", artUrl: null },
-        accountIds: ["owner"],
       },
     });
     expect(characters.setImageKey).toHaveBeenCalledWith(
