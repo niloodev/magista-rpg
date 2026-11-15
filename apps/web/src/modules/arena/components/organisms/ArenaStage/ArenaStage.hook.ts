@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import {
   ARENA_BOTTOM_INSET,
@@ -8,8 +8,6 @@ import {
   ARENA_ZOOM_STEP,
 } from "@/modules/arena/arena.constants";
 import type { ArenaStageStatus } from "@/modules/arena/arena.types";
-import { withPreviews } from "@/modules/arena/arena.utils";
-import { useApp } from "@/modules/shell/store";
 import type { IArenaRenderer } from "@/modules/arena/services/arenaRenderer";
 import { usePrefersReducedMotion } from "@/shared/hooks";
 
@@ -27,7 +25,6 @@ export function useArenaStage({
   selectedTokenIds,
   controlsRef,
   onSelect,
-  onDragMove,
   onDrop,
   onResize,
   resizable,
@@ -38,15 +35,13 @@ export function useArenaStage({
 }: ArenaStageHookProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<IArenaRenderer | null>(null);
-  const callbacksRef = useRef({ onSelect, onDragMove, onDrop, onResize, onBounds, onMapError });
+  const callbacksRef = useRef({ onSelect, onDrop, onResize, onBounds, onMapError });
   const [renderer, setRenderer] = useState<IArenaRenderer | null>(null);
   const [status, setStatus] = useState<ArenaStageStatus>("loading");
   const lite = usePrefersReducedMotion();
-  const previews = useApp((state) => state.arena.previews);
-  const shownTokens = useMemo(() => withPreviews(tokens, previews), [tokens, previews]);
 
   useEffect(() => {
-    callbacksRef.current = { onSelect, onDragMove, onDrop, onResize, onBounds, onMapError };
+    callbacksRef.current = { onSelect, onDrop, onResize, onBounds, onMapError };
   });
 
   useEffect(() => {
@@ -67,7 +62,6 @@ export function useArenaStage({
           fontFamily,
           callbacks: {
             onSelect: (ids, mode) => callbacksRef.current.onSelect(ids, mode),
-            onDragMove: (moves) => callbacksRef.current.onDragMove(moves),
             onDrop: (moves) => callbacksRef.current.onDrop(moves),
             onResize: (updates) => callbacksRef.current.onResize(updates),
             onMapError: (failed) => {
@@ -118,8 +112,8 @@ export function useArenaStage({
   }, [renderer, sceneId, mapUrl, boardWidth, boardHeight]);
 
   useEffect(() => {
-    renderer?.setTokens(shownTokens);
-  }, [renderer, shownTokens]);
+    renderer?.setTokens(tokens);
+  }, [renderer, tokens]);
 
   useEffect(() => {
     renderer?.setSelection(selectedTokenIds);

@@ -6,7 +6,6 @@ import {
   clampToMap,
   isErrorResult,
   type IArenaBounds,
-  type IArenaDragEvent,
   ARENA_TOKEN_SIZE_MAX,
   ARENA_TOKEN_SIZE_MIN,
   type IArenaPoint,
@@ -19,7 +18,6 @@ import { useShallow } from "zustand/react/shallow";
 
 import { toMediaUrl } from "@/core/services/http";
 import {
-  ARENA_DRAG_EMIT_MS,
   ARENA_EMPTY_BOUNDS,
   ARENA_EMPTY_TEXTS,
   ARENA_HINT_DELAY_MS,
@@ -30,7 +28,6 @@ import {
   ARENA_NUDGE_COMMIT_MS,
   ARENA_NUDGE_STEP,
   ARENA_NUDGE_STEP_LARGE,
-  ARENA_PREVIEW_STALE_MS,
   ARENA_PREVIEW_TEXTS,
   ARENA_SELECTION_TEXTS,
   ARENA_SIZE_COMMIT_MS,
@@ -55,19 +52,16 @@ import {
   dockSideOf,
   fitPanels,
   dockedTabsOf,
-  livePreviews,
   sheetNameOf,
 } from "@/modules/arena/arena.utils";
 import {
   deleteArenaTokens,
-  emitArenaDrag,
   fetchArena,
   moveArenaTokens,
   setArenaLiveScene,
   updateArenaTokens,
 } from "@/modules/arena/services";
 import { useArenaTokenPlacement } from "@/modules/arena/hooks";
-import { NO_PREVIEWS } from "@/modules/arena/arena.constants";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
@@ -106,10 +100,8 @@ export function useArenaPage() {
   const viewportWidth = useViewportWidth();
   const controlsRef = useRef<IArenaStageControls | null>(null);
   const boundsRef = useRef<IArenaBounds>(ARENA_EMPTY_BOUNDS);
-  const lastDragEmit = useRef(0);
   const nudgeTimer = useRef(0);
   const pendingNudge = useRef(new Map<string, IArenaPoint>());
-  const previewTimers = useRef(new Map<string, number>());
   const lostConnection = useRef(false);
   const loadSeq = useRef(0);
   const mounted = useRef(false);
@@ -153,7 +145,6 @@ export function useArenaPage() {
     if (!desktop) return;
     mounted.current = true;
     void load();
-    const timers = previewTimers.current;
     const nudges = pendingNudge.current;
     return () => {
       mounted.current = false;
@@ -168,8 +159,6 @@ export function useArenaPage() {
       }));
       nudges.clear();
       if (pending.length > 0) void moveArenaTokens(socket, { moves: pending });
-      for (const timer of timers.values()) window.clearTimeout(timer);
-      timers.clear();
       store.getState().resetArena();
     };
   }, [load, store, socket, desktop]);
@@ -191,57 +180,22 @@ export function useArenaPage() {
 
   useEffect(() => {
     if (!socket) return;
-    const { applyArenaToken, removeArenaToken, applyArenaDrag, clearArenaDrag } = store.getState();
-    const timers = previewTimers.current;
+    const { applyArenaToken, removeArenaToken } = store.getState();
     const onScene = (event: IArenaSceneEvent) => {
       if (!event.libraryOnly) void load();
     };
-    const queued = new Map<string, IArenaDragEvent["moves"][number]>();
-    let frame = 0;
-    const flush = () => {
-      frame = 0;
-      const moves = livePreviews(queued, timers);
-      queued.clear();
-      if (moves.length > 0) applyArenaDrag({ moves });
-    };
-    const onToken = (event: Parameters<typeof applyArenaToken>[0]) => {
-      queued.delete(event.id);
-      applyArenaToken(event);
-    };
-    const onTokenRemoved = (event: Parameters<typeof removeArenaToken>[0]) => {
-      queued.delete(event.id);
-      removeArenaToken(event);
-    };
-    const onDragging = (event: IArenaDragEvent) => {
-      for (const move of event.moves) queued.set(move.tokenId, move);
-      if (!frame) frame = window.requestAnimationFrame(flush);
-      for (const { tokenId } of event.moves) {
-        window.clearTimeout(timers.get(tokenId));
-        timers.set(
-          tokenId,
-          window.setTimeout(() => {
-            timers.delete(tokenId);
-            queued.delete(tokenId);
-            clearArenaDrag(tokenId);
-          }, ARENA_PREVIEW_STALE_MS),
-        );
-      }
-    };
     socket.on("arena:scene", onScene);
-    socket.on("arena:token", onToken);
-    socket.on("arena:token-removed", onTokenRemoved);
-    socket.on("arena:dragging", onDragging);
+    socket.on("arena:token", applyArenaToken);
+    socket.on("arena:token-removed", removeArenaToken);
     return () => {
       socket.off("arena:scene", onScene);
-      socket.off("arena:token", onToken);
-      socket.off("arena:token-removed", onTokenRemoved);
-      socket.off("arena:dragging", onDragging);
-      window.cancelAnimationFrame(frame);
+      socket.off("arena:token", applyArenaToken);
+      socket.off("arena:token-removed", removeArenaToken);
     };
   }, [socket, store, load]);
 
   const renderTokens = useMemo(
-    () => (view ? toRenderTokens(view, NO_PREVIEWS, isGm, toMediaUrl) : []),
+    () => (view ? toRenderTokens(view, isGm, toMediaUrl) : []),
     [view, isGm],
   );
 
@@ -290,16 +244,6 @@ export function useArenaPage() {
     (tokenIds: string[], mode: ArenaSelectionMode) =>
       store.getState().selectArenaTokens(tokenIds, mode),
     [store],
-  );
-
-  const onDragMove = useCallback(
-    (moves: IMoveArenaTokenInput[]) => {
-      const now = Date.now();
-      if (now - lastDragEmit.current < ARENA_DRAG_EMIT_MS) return;
-      lastDragEmit.current = now;
-      emitArenaDrag(socket, { moves });
-    },
-    [socket],
   );
 
   const onBounds = useCallback((bounds: IArenaBounds) => {
@@ -579,7 +523,6 @@ export function useArenaPage() {
     onCloseProfile: () => setProfileOpen(false),
     onRetry: () => void load(),
     onSelect,
-    onDragMove,
     onDrop: (moves: IMoveArenaTokenInput[]) => void commitMoves(moves),
     onResize,
     selection:

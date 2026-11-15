@@ -16,8 +16,6 @@ import {
   selectionSummary,
   toRenderTokens,
   dockedTabsOf,
-  livePreviews,
-  withPreviews,
 } from "./arena.utils";
 
 function token(id: string, characterId: string | null): IArenaToken {
@@ -58,7 +56,7 @@ const media = (path: string | null) => (path ? `http://api${path}` : null);
 
 describe("arena utils", () => {
   it("marks what a player controls and owns", () => {
-    const tokens = toRenderTokens(view, {}, false, media);
+    const tokens = toRenderTokens(view, false, media);
     expect(tokens.map((entry) => [entry.id, entry.controllable, entry.tone])).toEqual([
       ["ana", true, "own"],
       ["bruno", false, "other"],
@@ -68,14 +66,9 @@ describe("arena utils", () => {
   });
 
   it("lets the GM control everything and highlights NPCs as theirs", () => {
-    const tokens = toRenderTokens(view, {}, true, media);
+    const tokens = toRenderTokens(view, true, media);
     expect(tokens.every((entry) => entry.controllable)).toBe(true);
     expect(tokens.map((entry) => entry.tone)).toEqual(["other", "other", "own"]);
-  });
-
-  it("uses live drag previews over stored positions", () => {
-    const [ana] = toRenderTokens(view, { ana: { x: 99, y: 98 } }, false, media);
-    expect(ana).toMatchObject({ x: 99, y: 98 });
   });
 
   it("keeps only counts and widths in the skeleton hint and reads it back safely", () => {
@@ -194,34 +187,7 @@ describe("arena utils", () => {
   });
 });
 
-describe("drag previews and docked tabs", () => {
-  const token = {
-    id: "t",
-    name: "Ana",
-    imageUrl: null,
-    imageThumbUrl: null,
-    x: 1,
-    y: 2,
-    size: 140,
-    hidden: false,
-    controllable: true,
-    tone: "own" as const,
-  };
-
-  it("applies live previews and keeps the same list without any", () => {
-    const list = [token];
-    expect(withPreviews(list, {})).toBe(list);
-    expect(withPreviews(list, { t: { x: 9, y: 8 } })[0]).toMatchObject({ x: 9, y: 8 });
-  });
-
-  it("drops queued previews whose stale timer already fired", () => {
-    const queued = new Map([
-      ["a", { tokenId: "a", x: 1, y: 1 }],
-      ["b", { tokenId: "b", x: 2, y: 2 }],
-    ]);
-    expect(livePreviews(queued, new Map([["a", 1]])).map((move) => move.tokenId)).toEqual(["a"]);
-  });
-
+describe("docked tabs", () => {
   it("lists the docked sheets of a side with their names", () => {
     const show = vi.fn();
     const tabs = dockedTabsOf(

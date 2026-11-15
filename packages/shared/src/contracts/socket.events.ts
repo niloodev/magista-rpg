@@ -16,7 +16,6 @@ import type {
 } from "../game/rolls/rolls.types";
 import type { AccountRole } from "../schemas/account";
 import type {
-  IArenaDragEvent,
   IArenaSceneEvent,
   IArenaToken,
   IArenaTokenRemovedEvent,
@@ -66,7 +65,6 @@ export interface ServerToClientEvents {
   "arena:scene": (event: IArenaSceneEvent) => void;
   "arena:token": (token: IArenaToken) => void;
   "arena:token-removed": (event: IArenaTokenRemovedEvent) => void;
-  "arena:dragging": (event: IArenaDragEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -92,7 +90,6 @@ export interface ClientToServerEvents {
     ack: (result: ControllerResult<null>) => void,
   ) => void;
   "marked:stop": (request: IMarkedStopInput, ack: (result: ControllerResult<null>) => void) => void;
-  "arena:drag": (request: IMoveArenaTokensInput) => void;
   "arena:move": (
     request: IMoveArenaTokensInput,
     ack: (result: ControllerResult<IArenaMoveResult>) => void,

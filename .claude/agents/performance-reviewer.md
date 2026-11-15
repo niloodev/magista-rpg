@@ -12,14 +12,14 @@ Leia `CLAUDE.md`, `docs/ARCH.md` (camadas, estado, tempo real), `docs/DESIGN.md`
 
 ## Escala de referência
 
-Pense sempre no pior caso realista da mesa: 150 fichas e 100 cenas em pastas aninhadas, 150 tokens numa cena, mapas de até 16384 px (texturas limitadas a 8192), 8 a 10 pessoas conectadas, um jogador arrastando tokens a ~20 prévias por segundo, 50 cartões no feed de rolagens, várias fichas abertas em janelas e abas.
+Pense sempre no pior caso realista da mesa: 150 fichas e 100 cenas em pastas aninhadas, 150 tokens numa cena, mapas de até 16384 px (texturas limitadas a 8192), 8 a 10 pessoas conectadas, vários jogadores movendo tokens em sequência (cada soltura é um `arena:move`), 50 cartões no feed de rolagens, várias fichas abertas em janelas e abas.
 
 ## O que revisar
 
 1. **Renders no React (web)**
    - Seletores do store (`useApp`) estreitos: nada de assinar um slice inteiro (`state.table`, `state.library`, `state.arena`) para usar um campo; `useShallow` quando o seletor monta objeto ou array; ações sem estado novo quando o valor não mudou.
    - Props estáveis para filhos pesados: callbacks com `useCallback`/`useStableCallback` (`shared/hooks`), objetos e arrays memoizados, `memo` onde o filho é caro (árvores, ficha, feed, palco do mapa). Funções inline passadas a listas (`renderLeaf`, `renderItem`) são achado.
-   - Eventos de alta frequência (ping, `arena:dragging`, `pointermove`, redimensionar painel, mover janela) não podem redesenhar a página, a árvore, a ficha ou o feed inteiros. Confira quem assina o quê.
+   - Eventos de alta frequência (ping, `arena:token` em sequência, `pointermove`, redimensionar painel, mover janela) não podem redesenhar a página, a árvore, a ficha ou o feed inteiros. Confira quem assina o quê.
    - Trabalho caro no render: filtros e ordenações por item dentro de laços (O(n²)), parse de texto, `JSON.stringify`, leitura de `localStorage` ou `document.cookie`. Prefira índices (`buildTreeIndex`) e `useMemo`.
    - dnd-kit: sensores, modificadores, `collisionDetection` e `accessibility` estáveis; linhas que só renderizam quando o próprio estado de soltura muda.
 2. **Memória e GPU (web)**
@@ -47,4 +47,4 @@ Pense sempre no pior caso realista da mesa: 150 fichas e 100 cenas em pastas ani
 
 ## Relatório
 
-Responda em português, sem travessão. Liste os achados do mais grave para o menos grave, cada um com: impacto (alto, médio, baixo), arquivo e linha, o problema, em que escala ele aparece (por exemplo "150 tokens", "20 prévias por segundo", "aba no modo leve") e a correção sugerida. Separe "confirmado" (lido no código ou medido) de "suspeita". Diga o que mediu e com que números. Se não houver nada relevante, diga isso claramente e liste o que verificou, inclusive o modo performance. Termine com uma linha: `VEREDITO: aprovado` ou `VEREDITO: corrigir antes de concluir`.
+Responda em português, sem travessão. Liste os achados do mais grave para o menos grave, cada um com: impacto (alto, médio, baixo), arquivo e linha, o problema, em que escala ele aparece (por exemplo "150 tokens", "50 tokens soltos de uma vez", "aba no modo leve") e a correção sugerida. Separe "confirmado" (lido no código ou medido) de "suspeita". Diga o que mediu e com que números. Se não houver nada relevante, diga isso claramente e liste o que verificou, inclusive o modo performance. Termine com uma linha: `VEREDITO: aprovado` ou `VEREDITO: corrigir antes de concluir`.

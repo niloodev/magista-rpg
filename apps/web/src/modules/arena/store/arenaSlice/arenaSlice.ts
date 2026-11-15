@@ -34,7 +34,6 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           status: "ready",
           view,
           error: null,
-          previews: {},
           selectedTokenIds: state.arena.selectedTokenIds.filter((id) => present.has(id)),
         },
       };
@@ -51,7 +50,6 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         arena: {
           ...state.arena,
           view: { ...view, tokens: upsertToken(view.tokens, token) },
-          previews: omitKey(state.arena.previews, token.id),
         },
       };
     }),
@@ -63,24 +61,10 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         arena: {
           ...state.arena,
           view: { ...view, tokens: view.tokens.filter((token) => token.id !== id) },
-          previews: omitKey(state.arena.previews, id),
           selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => selected !== id),
         },
       };
     }),
-  applyArenaDrag: ({ moves }) =>
-    set((state) => {
-      const present = new Set(state.arena.view?.tokens.map((token) => token.id));
-      const known = moves.filter((move) => present.has(move.tokenId));
-      if (known.length === 0) return state;
-      const previews = { ...state.arena.previews };
-      for (const { tokenId, x, y } of known) previews[tokenId] = { x, y };
-      return { arena: { ...state.arena, previews } };
-    }),
-  clearArenaDrag: (tokenId) =>
-    set((state) => ({
-      arena: { ...state.arena, previews: omitKey(state.arena.previews, tokenId) },
-    })),
   placeArenaTokens: (moves) =>
     set((state) => {
       const view = state.arena.view;

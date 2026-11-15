@@ -45,7 +45,6 @@ export interface IArenaRenderScene {
 
 export interface IArenaRendererCallbacks {
   onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
-  onDragMove: (moves: IMoveArenaTokenInput[]) => void;
   onDrop: (moves: IMoveArenaTokenInput[]) => void;
   onResize: (updates: IArenaSizeUpdate[]) => void;
   onSceneReady: (bounds: IArenaBounds) => void;

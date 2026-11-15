@@ -55,7 +55,6 @@ export function ArenaPage() {
     onCloseProfile,
     onRetry,
     onSelect,
-    onDragMove,
     onDrop,
     onBounds,
     onResize,
@@ -158,7 +157,6 @@ export function ArenaPage() {
           controlsRef={controlsRef}
           label={stageLabel}
           onSelect={onSelect}
-          onDragMove={onDragMove}
           onDrop={onDrop}
           onBounds={onBounds}
           onResize={onResize}

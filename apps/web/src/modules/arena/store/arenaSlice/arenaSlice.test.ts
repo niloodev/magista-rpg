@@ -72,19 +72,6 @@ describe("arena slice", () => {
     ]);
   });
 
-  it("tracks drag previews until the final move arrives", () => {
-    const store = loaded();
-    store.getState().applyArenaDrag({
-      moves: [
-        { tokenId: "a", x: 10, y: 20 },
-        { tokenId: "ghost", x: 1, y: 1 },
-      ],
-    });
-    expect(store.getState().arena.previews).toEqual({ a: { x: 10, y: 20 } });
-    store.getState().applyArenaToken(token("a", { x: 12, y: 22 }));
-    expect(store.getState().arena.previews).toEqual({});
-  });
-
   it("drops the selection when its token is removed or disappears on reload", () => {
     const store = loaded();
     store.getState().selectArenaTokens(["a", "b"], "replace");

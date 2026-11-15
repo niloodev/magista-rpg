@@ -84,10 +84,3 @@ export async function moveArenaTokens(
     return { ok: false, error: TABLE_OFFLINE_ERROR };
   }
 }
-
-/**
- * Shares a live drag position with the others (fire and forget; dropped when the connection is busy).
- */
-export function emitArenaDrag(socket: TableSocket | null, request: IMoveArenaTokensInput): void {
-  if (socket?.connected) socket.volatile.emit("arena:drag", request);
-}

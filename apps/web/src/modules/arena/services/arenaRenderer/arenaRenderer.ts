@@ -820,7 +820,6 @@ export class ArenaRenderer implements IArenaRenderer {
         view.display = { ...point };
         return [{ tokenId, ...point }];
       });
-      this.options.callbacks.onDragMove(drag.moves);
       this.invalidate();
       return;
     }
@@ -987,13 +986,6 @@ export class ArenaRenderer implements IArenaRenderer {
   }
 
   private cancelGesture(): void {
-    if (this.drag?.moved) {
-      const originals = [...this.drag.offsets.keys()].flatMap((tokenId) => {
-        const view = this.tokens.get(tokenId);
-        return view ? [{ tokenId, x: view.data.x, y: view.data.y }] : [];
-      });
-      if (originals.length > 0) this.options.callbacks.onDragMove(originals);
-    }
     if (this.resize) {
       for (const [id, size] of this.resize.sizes) {
         const view = this.tokens.get(id);

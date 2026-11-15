@@ -33,12 +33,11 @@ import type { IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
 import type { TabItem } from "@/shared/components/molecules";
 
 /**
- * Turns the loaded view into what the board draws: live drag previews win over stored positions, and the ring
- * tone tells the viewer what is theirs (a player's own tokens, the GM's NPCs) apart from the rest.
+ * Turns the loaded view into what the board draws; the ring tone tells the viewer what is theirs (a player's
+ * own tokens, the GM's NPCs) apart from the rest.
  */
 export function toRenderTokens(
   view: IArenaView,
-  previews: Record<string, IArenaPoint>,
   isGm: boolean,
   mediaUrl: (path: string | null) => string | null,
 ): IArenaRenderToken[] {
@@ -46,43 +45,17 @@ export function toRenderTokens(
   return view.tokens.map((token) => {
     const controllable = canControlToken(viewer, token, view.controllableCharacterIds);
     const own = isGm ? token.characterId === null : controllable;
-    const preview = previews[token.id];
     return {
       id: token.id,
       name: token.name,
       imageUrl: mediaUrl(token.imageThumbUrl ?? token.imageUrl),
-      x: preview?.x ?? token.x,
-      y: preview?.y ?? token.y,
+      x: token.x,
+      y: token.y,
       size: token.size,
       hidden: token.hidden,
       controllable,
       tone: own ? "own" : "other",
     };
-  });
-}
-
-/**
- * Drag previews queued for the next frame that are still live (their stale timer did not fire), so a preview
- * that arrives late, after the token was saved or the preview expired, is not put back.
- */
-export function livePreviews<M extends { tokenId: string }>(
-  queued: Map<string, M>,
-  timers: Map<string, number>,
-): M[] {
-  return [...queued.values()].filter((move) => timers.has(move.tokenId));
-}
-
-/**
- * Tokens with the live drag previews of other tabs applied (the same list when there is no preview).
- */
-export function withPreviews(
-  tokens: IArenaRenderToken[],
-  previews: Record<string, IArenaPoint>,
-): IArenaRenderToken[] {
-  if (Object.keys(previews).length === 0) return tokens;
-  return tokens.map((token) => {
-    const preview = previews[token.id];
-    return preview ? { ...token, x: preview.x, y: preview.y } : token;
   });
 }
 

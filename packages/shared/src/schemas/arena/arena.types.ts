@@ -63,11 +63,6 @@ export interface IArenaMoveResult {
   refused: string[];
 }
 
-/** Live drag preview relayed to the other tabs (never persisted). */
-export interface IArenaDragEvent {
-  moves: IMoveArenaTokenInput[];
-}
-
 export interface IArenaTokenRemovedEvent {
   id: string;
   sceneId: string;

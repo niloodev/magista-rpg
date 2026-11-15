@@ -1,6 +1,5 @@
 import type {
   ControllerResult,
-  IArenaDragEvent,
   IArenaFolder,
   IArenaLibrary,
   IArenaScene,
@@ -66,15 +65,6 @@ export interface IArenaMoveChanges {
   refused: string[];
 }
 
-export interface IArenaDragGroup {
-  event: IArenaDragEvent;
-  audience: ArenaAudience;
-}
-
-export interface IArenaDragRelay {
-  groups: IArenaDragGroup[];
-}
-
 type Result<T> = Promise<ControllerResult<T, ArenaError>>;
 
 export interface IArenaController {
@@ -98,5 +88,4 @@ export interface IArenaController {
   move: (viewer: IViewer, input: unknown) => Result<IArenaMoveChanges>;
   updateTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenChange[]>;
   deleteTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenRemoval[]>;
-  drag: (viewer: IViewer, input: unknown) => Result<IArenaDragRelay>;
 }

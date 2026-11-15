@@ -12,7 +12,6 @@ import type { IArenaMoveGuard, IArenaTokenModels, IArenaTokenMove } from "@/core
 import type { IArenaImageStore } from "@/core/services/media";
 
 import { createArenaController } from "./arena";
-import { ARENA_DRAG_AUTH_TTL_MS } from "./arena.constants";
 import { arenaErrors } from "./arena.errors";
 
 const LIVE = "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90";
@@ -342,32 +341,6 @@ describe("arena controller: movement", () => {
     expect(await controller.move(gm, { moves: [] })).toEqual({ error: arenaErrors.invalidMove });
     expect(await controller.move(gm, one(MISSING))).toEqual({ error: arenaErrors.tokenNotFound });
   });
-
-  it("relays drag previews grouped by audience and never persists them", async () => {
-    const { controller, tokens } = build();
-    expect(await controller.drag(alice, one(T_ANA, 40, 50))).toEqual({
-      message: "Arrastando",
-      payload: {
-        groups: [{ audience: "table", event: { moves: [{ tokenId: T_ANA, x: 40, y: 50 }] } }],
-      },
-    });
-    const mixed = await controller.drag(gm, {
-      moves: [
-        { tokenId: T_WOLF, x: 1, y: 1 },
-        { tokenId: T_HIDDEN, x: 2, y: 2 },
-      ],
-    });
-    expect(mixed).toMatchObject({
-      payload: {
-        groups: [
-          { audience: "table", event: { moves: [{ tokenId: T_WOLF }] } },
-          { audience: "gm", event: { moves: [{ tokenId: T_HIDDEN }] } },
-        ],
-      },
-    });
-    expect(await controller.drag(alice, one(T_BRUNO))).toEqual({ error: arenaErrors.forbidden });
-    expect(tokens.moveMany).not.toHaveBeenCalled();
-  });
 });
 
 describe("arena controller: GM tools", () => {
@@ -695,41 +668,6 @@ describe("arena controller: scene library", () => {
       error: arenaErrors.mapTooBig,
     });
     expect(assets.ingest).not.toHaveBeenCalled();
-  });
-});
-
-describe("arena controller: drag previews", () => {
-  it("reuses the authorization of a drag for a moment, never for the move that saves", async () => {
-    const { controller, tokens } = build();
-    const preview = { moves: [{ tokenId: T_ANA, x: 10, y: 10 }] };
-    await controller.drag(alice, preview);
-    await controller.drag(alice, preview);
-    expect(tokens.findManyByIds).toHaveBeenCalledTimes(1);
-    await controller.move(alice, preview);
-    expect(tokens.findManyByIds).toHaveBeenCalledTimes(2);
-  });
-
-  it("checks a drag again once the reuse expires, after a failure or after a token changed", async () => {
-    vi.useFakeTimers();
-    try {
-      const { controller, tokens } = build();
-      const preview = { moves: [{ tokenId: T_WOLF, x: 10, y: 10 }] };
-      await controller.drag(gm, preview);
-      vi.advanceTimersByTime(ARENA_DRAG_AUTH_TTL_MS + 1);
-      await controller.drag(gm, preview);
-      expect(tokens.findManyByIds).toHaveBeenCalledTimes(2);
-      await controller.updateToken(gm, T_WOLF, { hidden: true });
-      await controller.drag(gm, preview);
-      expect(tokens.findManyByIds).toHaveBeenCalledTimes(3);
-      vi.mocked(tokens.findManyByIds).mockRejectedValueOnce(new Error("db down"));
-      vi.spyOn(console, "error").mockImplementation(() => undefined);
-      const other = { moves: [{ tokenId: T_HIDDEN, x: 1, y: 1 }] };
-      expect(await controller.drag(gm, other)).toEqual({ error: arenaErrors.unexpected });
-      await controller.drag(gm, other);
-      expect(tokens.findManyByIds).toHaveBeenCalledTimes(5);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });
 

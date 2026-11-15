@@ -16,7 +16,6 @@ import { Server } from "socket.io";
 
 import type {
   ArenaAudience,
-  IArenaDragRelay,
   IArenaTokenChange,
   IArenaTokenRemoval,
 } from "@/core/controllers/arena";
@@ -108,7 +107,7 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
       onResolved: broadcastMarkedResolved,
       onShare: broadcastMarkedShare,
     });
-    registerArenaHandlers(socket, { onMoved: broadcastArenaToken, onDragged: relayArenaDrag });
+    registerArenaHandlers(socket, { onMoved: broadcastArenaToken });
   });
   io = server;
   return server;
@@ -252,14 +251,6 @@ export function broadcastArenaToken({
  */
 export function broadcastArenaTokenRemoved({ event, audience }: IArenaTokenRemoval): void {
   io?.to(arenaRoom(audience)).emit("arena:token-removed", event);
-}
-
-/**
- * Relays a drag preview to everyone else who may see the token (not to the dragging socket).
- */
-function relayArenaDrag({ groups }: IArenaDragRelay, socketId: string): void {
-  for (const { event, audience } of groups)
-    io?.to(arenaRoom(audience)).except(socketId).emit("arena:dragging", event);
 }
 
 /**

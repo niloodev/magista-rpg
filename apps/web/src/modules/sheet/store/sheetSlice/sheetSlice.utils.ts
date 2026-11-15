@@ -48,7 +48,7 @@ const namesCache = new WeakMap<Record<string, ISheetEntry>, Record<string, strin
 
 /**
  * Names of the loaded sheets by character id (a stable selector input for `useShallow`). Computed once per
- * `sheets` object, so selectors running on every store change (drag previews, pings) cost nothing.
+ * `sheets` object, so selectors running on every store change (token moves, pings) cost nothing.
  */
 export function sheetNames(sheets: Record<string, ISheetEntry>): Record<string, string | null> {
   const cached = namesCache.get(sheets);

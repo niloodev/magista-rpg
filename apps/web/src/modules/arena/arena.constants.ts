@@ -1,4 +1,4 @@
-import { ARENA_UNIT_PX, type IArenaBounds, type IArenaPoint } from "@magista/shared";
+import { ARENA_UNIT_PX, type IArenaBounds } from "@magista/shared";
 
 import type { IArenaSidebarState } from "./arena.types";
 
@@ -60,10 +60,6 @@ export const ARENA_NUDGE_STEP = 10;
 export const ARENA_NUDGE_STEP_LARGE = 50;
 
 export const ARENA_NUDGE_COMMIT_MS = 350;
-
-export const ARENA_DRAG_EMIT_MS = 50;
-
-export const ARENA_PREVIEW_STALE_MS = 2000;
 
 export const ARENA_SKELETON_LABEL = "Carregando a Arena";
 
@@ -294,6 +290,3 @@ export const ARENA_MAP_MIN_WIDTH = 360;
 
 /** Screen diameter limits of the token drag preview, in CSS pixels. */
 export const ARENA_TOKEN_PREVIEW_LIMITS = { min: 40, max: 200 } as const;
-
-/** No drag previews (the page builds tokens without them; the stage applies the live previews). */
-export const NO_PREVIEWS: Readonly<Record<string, IArenaPoint>> = Object.freeze({});
