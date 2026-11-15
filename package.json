@@ -18,14 +18,17 @@
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:up": "docker compose up -d db",
+    "db:up": "docker compose up -d db storage",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w @magista/api",
     "db:seed": "npm run db:seed -w @magista/api",
     "db:studio": "npm run db:studio -w @magista/api",
     "import:roll20": "npm run import:roll20 -w @magista/api --",
     "account:password": "npm run account:password -w @magista/api --",
-    "test:e2e": "npm run e2e -w @magista/e2e"
+    "test:e2e": "npm run e2e -w @magista/e2e",
+    "storage:dump": "npm run storage:dump -w @magista/api --",
+    "storage:restore": "npm run storage:restore -w @magista/api --",
+    "media:migrate-local": "npm run media:migrate-local -w @magista/api --"
   },
   "devDependencies": {
     "concurrently": "^10.0.7",

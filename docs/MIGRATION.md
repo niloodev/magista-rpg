@@ -11,7 +11,7 @@ Os personagens serão importados como JSON exportado do Roll20 (nenhum export ex
 
 `npm run import:roll20 -- "<pasta>" [--force]` (entry `apps/api/src/cli/importRoll20`, regra em `core/controllers/importer` e conversão pura em `core/services/roll20`, com testes).
 
-- Cada subpasta precisa de `character.json`; `avatar.*` e `token.*` são copiados para `MEDIA_DIR`.
+- Cada subpasta precisa de `character.json`; `token.*` vira o **avatar** e `avatar.*` vira a **arte** do personagem, enviados ao storage de imagens (chaves `characters/<id>/<avatar|art>-<uuid>.<ext>`, tipo conferido pelos bytes). Imagens da antiga `MEDIA_DIR` sobem uma vez com `npm run media:migrate-local` (chaves `legacy/...`).
 - Conta nova: login = nome do personagem, senha gerada e mostrada uma única vez. Conta existente: senha nunca é alterada.
 - A ficha importada recebe acesso da conta (`character_access`). Se a conta já tem uma ficha liberada com o mesmo nome, ela é pulada (ou sobrescrita com `--force`); senão uma nova ficha é criada na raiz da biblioteca.
 - Personagem já existente é ignorado, a menos que `--force` (sobrescreve a ficha, mantém a conta).

@@ -1,4 +1,5 @@
 import type { ICharacterSheet } from "../../schemas/character/character.types";
+import type { FeatureKey } from "../features/features.types";
 import { ATTRIBUTE_LABELS, SKILLS } from "../catalog/catalog.constants";
 import { D20 } from "../rules/rules.constants";
 import { deriveSheet } from "../rules/rules";
@@ -53,8 +54,13 @@ export function blockOutcomes(key: BlockKey, sheet: ICharacterSheet): string[] {
 /**
  * Builds what to roll for a sheet action, mirroring the Roll20 roll buttons. Returns null when the target does not exist.
  */
-export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpec | null {
-  const derived = deriveSheet(sheet);
+export function buildRollSpec(
+  sheet: ICharacterSheet,
+  roll: IRollKind,
+  context: { features?: readonly FeatureKey[] } = {},
+): IRollSpec | null {
+  const derived = deriveSheet(sheet, context);
+  const bonus = derived.d20Bonus;
   switch (roll.kind) {
     case "attribute": {
       const label = ATTRIBUTE_LABELS[roll.key];
@@ -64,7 +70,7 @@ export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpe
         rows: [
           {
             label: "Rolagem",
-            expression: joinExpression([D20, derived.attributes[roll.key].modifier]),
+            expression: joinExpression([D20, derived.attributes[roll.key].modifier, bonus]),
           },
         ],
         notes: [`CD ${derived.attributes[roll.key].dc}`],
@@ -76,7 +82,9 @@ export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpe
       return {
         title: `Teste de ${skill.name}`,
         subtitle: ATTRIBUTE_LABELS[skill.attribute].short,
-        rows: [{ label: "Rolagem", expression: joinExpression([D20, derived.skills[roll.key]]) }],
+        rows: [
+          { label: "Rolagem", expression: joinExpression([D20, derived.skills[roll.key], bonus]) },
+        ],
         notes: [],
       };
     }
@@ -116,7 +124,7 @@ export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpe
         rows: [
           {
             label: "Rolagem",
-            expression: joinExpression([D20, derived.attributes[block.attribute].modifier]),
+            expression: joinExpression([D20, derived.attributes[block.attribute].modifier, bonus]),
           },
         ],
         notes: blockOutcomes(roll.key, sheet),
@@ -127,7 +135,10 @@ export function buildRollSpec(sheet: ICharacterSheet, roll: IRollKind): IRollSpe
         title: "Contra-ataque",
         subtitle: "Gasta 1 Abertura",
         rows: [
-          { label: "Teste", expression: joinExpression([D20, derived.attributes.for.modifier]) },
+          {
+            label: "Teste",
+            expression: joinExpression([D20, derived.attributes.for.modifier, bonus]),
+          },
         ],
         notes: [
           `Falha crítica (dado natural abaixo de ${COUNTER_ATTACK_FUMBLE_BELOW}): perde TODAS as Aberturas`,

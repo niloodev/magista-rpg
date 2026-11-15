@@ -91,6 +91,15 @@ Listas com a mesma estrutura: nome, atributo de ataque, dado de dano, dano fixo,
 - **Bloqueio Agressivo (CON)**: `1d20 + mod CON`. Sucesso: anula o dano. Extremo (+17): anula + 2 Aberturas. Falha: 150% do dano e desvantagem em todos os dados no próximo turno.
 - **Aberturas** (contador ≥ 0) são gastas em: +1 no dado de ataque (1), ignorar CA do inimigo (1), Contra-ataque (1; teste `1d20 + mod FOR`, resultado natural < 5 perde todas), Gasto avançado (4: dano dobrado e ignora CA no turno).
 
+## Imagens do personagem
+
+Duas imagens distintas, enviadas pelo Mestre (na criação da ficha ou pelo modal "Imagens"):
+
+- **Avatar**: rosto em círculo (o token do Roll20). Usado nos retratos pequenos (biblioteca, feed, cabeçalho) e, no futuro, como token na Arena.
+- **Arte**: arte completa do personagem, aberta em "Ver arte completa".
+
+Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`artKey` no banco; o DTO traz `avatarUrl`/`artUrl`).
+
 ## Inventário e Traços
 
 - Item: nome, quantidade, CA (bônus), peso em gramas, descrição. Peso atual = soma dos pesos dos itens, sem multiplicar pela quantidade (decisão do mestre, igual ao Roll20). Peso máximo é manual.
@@ -101,4 +110,15 @@ Listas com a mesma estrutura: nome, atributo de ataque, dado de dano, dano fixo,
 
 - Alinhamentos: Arcana (matéria/elementos), Anima (alma/emoção), Lux (criação), Nox (destruição).
 - Caminhos do Meio: Onírico (Arcana+Anima), Entropia (Lux+Nox), Vodu (Arcana+Nox), Bênção (Anima+Lux), Anátema (Anima+Nox, valor legado `Morte`), Talismã (Arcana+Lux, valor legado `Vida`).
-- **Alma de Marcado**: uma vez por rodada os Marcados escolhem um traço para compartilhar até o fim da cena (1x por descanso longo); +2 em todas as ações enquanto a Marca está ativa.
+- **Alma de Marcado**: uma vez por rodada os Marcados escolhem um traço para compartilhar até o fim da cena (1x por descanso longo); +2 permanente em todos os testes de d20. Implementada como a tag especial `marked` (ver abaixo).
+
+## Tags especiais (special features)
+
+Mecânicas exclusivas que o Mestre liga em uma ficha pelo item "Tags especiais" do menu da ficha na biblioteca (`PUT /characters/:id/features`, coluna `features` do personagem, gravada sem mexer no `updatedAt`). O catálogo é `SPECIAL_FEATURES` (`packages/shared/src/game/features`): cada tag declara rótulo, descrição e bônus de d20; a UI de cada uma é registrada em `FEATURE_SHEET_SLOTS` (`apps/web/src/modules/features`), com slots opcionais `backdrop` (fundo da ficha), `traitsAddon` (acima dos traços) e `traitsSection` (seção na aba Traços). Nova tag = entrada no catálogo + componentes no registro.
+
+### Marcado (`marked`)
+
+- A seção **Alma de Marcado** só aparece em fichas com a tag; a ficha ganha o selo "Marcado". O símbolo da Marca é a runa Othala (ᛟ); o fundo com o sigilo só aparece enquanto um traço está compartilhado.
+- **+2 permanente em todo teste de d20**: atributo, perícia, iniciativa, bloqueios, contra-ataque e o Ataque das habilidades (não entra em Dano, Dano Base, Dado de Vida, Dado de Sanidade nem na subida de nível). `deriveSheet(sheet, { features })` expõe `d20Bonus`; `buildRollSpec(sheet, roll, { features })` soma o termo à expressão (o feed mostra "1d20 + mod + 2"). As perícias exibidas já somam o bônus.
+- **Compartilhar traço**: um Marcado (jogador com acesso ou Mestre) escolhe um traço da ficha salva e chama a Marca. Todos os **outros** Marcados recebem o "Chamado da Marca"; qualquer conta com acesso à ficha responde por ela, e o Mestre pode responder por qualquer uma (NPCs). Uma recusa, 60 s sem resposta (`MARKED_ANSWER_TIMEOUT_MS`) ou um Marcado sem ninguém na mesa (nem jogador nem Mestre) fazem falhar. Todos aceitando, o traço (cópia de nome e descrição) aparece na aba Traços de todos os Marcados com o visual da Marca, até quem compartilhou (ou o Mestre) encerrar.
+- Só **um** traço da Marca ativo para o grupo (tabela `marked_shares`, uma linha) e só um chamado pendente por vez (em memória no servidor). Tirar a tag ou excluir a ficha cancela o chamado que a envolve e encerra o traço que ela compartilhou.

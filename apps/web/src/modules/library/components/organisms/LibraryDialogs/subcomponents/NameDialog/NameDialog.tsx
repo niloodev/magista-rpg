@@ -1,7 +1,8 @@
 "use client";
 
+import { CHARACTER_IMAGE_FIELDS } from "@/modules/library/library.constants";
 import { Button, Icon, Input, Select } from "@/shared/components/atoms";
-import { FormField, Modal } from "@/shared/components/molecules";
+import { FormField, IMAGE_HINT, ImageField, Modal } from "@/shared/components/molecules";
 
 import { useNameDialog } from "./NameDialog.hook";
 import type { NameDialogProps } from "./NameDialog.types";
@@ -14,17 +15,29 @@ export function NameDialog({
   maxLength,
   folderOptions,
   initialFolderId,
+  withImages = false,
   onSubmit,
   onClose,
 }: NameDialogProps) {
-  const { formId, name, folderValue, error, pending, onNameChange, setFolderValue, submit } =
-    useNameDialog({ initialName, initialFolderId, onSubmit });
+  const {
+    formId,
+    name,
+    folderValue,
+    error,
+    pending,
+    images,
+    imageErrors,
+    onNameChange,
+    onImageChange,
+    setFolderValue,
+    submit,
+  } = useNameDialog({ initialName, initialFolderId, onSubmit });
   return (
     <Modal
       open
       onClose={onClose}
       title={title}
-      size="sm"
+      size={withImages ? "md" : "sm"}
       footer={
         <>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -64,6 +77,21 @@ export function NameDialog({
             />
           </FormField>
         )}
+        {withImages &&
+          CHARACTER_IMAGE_FIELDS.map((field) => (
+            <ImageField
+              key={field.kind}
+              id={`${formId}-${field.kind}`}
+              label={field.label}
+              hint={IMAGE_HINT}
+              shape={field.shape}
+              file={images[field.kind]}
+              currentUrl={null}
+              error={imageErrors[field.kind]}
+              onFileChange={(file) => onImageChange(field.kind, file)}
+              onRemoveCurrent={() => onImageChange(field.kind, null)}
+            />
+          ))}
       </form>
     </Modal>
   );

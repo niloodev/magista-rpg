@@ -14,9 +14,10 @@ const character: ICharacter = {
   id: CHARACTER_ID,
   name: "Kael",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
+  features: [],
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -24,12 +25,13 @@ const summary: ICharacterSummary = {
   id: CHARACTER_ID,
   name: "Kael",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   classKey: "sem-classe",
   level: 1,
   folderId: null,
   position: 0,
   accountIds: ["owner"],
+  features: [],
 };
 
 function buildController(
@@ -56,8 +58,22 @@ function buildController(
       previousAccountIds: ["owner"],
     })),
     updateSheet: vi.fn().mockImplementation(async (_id, sheet) => ({ ...character, sheet })),
-    updateMedia: vi.fn(),
+    findImageKeys: vi.fn().mockResolvedValue({ avatarKey: "old-avatar", artKey: null }),
+    setImageKey: vi.fn().mockImplementation(async (id, kind, key) => ({
+      images: {
+        id,
+        avatarUrl: kind === "avatar" && key ? `/media/${key}` : null,
+        artUrl: kind === "art" && key ? `/media/${key}` : null,
+      },
+      previousKey: kind === "avatar" ? "old-avatar" : null,
+    })),
     upsertCharacter: vi.fn(),
+    setFeatures: vi.fn().mockImplementation(async (_id, features) => ({
+      features,
+      previous: ["marked"],
+      accountIds: ["owner"],
+    })),
+    listByFeature: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
   const folders = {
@@ -70,8 +86,18 @@ function buildController(
       ),
   };
   const accounts = { countPlayersByIds: vi.fn().mockResolvedValue(extra.players ?? 1) };
+  const images = {
+    store: vi
+      .fn()
+      .mockImplementation(async (id: string, kind: string, body: Buffer) =>
+        body.toString() === "not-an-image" ? null : `characters/${id}/${kind}-new.png`,
+      ),
+    remove: vi.fn().mockResolvedValue(undefined),
+    removeAll: vi.fn().mockResolvedValue(undefined),
+  };
   return {
-    controller: createCharacterController({ characters, folders, accounts }),
+    images,
+    controller: createCharacterController({ characters, folders, accounts, images }),
     characters,
     folders,
     accounts,
@@ -269,6 +295,80 @@ describe("character controller", () => {
     expect(characters.remove).toHaveBeenCalledWith(CHARACTER_ID);
   });
 
+  it("removes the stored images (including legacy keys) together with the character", async () => {
+    const { controller, images } = buildController();
+    await controller.deleteCharacter(gm, CHARACTER_ID);
+    expect(images.removeAll).toHaveBeenCalledWith(CHARACTER_ID);
+    expect(images.remove).toHaveBeenCalledWith("old-avatar");
+  });
+
+  it("lets only the GM upload images and replaces the previous object", async () => {
+    const { controller, characters, images } = buildController();
+    const file = Buffer.from("png-bytes");
+    expect(await controller.setImage(owner, CHARACTER_ID, { kind: "avatar", file })).toEqual({
+      error: characterErrors.gmOnly,
+    });
+    const result = await controller.setImage(gm, CHARACTER_ID, { kind: "avatar", file });
+    expect(result).toMatchObject({
+      payload: {
+        images: { avatarUrl: `/media/characters/${CHARACTER_ID}/avatar-new.png`, artUrl: null },
+        accountIds: ["owner"],
+      },
+    });
+    expect(characters.setImageKey).toHaveBeenCalledWith(
+      CHARACTER_ID,
+      "avatar",
+      `characters/${CHARACTER_ID}/avatar-new.png`,
+    );
+    expect(images.remove).toHaveBeenCalledWith("old-avatar");
+  });
+
+  it("validates kind, presence, size and real image type before storing", async () => {
+    const { controller, images } = buildController();
+    expect(
+      await controller.setImage(gm, CHARACTER_ID, { kind: "token", file: Buffer.from("x") }),
+    ).toEqual({ error: characterErrors.invalidImageKind });
+    expect(await controller.setImage(gm, CHARACTER_ID, { kind: "art", file: undefined })).toEqual({
+      error: characterErrors.imageMissing,
+    });
+    expect(
+      await controller.setImage(gm, CHARACTER_ID, {
+        kind: "art",
+        file: Buffer.alloc(8 * 1024 * 1024 + 1),
+      }),
+    ).toEqual({ error: characterErrors.imageTooLarge });
+    expect(
+      await controller.setImage(gm, CHARACTER_ID, {
+        kind: "art",
+        file: Buffer.from("not-an-image"),
+      }),
+    ).toEqual({ error: characterErrors.imageInvalid });
+    expect(images.store).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the new object when saving its key fails", async () => {
+    const { controller, images } = buildController({
+      setImageKey: vi.fn().mockRejectedValue(new Error("db down")),
+    });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(
+      await controller.setImage(gm, CHARACTER_ID, { kind: "art", file: Buffer.from("png") }),
+    ).toEqual({ error: characterErrors.unexpected });
+    expect(images.remove).toHaveBeenCalledWith(`characters/${CHARACTER_ID}/art-new.png`);
+  });
+
+  it("removes an image only for the GM", async () => {
+    const { controller, characters, images } = buildController();
+    expect(await controller.removeImage(owner, CHARACTER_ID, "avatar")).toEqual({
+      error: characterErrors.gmOnly,
+    });
+    expect(await controller.removeImage(gm, CHARACTER_ID, "avatar")).toMatchObject({
+      payload: { images: { avatarUrl: null } },
+    });
+    expect(characters.setImageKey).toHaveBeenCalledWith(CHARACTER_ID, "avatar", null);
+    expect(images.remove).toHaveBeenCalledWith("old-avatar");
+  });
+
   it("grants access to existing player accounts only", async () => {
     const { controller, characters } = buildController();
     expect(await controller.setAccess(owner, CHARACTER_ID, { accountIds: [PLAYER_ID] })).toEqual({
@@ -287,5 +387,41 @@ describe("character controller", () => {
     expect(
       await unknown.controller.setAccess(gm, CHARACTER_ID, { accountIds: [PLAYER_ID] }),
     ).toEqual({ error: characterErrors.accountNotFound });
+  });
+
+  describe("setFeatures", () => {
+    it("only lets the GM tag a character", async () => {
+      const { controller } = buildController();
+      const result = await controller.setFeatures(
+        { accountId: "owner", role: "PLAYER" },
+        CHARACTER_ID,
+        { features: ["marked"] },
+      );
+      expect(result).toEqual({ error: characterErrors.gmOnly });
+    });
+
+    it("rejects unknown tags", async () => {
+      const { controller } = buildController();
+      const result = await controller.setFeatures({ accountId: "gm", role: "GM" }, CHARACTER_ID, {
+        features: ["dragon"],
+      });
+      expect(result).toEqual({ error: characterErrors.invalidFeatures });
+    });
+
+    it("saves the tags and reports the removed ones", async () => {
+      const { controller } = buildController();
+      const result = await controller.setFeatures({ accountId: "gm", role: "GM" }, CHARACTER_ID, {
+        features: [],
+      });
+      expect(result).toMatchObject({
+        payload: {
+          id: CHARACTER_ID,
+          features: [],
+          added: [],
+          removed: ["marked"],
+          accountIds: ["owner"],
+        },
+      });
+    });
   });
 });

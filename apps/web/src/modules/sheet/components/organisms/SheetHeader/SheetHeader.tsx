@@ -3,6 +3,8 @@
 import { ALIGNMENTS, CLASSES } from "@magista/shared";
 
 import { toMediaUrl } from "@/core/services/http";
+import { FeatureBadges } from "@/modules/features/components";
+import { CharacterImagesDialog } from "@/modules/library/components";
 import { IdentityForm } from "@/modules/sheet/components/molecules";
 import { portraitOf } from "@/modules/sheet/sheet.utils";
 import { Avatar, Button, Icon, Text } from "@/shared/components/atoms";
@@ -16,7 +18,8 @@ import { ArtDialog } from "./subcomponents";
 export function SheetHeader(props: SheetHeaderProps) {
   const { character, isGm, onLevelUp } = props;
   const { identity } = character.sheet;
-  const { draft, open, close, change, save } = useSheetHeader(props);
+  const { draft, open, close, change, save, imagesOpen, openImages, closeImages } =
+    useSheetHeader(props);
   const facts = [
     { label: "Classe", value: CLASSES[identity.class].name },
     { label: "Nível", value: String(identity.level) },
@@ -35,14 +38,17 @@ export function SheetHeader(props: SheetHeaderProps) {
           size="xl"
           decorative
         />
-        {character.avatarUrl && (
-          <ArtDialog src={toMediaUrl(character.avatarUrl) ?? ""} name={character.name} />
+        {character.artUrl && (
+          <ArtDialog src={toMediaUrl(character.artUrl) ?? ""} name={character.name} />
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Text variant="micro">Ficha do jogador</Text>
+            <div className="mb-2 flex min-h-6 flex-wrap items-center gap-x-4 gap-y-2">
+              <Text variant="micro">Ficha do jogador</Text>
+              <FeatureBadges features={character.features} />
+            </div>
             <Text variant="h1" className="truncate text-4xl md:text-5xl">
               {character.name}
             </Text>
@@ -56,6 +62,16 @@ export function SheetHeader(props: SheetHeaderProps) {
             >
               Editar identidade
             </Button>
+            {isGm && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={openImages}
+                icon={<Icon name="image" size={14} />}
+              >
+                Imagens
+              </Button>
+            )}
             {isGm ? (
               <Button
                 variant="mystic"
@@ -111,6 +127,15 @@ export function SheetHeader(props: SheetHeaderProps) {
           />
         )}
       </EditorModal>
+      {imagesOpen && (
+        <CharacterImagesDialog
+          characterId={character.id}
+          characterName={character.name}
+          avatarUrl={character.avatarUrl}
+          artUrl={character.artUrl}
+          onClose={closeImages}
+        />
+      )}
     </Panel>
   );
 }

@@ -4,14 +4,14 @@ Fichas, chat e rolagens em tempo real da mesa Magista.
 
 ## Rodando localmente
 
-Requisitos: Node 24 (`nvm use`), Docker.
+Requisitos: Node 24 (`nvm use`), Docker (Postgres e o storage de imagens SeaweedFS, os dois locais).
 
 ```bash
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env      # preencha JWT_SECRET e as senhas do seed
 cp apps/web/.env.example apps/web/.env.local
 npm install
-npm run db:up
+npm run db:up                                # Postgres (:5434) + storage de imagens (:8333, só localhost)
 npm run db:migrate
 npm run db:seed
 npm run dev                                  # web http://localhost:3000 · api http://localhost:3333
@@ -28,25 +28,38 @@ npm run account:password -- "Kael Magnus"                         # gera uma nov
 npm run account:password -- "Kael Magnus" minhaSenhaForte        # define a senha (mínimo 10 caracteres; prefira a gerada, que não fica no histórico do shell)
 ```
 
-O login do jogador é o nome do personagem. Imagens ficam em `apps/api/storage/media` (fora do git).
+O login do jogador é o nome do personagem. O `token.*` do Roll20 vira o **avatar** (rosto em círculo) e o `avatar.*` vira a **arte** (corpo inteiro).
+
+## Imagens (storage local)
+
+As imagens ficam num SeaweedFS rodando no próprio docker-compose (volume `magista-storage`, porta 8333 presa ao localhost). Ele fala o protocolo S3, mas nada sai da máquina: a API é a única que conversa com ele e serve as imagens em `/media/...`. O Mestre envia avatar e arte ao criar a ficha ou pelo modal "Imagens".
+
+```bash
+npm run storage:dump -- "/caminho/backup"            # copia todas as imagens para uma pasta (mesmas chaves)
+npm run storage:restore -- "/caminho/backup"         # envia de volta para o storage
+npm run media:migrate-local -- apps/api/storage/media  # uma vez: sobe as imagens da antiga MEDIA_DIR
+```
 
 ## Variáveis de ambiente
 
 API (`apps/api/.env`, validadas em `core/services/env`):
 
-| Variável          | Padrão                  | Para quê                                                                                                                                                                                                                                                                                                                                    |
-| ----------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`        | `development`           | `production` liga as travas de produção                                                                                                                                                                                                                                                                                                     |
-| `PORT`            | `3333`                  | Porta da API                                                                                                                                                                                                                                                                                                                                |
-| `WEB_ORIGIN`      | `http://localhost:3000` | Único site aceito no CORS e no WebSocket                                                                                                                                                                                                                                                                                                    |
-| `DATABASE_URL`    |                         | Postgres                                                                                                                                                                                                                                                                                                                                    |
-| `JWT_SECRET`      |                         | Mínimo 32 caracteres, aleatório                                                                                                                                                                                                                                                                                                             |
-| `COOKIE_SECURE`   | `false`                 | Cookie só por HTTPS. **Obrigatório `true` em produção** (a API não sobe sem)                                                                                                                                                                                                                                                                |
-| `MEDIA_DIR`       | `storage/media`         | Avatares e tokens                                                                                                                                                                                                                                                                                                                           |
-| `TRUST_PROXY`     | `0`                     | Número exato de proxies na frente da API (para o limite de tentativas ver o IP real). Valor maior que o real permite forjar o IP e furar o limite                                                                                                                                                                                           |
-| `DEV_FORCED_D20`  | vazio                   | Só fora de produção: força todo d20 neste valor (ex.: `20` para ver o crítico, `1` para a falha)                                                                                                                                                                                                                                            |
-| `DEV_QUICK_LOGIN` | `false`                 | Só fora de produção: libera `POST /auth/quick-login`, que entra sem senha como `SEED_GM_LOGIN` ou `SEED_PLAYER_LOGIN` (use só nomes de contas de teste, nunca de contas reais), aceito apenas de chamadas da própria máquina. Na web, `NEXT_PUBLIC_DEV_QUICK_LOGIN=true` (`apps/web/.env.local`) mostra os botões de acesso rápido no login |
-| `SEED_*`          |                         | Contas do seed (Mestre e personagem de teste); também usadas pelo e2e                                                                                                                                                                                                                                                                       |
+| Variável                          | Padrão                           | Para quê                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                        | `development`                    | `production` liga as travas de produção                                                                                                                                                                                                                                                                                                     |
+| `PORT`                            | `3333`                           | Porta da API                                                                                                                                                                                                                                                                                                                                |
+| `WEB_ORIGIN`                      | `http://localhost:3000`          | Único site aceito no CORS e no WebSocket                                                                                                                                                                                                                                                                                                    |
+| `DATABASE_URL`                    |                                  | Postgres                                                                                                                                                                                                                                                                                                                                    |
+| `JWT_SECRET`                      |                                  | Mínimo 32 caracteres, aleatório                                                                                                                                                                                                                                                                                                             |
+| `COOKIE_SECURE`                   | `false`                          | Cookie só por HTTPS. **Obrigatório `true` em produção** (a API não sobe sem)                                                                                                                                                                                                                                                                |
+| `S3_ENDPOINT`                     | `http://127.0.0.1:8333`          | Storage de imagens (SeaweedFS do docker-compose)                                                                                                                                                                                                                                                                                            |
+| `S3_REGION`                       | `us-east-1`                      | Região exigida pelo protocolo S3 (o SeaweedFS aceita qualquer valor)                                                                                                                                                                                                                                                                        |
+| `S3_BUCKET`                       | `magista-media`                  | Bucket das imagens (criado na subida da API)                                                                                                                                                                                                                                                                                                |
+| `S3_ACCESS_KEY` · `S3_SECRET_KEY` | `magista` · `magista-dev-secret` | Credenciais do storage (as mesmas do container). **Troque a secreta em produção** (a API não sobe com a padrão)                                                                                                                                                                                                                             |
+| `TRUST_PROXY`                     | `0`                              | Número exato de proxies na frente da API (para o limite de tentativas ver o IP real). Valor maior que o real permite forjar o IP e furar o limite                                                                                                                                                                                           |
+| `DEV_FORCED_D20`                  | vazio                            | Só fora de produção: força todo d20 neste valor (ex.: `20` para ver o crítico, `1` para a falha)                                                                                                                                                                                                                                            |
+| `DEV_QUICK_LOGIN`                 | `false`                          | Só fora de produção: libera `POST /auth/quick-login`, que entra sem senha como `SEED_GM_LOGIN` ou `SEED_PLAYER_LOGIN` (use só nomes de contas de teste, nunca de contas reais), aceito apenas de chamadas da própria máquina. Na web, `NEXT_PUBLIC_DEV_QUICK_LOGIN=true` (`apps/web/.env.local`) mostra os botões de acesso rápido no login |
+| `SEED_*`                          |                                  | Contas do seed (Mestre e personagem de teste); também usadas pelo e2e                                                                                                                                                                                                                                                                       |
 
 Web (`apps/web/.env.local`): `NEXT_PUBLIC_API_URL` (padrão `http://localhost:3333`).
 

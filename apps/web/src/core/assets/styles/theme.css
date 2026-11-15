@@ -69,4 +69,11 @@
   --animate-dice-out: dice-out var(--dice-out-ms, 260ms) ease-in both;
   --animate-crit-slam: crit-slam 0.7s var(--magista-ease-pop) both;
   --animate-skeleton-pulse: skeleton-pulse 1.6s ease-in-out infinite;
+  --animate-marked-spin: marked-spin 90s linear infinite;
+  --animate-marked-spin-fast: marked-spin 6s linear infinite;
+  --animate-marked-spin-reverse: marked-spin-reverse 140s linear infinite;
+  --animate-marked-breathe: marked-breathe 7s ease-in-out infinite;
+  --animate-marked-rise: marked-rise 14s ease-in infinite;
+  --animate-marked-fade: overlay-in 1.2s ease-out both;
+  --animate-marked-seal: marked-seal 0.8s var(--magista-ease-pop) both;
 }

@@ -8,7 +8,7 @@ import type { IApiRequestOptions } from "./http.types";
  */
 export async function apiRequest<T>(
   path: string,
-  { method = "GET", body }: IApiRequestOptions = {},
+  { method = "GET", body, formData }: IApiRequestOptions = {},
 ): Promise<ControllerResult<T>> {
   try {
     const headers: Record<string, string> = { [CLIENT_ID_HEADER]: CLIENT_ID };
@@ -17,7 +17,7 @@ export async function apiRequest<T>(
       method,
       credentials: "include",
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     return (await response.json()) as ControllerResult<T>;
   } catch {

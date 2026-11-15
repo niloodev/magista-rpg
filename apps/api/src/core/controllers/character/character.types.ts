@@ -1,8 +1,15 @@
-import type { ControllerResult, ICharacter, ICharacterSummary } from "@magista/shared";
+import type {
+  ControllerResult,
+  FeatureKey,
+  ICharacter,
+  ICharacterImages,
+  ICharacterSummary,
+} from "@magista/shared";
 
 import type { IAccountModels } from "@/core/models/account";
 import type { ICharacterModels } from "@/core/models/character";
 import type { IFolderModels } from "@/core/models/folder";
+import type { ICharacterImageStore } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
 import type { CharacterError } from "./character.errors";
@@ -11,6 +18,17 @@ export interface ICharacterControllerDeps {
   characters: ICharacterModels;
   folders: Pick<IFolderModels, "findById">;
   accounts: Pick<IAccountModels, "countPlayersByIds">;
+  images: ICharacterImageStore;
+}
+
+export interface IImageUpload {
+  kind: string;
+  file: Buffer | undefined;
+}
+
+export interface IImageChange {
+  images: ICharacterImages;
+  accountIds: string[];
 }
 
 export interface IAccessChange {
@@ -21,6 +39,14 @@ export interface IAccessChange {
 export interface IDeletedCharacter {
   id: string;
   previousAccountIds: string[];
+}
+
+export interface IFeaturesChange {
+  id: string;
+  features: FeatureKey[];
+  accountIds: string[];
+  added: FeatureKey[];
+  removed: FeatureKey[];
 }
 
 type Result<T> = Promise<ControllerResult<T, CharacterError>>;
@@ -34,4 +60,7 @@ export interface ICharacterController {
   deleteCharacter: (viewer: IViewer, id: string) => Result<IDeletedCharacter>;
   setAccess: (viewer: IViewer, id: string, input: unknown) => Result<IAccessChange>;
   listAccessibleIds: (viewer: IViewer) => Result<string[]>;
+  setImage: (viewer: IViewer, id: string, upload: IImageUpload) => Result<IImageChange>;
+  removeImage: (viewer: IViewer, id: string, kind: string) => Result<IImageChange>;
+  setFeatures: (viewer: IViewer, id: string, input: unknown) => Result<IFeaturesChange>;
 }

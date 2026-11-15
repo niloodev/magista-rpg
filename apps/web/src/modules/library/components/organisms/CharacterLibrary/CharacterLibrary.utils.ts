@@ -42,6 +42,16 @@ export function characterMenu(
       onSelect: () => open({ type: "renameCharacter", character }),
     },
     {
+      label: "Imagens",
+      icon: "image",
+      onSelect: () => open({ type: "images", character }),
+    },
+    {
+      label: "Tags especiais",
+      icon: "tag",
+      onSelect: () => open({ type: "features", character }),
+    },
+    {
       label: "Mover para...",
       icon: "folder-input",
       onSelect: () =>

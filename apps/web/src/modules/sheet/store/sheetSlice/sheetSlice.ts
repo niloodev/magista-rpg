@@ -83,6 +83,18 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
         saveError: null,
       },
     })),
+  applySheetImages: ({ id, avatarUrl, artUrl }) =>
+    set((state) => {
+      const { character } = state.sheet;
+      if (!character || character.id !== id) return state;
+      return { sheet: { ...state.sheet, character: { ...character, avatarUrl, artUrl } } };
+    }),
+  applySheetFeatures: ({ id, features }) =>
+    set((state) => {
+      const { character } = state.sheet;
+      if (!character || character.id !== id) return state;
+      return { sheet: { ...state.sheet, character: { ...character, features } } };
+    }),
   applyRemoteCharacter: (character) =>
     set((state) => {
       const current = state.sheet.character;
@@ -97,6 +109,7 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
           character: {
             ...current,
             sheet: viewerIsGm ? current.sheet : mergeGmOnlyFields(current.sheet, character.sheet),
+            features: character.features,
             updatedAt: character.updatedAt,
           },
         },

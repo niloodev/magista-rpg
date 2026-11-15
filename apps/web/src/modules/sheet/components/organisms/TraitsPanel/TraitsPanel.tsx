@@ -1,15 +1,15 @@
 "use client";
 
 import { TraitForm } from "@/modules/sheet/components/molecules";
-import type { SheetSectionProps } from "@/modules/sheet/sheet.types";
 import { Button, Icon, Text } from "@/shared/components/atoms";
 import { ConfirmDialog, EditorModal, Panel, SectionHeader } from "@/shared/components/molecules";
 import { SortableList } from "@/shared/components/organisms";
 
 import { useTraitsPanel } from "./TraitsPanel.hook";
+import type { TraitsPanelProps } from "./TraitsPanel.types";
 import { TraitEntry } from "./subcomponents";
 
-export function TraitsPanel({ sheet, onEdit, onPing, pingedId }: SheetSectionProps) {
+export function TraitsPanel({ sheet, onEdit, onPing, pingedId, addon }: TraitsPanelProps) {
   const { editor, openCreate, moveTrait, traitName } = useTraitsPanel(onEdit);
   return (
     <Panel variant="inner" className="p-5">
@@ -27,6 +27,7 @@ export function TraitsPanel({ sheet, onEdit, onPing, pingedId }: SheetSectionPro
           </Button>
         }
       />
+      {addon}
       {sheet.traits.length === 0 ? (
         <Text variant="lore" className="py-4 text-center">
           Nenhum traço registrado.

@@ -10,10 +10,11 @@ const character = (id: string, position: number) =>
     folderId: null,
     position,
     avatarUrl: null,
-    tokenUrl: null,
+    artUrl: null,
     classKey: "sem-classe",
     level: 1,
     accountIds: [],
+    features: [],
   }) satisfies ICharacterSummary;
 
 describe("library slice", () => {
@@ -30,6 +31,32 @@ describe("library slice", () => {
     expect(store.getState().library.characters.find((c) => c.id === "b")?.position).toBe(0);
     store.getState().restoreLibraryData(snapshot);
     expect(store.getState().library.characters.find((c) => c.id === "b")?.position).toBe(1);
+  });
+
+  it("applies new image URLs to the matching character only", () => {
+    const store = createAppStore();
+    store.getState().finishLibraryLoad({
+      characters: [character("a", 0), character("b", 1)],
+      folders: [],
+      accounts: [],
+    });
+    store.getState().applyLibraryImages({ id: "b", avatarUrl: "/media/x.png", artUrl: null });
+    const [a, b] = store.getState().library.characters;
+    expect(a).toMatchObject({ avatarUrl: null });
+    expect(b).toMatchObject({ avatarUrl: "/media/x.png", artUrl: null });
+  });
+
+  it("applies new feature tags to the matching character only", () => {
+    const store = createAppStore();
+    store.getState().finishLibraryLoad({
+      characters: [character("a", 0), character("b", 1)],
+      folders: [],
+      accounts: [],
+    });
+    store.getState().applyLibraryFeatures({ id: "b", features: ["marked"] });
+    const [a, b] = store.getState().library.characters;
+    expect(a?.features).toEqual([]);
+    expect(b?.features).toEqual(["marked"]);
   });
 
   it("toggles and expands folders, forgetting the ones that no longer exist", () => {

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 
 import { SESSION_HINT_KEY, useSkeletonHint } from "@/modules/shell/providers";
 
-import { SHEET_ROUTE_PREFIX } from "./RouteSkeleton.constants";
+import { SHEET_ROUTE_PREFIX, SHEET_WINDOW_ROUTE_PREFIX } from "./RouteSkeleton.constants";
 import { parseSessionHint } from "./RouteSkeleton.utils";
 
 /**
@@ -15,5 +15,6 @@ export function useRouteSkeleton() {
   const pathname = usePathname();
   const raw = useSkeletonHint(SESSION_HINT_KEY);
   const hint = useMemo(() => parseSessionHint(raw), [raw]);
-  return { sheet: pathname.startsWith(SHEET_ROUTE_PREFIX), ...hint };
+  const sheetWindow = pathname.startsWith(SHEET_WINDOW_ROUTE_PREFIX);
+  return { sheet: sheetWindow || pathname.startsWith(SHEET_ROUTE_PREFIX), sheetWindow, ...hint };
 }

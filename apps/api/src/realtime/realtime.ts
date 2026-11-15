@@ -7,14 +7,23 @@ import {
   ROLL_REVEAL_DELAY_MS,
   TABLE_ROOM,
   type ICharacter,
+  type ICharacterFeaturesEvent,
+  type ICharacterImages,
+  type IMarkedShare,
   type IRollResult,
 } from "@magista/shared";
 import { Server } from "socket.io";
 
 import { characterController } from "@/core/controllers/character";
+import {
+  buildMarkedController,
+  type IMarkedAudience,
+  type IMarkedProposalPayload,
+  type IMarkedResolutionPayload,
+} from "@/core/controllers/marked";
 import { getEnv } from "@/core/services/env";
 
-import { registerPresenceHandlers, registerRollHandlers } from "./handlers";
+import { registerMarkedHandlers, registerPresenceHandlers, registerRollHandlers } from "./handlers";
 import { authenticateSocket } from "./realtime.auth";
 import type { RealtimeServer, RealtimeSocket } from "./realtime.types";
 import { accountRoom, characterRoom } from "./realtime.utils";
@@ -22,6 +31,45 @@ import { accountRoom, characterRoom } from "./realtime.utils";
 let io: RealtimeServer | null = null;
 
 let recentRolls: IRollResult[] = [];
+
+/**
+ * Someone can answer for the character right now: a player with access (in its room) or the GM.
+ */
+async function isCharacterAttended(characterId: string): Promise<boolean> {
+  if (!io) return false;
+  const sockets = await io.in([characterRoom(characterId), GM_ROOM]).fetchSockets();
+  return sockets.length > 0;
+}
+
+const markedController = buildMarkedController(isCharacterAttended);
+
+function markedRooms({ characterIds }: IMarkedAudience): string[] {
+  return [...new Set(characterIds)].map(characterRoom).concat(GM_ROOM);
+}
+
+function broadcastMarkedProposal({ proposal, characterIds }: IMarkedProposalPayload): void {
+  io?.to(markedRooms({ characterIds })).emit("marked:proposal", proposal);
+}
+
+function broadcastMarkedResolved({ resolution, characterIds }: IMarkedResolutionPayload): void {
+  io?.to(markedRooms({ characterIds })).emit("marked:resolved", resolution);
+}
+
+function broadcastMarkedShare(share: IMarkedShare | null, audience: IMarkedAudience): void {
+  io?.to(markedRooms(audience)).emit("marked:share", share);
+}
+
+/**
+ * Sends the active Marca share and the pending proposal to a socket that just connected (only what it may see),
+ * so a tab that reconnects mid-proposal is not left with a stale one.
+ */
+async function sendCurrentShare(socket: RealtimeSocket): Promise<void> {
+  const { accountId, role } = socket.data.member;
+  const result = await markedController.current({ accountId, role });
+  if (!isErrorResult(result)) socket.emit("marked:share", result.payload);
+  const proposal = await markedController.pendingFor({ accountId, role });
+  if (proposal) socket.emit("marked:proposal", proposal);
+}
 
 /**
  * Attaches the Socket.IO server to the HTTP server and registers every handler.
@@ -40,8 +88,15 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
     if (member.role === "GM") void socket.join(GM_ROOM);
     else void joinCharacterRooms(socket);
     socket.emit("roll:history", recentRolls);
+    void sendCurrentShare(socket);
     registerPresenceHandlers(server, socket);
     registerRollHandlers(socket, { onRolled: broadcastRollResult, onPinged: publishToTable });
+    registerMarkedHandlers(socket, {
+      controller: markedController,
+      onProposal: broadcastMarkedProposal,
+      onResolved: broadcastMarkedResolved,
+      onShare: broadcastMarkedShare,
+    });
   });
   io = server;
   return server;
@@ -99,6 +154,13 @@ export function broadcastCharacterUpdate(character: ICharacter, origin: string |
 }
 
 /**
+ * Pushes new image URLs of a character to the GM and to every account with access to it.
+ */
+export function broadcastCharacterImages(images: ICharacterImages): void {
+  io?.to([characterRoom(images.id), GM_ROOM]).emit("character:images", images);
+}
+
+/**
  * Shares a roll with the whole table once the roller's animation has revealed it, and keeps it in the recent
  * history sent to every socket that connects (in memory; persisted history comes with the chat).
  */
@@ -112,4 +174,42 @@ export function broadcastRollResult(roll: IRollResult): void {
 export function publishToTable(entry: IRollResult): void {
   recentRolls = [entry, ...recentRolls].slice(0, ROLL_HISTORY_LIMIT);
   io?.to(TABLE_ROOM).emit("roll:result", entry);
+}
+
+/**
+ * Pushes new feature tags of a character to the GM and to every account with access to it.
+ */
+export function broadcastCharacterFeatures(event: ICharacterFeaturesEvent): void {
+  io?.to([characterRoom(event.id), GM_ROOM]).emit("character:features", event);
+}
+
+/**
+ * Sends each account the Marca share it may see now (after its access to characters changed).
+ */
+export async function refreshMarkedShare(accountIds: string[]): Promise<void> {
+  for (const accountId of accountIds) {
+    const result = await markedController.current({ accountId, role: "PLAYER" });
+    if (!isErrorResult(result)) io?.to(accountRoom(accountId)).emit("marked:share", result.payload);
+  }
+}
+
+/**
+ * Follows a character that lost the Marca or was deleted: its pending proposal is cancelled, the share it
+ * started ends, and every Marcado gets the share that is still active. A character that gained the Marca
+ * just receives the active share.
+ */
+export async function syncMarkedCharacter(characterId: string): Promise<void> {
+  try {
+    const released = await markedController.release(characterId);
+    if (released.resolution) {
+      broadcastMarkedResolved({
+        resolution: released.resolution,
+        characterIds: released.involvedIds,
+      });
+    }
+    broadcastMarkedShare(released.share, released);
+    if (!released.stillMarked) io?.to(characterRoom(characterId)).emit("marked:share", null);
+  } catch (error) {
+    console.error("syncMarkedCharacter failed:", error);
+  }
 }

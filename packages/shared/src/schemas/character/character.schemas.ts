@@ -8,6 +8,7 @@ import {
   LEVEL_MIN,
   SKILL_KEYS,
 } from "../../game/catalog/catalog.constants";
+import { characterFeaturesSchema } from "../../game/features/features.schemas";
 
 export const CHARACTER_SHEET_VERSION = 1;
 
@@ -113,25 +114,48 @@ export const characterSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   avatarUrl: z.string().nullable(),
-  tokenUrl: z.string().nullable(),
+  artUrl: z.string().nullable(),
   classKey: classKeySchema,
   level: z.number().int(),
   folderId: z.string().nullable(),
   position: z.number().int(),
   accountIds: z.array(z.string()),
+  features: characterFeaturesSchema,
 });
 
 export const characterSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatarUrl: z.string().nullable(),
-  tokenUrl: z.string().nullable(),
+  artUrl: z.string().nullable(),
   sheet: characterSheetSchema,
   sheetVersion: z.number().int().nonnegative(),
+  features: characterFeaturesSchema,
   updatedAt: z.string(),
 });
 
 export const characterIdSchema = z.uuid();
+
+export const CHARACTER_IMAGE_KINDS = ["avatar", "art"] as const;
+
+export const CHARACTER_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+export const CHARACTER_IMAGE_FIELD = "file";
+
+export const CHARACTER_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+] as const;
+
+export const characterImageKindSchema = z.enum(CHARACTER_IMAGE_KINDS);
+
+export const characterImagesSchema = z.object({
+  id: z.string(),
+  avatarUrl: z.string().nullable(),
+  artUrl: z.string().nullable(),
+});
 
 export const updateSheetInputSchema = z.object({
   sheet: characterSheetSchema,

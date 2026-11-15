@@ -37,7 +37,7 @@ Toda tela, painel ou lista que espera a API (ou a conexão em tempo real) deve t
 - Segure as requisições (`page.route` sem responder; ou `holdApi` de `e2e/support/hold.ts`), tire print do skeleton e do componente pronto **lado a lado** nas três larguras e para os dois papéis, inclusive no carregamento da sessão (`/auth/me`).
 - Meça com `getBoundingClientRect()` as seções (cabeçalhos, painéis, linhas, cartões, barras, botões) nos dois estados. Seções de tamanho fixo devem bater **ao pixel**; só podem variar partes que dependem do dado, e mesmo essas devem usar as dicas guardadas no aparelho (formato da biblioteca, último papel, quantidade online) quando existirem.
 - Reprove: "Carregando..." solto, spinner, tela vazia, bloco genérico no lugar do componente, moldura/bordas/tipografia diferentes, rótulos fixos virando barra, texto do skeleton lido como conteúdo (fora do `SkeletonRegion`) ou títulos reais (`h2`-`h6`) dentro dele, salto de layout ao trocar pelo conteúdo.
-- Confirme que existe caso em `e2e/tests/loading.spec.ts` comparando as medidas.
+- Você é a única garantia dessa fidelidade (não há teste e2e de skeleton): meça `getBoundingClientRect()` das seções no skeleton e na tela pronta e reporte cada diferença com seletor e medidas.
 
 ## Passo 5: qualidade do design
 

@@ -11,10 +11,11 @@ Monorepo npm workspaces, Node 24 (`nvm use`):
 
 ## Comandos (na raiz)
 
-- `npm run db:up` sobe o Postgres (docker, porta 5434) · `npm run db:migrate` · `npm run db:seed`
+- `npm run db:up` sobe o Postgres (docker, porta 5434) e o storage de imagens SeaweedFS (porta 8333, só localhost) · `npm run db:migrate` · `npm run db:seed`
 - `npm run dev` sobe api (:3333) e web (:3000)
 - `npm run lint` · `npm run typecheck` · `npm test` (unitários: shared, api, web) · `npm run test:e2e` (precisa de `npm run dev` e do seed) · `npm run format`
 - `npm run import:roll20 -- "<pasta>" [--force]` importa exports do Roll20 · `npm run account:password -- "<login>" [senha]` define/gera senha
+- `npm run storage:dump -- "<pasta>"` · `npm run storage:restore -- "<pasta>"` backup das imagens · `npm run media:migrate-local -- "<pasta>"` sobe a antiga `MEDIA_DIR` uma vez
 - Antes de concluir qualquer tarefa: lint + typecheck + test verdes; mudou fluxo de usuário, rode também `npm run test:e2e`.
 
 ## Revisão automática ao concluir uma demanda

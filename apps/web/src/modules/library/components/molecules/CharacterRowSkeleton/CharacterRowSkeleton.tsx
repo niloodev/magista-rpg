@@ -2,7 +2,7 @@ import { Skeleton, skeletonSample } from "@/shared/components/atoms";
 import { AvatarSkeleton } from "@/shared/components/molecules";
 
 import { NO_ACCESS_LABEL } from "../CharacterRow";
-import { ActionsSkeleton, HandleSkeleton } from "../RowControlsSkeleton";
+import { ActionsSkeleton, HandleSkeleton, PopoutSkeleton } from "../RowControlsSkeleton";
 import type { CharacterRowSkeletonProps } from "./CharacterRowSkeleton.types";
 
 /**
@@ -50,7 +50,10 @@ export function CharacterRowSkeleton({
           )}
         </div>
       )}
-      {withActions && <ActionsSkeleton />}
+      <div className="relative z-10 flex items-center gap-1.5">
+        <PopoutSkeleton />
+        {withActions && <ActionsSkeleton />}
+      </div>
     </div>
   );
 }

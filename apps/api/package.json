@@ -17,9 +17,13 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "import:roll20": "tsx --env-file-if-exists=.env src/cli/importRoll20/importRoll20.ts",
-    "account:password": "tsx --env-file-if-exists=.env src/cli/setPassword/setPassword.ts"
+    "account:password": "tsx --env-file-if-exists=.env src/cli/setPassword/setPassword.ts",
+    "storage:dump": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts dump",
+    "storage:restore": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts restore",
+    "media:migrate-local": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts migrate-local"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
     "@magista/shared": "*",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
@@ -31,6 +35,7 @@
     "express-rate-limit": "^8.7.4",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
     "socket.io": "^4.8.4",
     "zod": "^4.6.7"
   },
@@ -40,6 +45,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.0.0",
     "eslint": "^9.39.0",
     "prisma": "^7.10.1",

@@ -1,4 +1,11 @@
-import type { ICharacter, ICharacterSheet, ICharacterSummary } from "@magista/shared";
+import type {
+  CharacterImageKind,
+  FeatureKey,
+  ICharacter,
+  ICharacterImages,
+  ICharacterSheet,
+  ICharacterSummary,
+} from "@magista/shared";
 
 export interface IUpsertCharacterInput {
   id?: string;
@@ -6,14 +13,25 @@ export interface IUpsertCharacterInput {
   name: string;
   sheet?: ICharacterSheet;
   legacy?: unknown;
-  avatarUrl?: string | null;
-  tokenUrl?: string | null;
+  avatarKey?: string | null;
+  artKey?: string | null;
+}
+
+export interface ICharacterImageKeys {
+  avatarKey: string | null;
+  artKey: string | null;
 }
 
 export interface ICreateCharacterRow {
   name: string;
   folderId: string | null;
   sheet: ICharacterSheet;
+}
+
+export interface ICharacterPortrait {
+  id: string;
+  name: string;
+  portraitUrl: string | null;
 }
 
 export interface ICharacterModels {
@@ -38,9 +56,19 @@ export interface ICharacterModels {
     sheet: ICharacterSheet,
     expectedUpdatedAt: string,
   ) => Promise<ICharacter | null>;
-  updateMedia: (
+  findImageKeys: (id: string) => Promise<ICharacterImageKeys | null>;
+  /** Swaps the key of one image under a row lock and returns the new URLs plus the key it replaced. */
+  setImageKey: (
     id: string,
-    media: { avatarUrl?: string; tokenUrl?: string },
-  ) => Promise<ICharacter>;
+    kind: CharacterImageKind,
+    key: string | null,
+  ) => Promise<{ images: ICharacterImages; previousKey: string | null }>;
   upsertCharacter: (input: IUpsertCharacterInput) => Promise<ICharacter>;
+  /** Replaces the special feature tags without touching `updatedAt` (no autosave conflict). */
+  setFeatures: (
+    id: string,
+    features: FeatureKey[],
+  ) => Promise<{ features: FeatureKey[]; previous: FeatureKey[]; accountIds: string[] }>;
+  /** Characters carrying a feature tag, ordered by name, with the portrait used by the table. */
+  listByFeature: (feature: FeatureKey) => Promise<ICharacterPortrait[]>;
 }

@@ -2,6 +2,8 @@ import type { z } from "zod";
 
 import type {
   abilitySchema,
+  characterImageKindSchema,
+  characterImagesSchema,
   characterSchema,
   characterSheetSchema,
   characterSummarySchema,
@@ -35,3 +37,7 @@ export type ICreateCharacterInput = z.infer<typeof createCharacterInputSchema>;
 export type IRenameCharacterInput = z.infer<typeof renameCharacterInputSchema>;
 
 export type ISetCharacterAccessInput = z.infer<typeof setCharacterAccessInputSchema>;
+
+export type CharacterImageKind = z.infer<typeof characterImageKindSchema>;
+
+export type ICharacterImages = z.infer<typeof characterImagesSchema>;

@@ -21,3 +21,14 @@ export function ActionsSkeleton() {
     </span>
   );
 }
+
+/**
+ * Inert copy of the "open in window" icon button (`PopoutButton`).
+ */
+export function PopoutSkeleton() {
+  return (
+    <span className="hidden h-9 w-9 shrink-0 items-center justify-center border border-transparent bg-black/50 text-muted-strong/60 sm:flex">
+      <Icon name="picture-in-picture-2" size={17} aria-hidden="true" />
+    </span>
+  );
+}

@@ -2,24 +2,10 @@ import { isErrorResult } from "@magista/shared";
 
 import { rollController } from "@/core/controllers/roll";
 
-import {
-  ROLL_BURST_LIMIT,
-  ROLL_BURST_WINDOW_MS,
-  ROLL_THROTTLED_ERROR,
-} from "../../realtime.constants";
+import { ROLL_THROTTLED_ERROR } from "../../realtime.constants";
 import type { RealtimeSocket } from "../../realtime.types";
+import { gateFor } from "../../realtime.utils";
 import type { IRollHandlerCallbacks } from "./rolls.types";
-import { createRateGate } from "../../realtime.utils";
-
-const gates = new Map<string, () => boolean>();
-
-function gateFor(accountId: string): () => boolean {
-  const existing = gates.get(accountId);
-  if (existing) return existing;
-  const gate = createRateGate(ROLL_BURST_LIMIT, ROLL_BURST_WINDOW_MS);
-  gates.set(accountId, gate);
-  return gate;
-}
 
 /**
  * Rolls on the server and answers the roller at once (to animate); the table only sees it once the animation reveals it.

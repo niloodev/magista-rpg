@@ -1,6 +1,7 @@
-import { CHARACTER_SHEET_VERSION, createEmptySheet } from "@magista/shared";
+import { CHARACTER_SHEET_VERSION, createEmptySheet, normalizeFeatures } from "@magista/shared";
 
 import { getDatabase } from "@/core/services/database";
+import { mediaUrlOf } from "@/core/services/media";
 import type { Prisma } from "@/generated/prisma/client";
 
 import { SUMMARY_SELECT } from "./character.constants";
@@ -131,10 +132,26 @@ const updateSheet: ICharacterModels["updateSheet"] = async (id, sheet, expectedU
   return count === 1 ? findById(id) : null;
 };
 
-const updateMedia: ICharacterModels["updateMedia"] = async (id, media) => {
-  const row = await getDatabase().character.update({ where: { id }, data: media });
-  return toCharacter(row);
-};
+const findImageKeys: ICharacterModels["findImageKeys"] = async (id) =>
+  getDatabase().character.findUnique({ where: { id }, select: { avatarKey: true, artKey: true } });
+
+const setImageKey: ICharacterModels["setImageKey"] = async (id, kind, key) =>
+  getDatabase().$transaction(async (tx) => {
+    const [locked] = await tx.$queryRaw<{ avatarKey: string | null; artKey: string | null }[]>`
+      SELECT "avatarKey", "artKey" FROM "characters" WHERE "id" = ${id}::uuid FOR UPDATE`;
+    if (!locked) throw new Error(`Personagem ${id} não encontrado`);
+    if (kind === "avatar") {
+      await tx.$executeRaw`UPDATE "characters" SET "avatarKey" = ${key} WHERE "id" = ${id}::uuid`;
+    } else {
+      await tx.$executeRaw`UPDATE "characters" SET "artKey" = ${key} WHERE "id" = ${id}::uuid`;
+    }
+    const avatarKey = kind === "avatar" ? key : locked.avatarKey;
+    const artKey = kind === "art" ? key : locked.artKey;
+    return {
+      images: { id, avatarUrl: mediaUrlOf(avatarKey), artUrl: mediaUrlOf(artKey) },
+      previousKey: kind === "avatar" ? locked.avatarKey : locked.artKey,
+    };
+  });
 
 const upsertCharacter: ICharacterModels["upsertCharacter"] = async (input) => {
   const sheet = input.sheet ?? createEmptySheet();
@@ -143,8 +160,8 @@ const upsertCharacter: ICharacterModels["upsertCharacter"] = async (input) => {
     sheet,
     sheetVersion: CHARACTER_SHEET_VERSION,
     ...(input.legacy === undefined ? {} : { legacy: input.legacy as Prisma.InputJsonValue }),
-    ...(input.avatarUrl === undefined ? {} : { avatarUrl: input.avatarUrl }),
-    ...(input.tokenUrl === undefined ? {} : { tokenUrl: input.tokenUrl }),
+    ...(input.avatarKey === undefined ? {} : { avatarKey: input.avatarKey }),
+    ...(input.artKey === undefined ? {} : { artKey: input.artKey }),
   };
   const access = {
     connectOrCreate: input.accountIds.map((accountId) => ({
@@ -163,6 +180,36 @@ const upsertCharacter: ICharacterModels["upsertCharacter"] = async (input) => {
   return toCharacter(row);
 };
 
+const setFeatures: ICharacterModels["setFeatures"] = async (id, features) =>
+  getDatabase().$transaction(async (tx) => {
+    const [locked] = await tx.$queryRaw<{ features: string[] | null }[]>`
+      SELECT "features" FROM "characters" WHERE "id" = ${id}::uuid FOR UPDATE`;
+    if (!locked) throw new Error(`Personagem ${id} não encontrado`);
+    await tx.$executeRaw`UPDATE "characters" SET "features" = ${features}::text[] WHERE "id" = ${id}::uuid`;
+    const access = await tx.characterAccess.findMany({
+      where: { characterId: id },
+      select: { accountId: true },
+    });
+    return {
+      features,
+      previous: normalizeFeatures(locked.features ?? []),
+      accountIds: access.map((entry) => entry.accountId),
+    };
+  });
+
+const listByFeature: ICharacterModels["listByFeature"] = async (feature) => {
+  const rows = await getDatabase().character.findMany({
+    where: { features: { has: feature } },
+    select: { id: true, name: true, avatarKey: true, artKey: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    portraitUrl: mediaUrlOf(row.avatarKey) ?? mediaUrlOf(row.artKey),
+  }));
+};
+
 export const characterModels: ICharacterModels = {
   findById,
   exists,
@@ -178,6 +225,9 @@ export const characterModels: ICharacterModels = {
   remove,
   setAccess,
   updateSheet,
-  updateMedia,
+  findImageKeys,
+  setImageKey,
   upsertCharacter,
+  setFeatures,
+  listByFeature,
 };

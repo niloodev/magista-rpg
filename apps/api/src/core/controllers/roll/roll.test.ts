@@ -39,13 +39,14 @@ const character: ICharacter = {
   id: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
   name: "Kael",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   sheet,
   sheetVersion: 1,
+  features: [],
   updatedAt: new Date(0).toISOString(),
 };
 
-const controller = createRollController({
+const controllerDeps = {
   characters: {
     findById: vi.fn().mockResolvedValue(character),
     updateSheet: vi.fn().mockImplementation(async (_id, next) => ({ ...character, sheet: next })),
@@ -54,7 +55,9 @@ const controller = createRollController({
   randomInt: (_min, max) => max,
   createId: () => "roll-1",
   now: () => new Date(0),
-});
+} satisfies Parameters<typeof createRollController>[0];
+
+const controller = createRollController(controllerDeps);
 
 const owner = { accountId: "owner", role: "PLAYER" as const };
 
@@ -70,6 +73,20 @@ describe("roll controller", () => {
         title: "Iniciativa",
         rows: [{ outcome: { expression: "1d20 + 2", total: 22 } }],
       },
+    });
+  });
+
+  it("adds the Marca bonus to the rolls of a Marcado", async () => {
+    vi.mocked(controllerDeps.characters.findById).mockResolvedValueOnce({
+      ...character,
+      features: ["marked"],
+    });
+    const result = await controller.roll(owner, {
+      characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
+      roll: { kind: "initiative" },
+    });
+    expect(result).toMatchObject({
+      payload: { rows: [{ outcome: { expression: "1d20 + 2 + 2", total: 24 } }] },
     });
   });
 

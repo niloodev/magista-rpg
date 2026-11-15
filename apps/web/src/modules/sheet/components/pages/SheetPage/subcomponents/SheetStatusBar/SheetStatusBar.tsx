@@ -1,12 +1,16 @@
 import Link from "next/link";
 
 import { SAVE_STATUS_LABELS } from "@/modules/sheet/sheet.constants";
+import { PopoutButton } from "@/modules/shell/components";
 import { Icon } from "@/shared/components/atoms";
 
 import { CONNECTION_LABELS } from "./SheetStatusBar.constants";
 import type { SheetStatusBarProps } from "./SheetStatusBar.types";
 
 export function SheetStatusBar({
+  variant,
+  characterId,
+  characterName,
   saveStatus,
   saveError,
   connection,
@@ -14,13 +18,16 @@ export function SheetStatusBar({
   onRetrySave,
 }: SheetStatusBarProps) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm text-muted-strong">
-      <Link
-        href="/mesa"
-        className="flex min-h-9 items-center gap-1.5 transition-colors hover:text-accent-text"
-      >
-        <Icon name="arrow-left" size={16} /> Voltar para a mesa
-      </Link>
+    <div className="mb-4 flex min-h-9 flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm text-muted-strong">
+      {variant === "page" && (
+        <Link
+          href="/mesa"
+          className="flex min-h-9 items-center gap-1.5 transition-colors hover:text-accent-text"
+        >
+          <Icon name="arrow-left" size={16} /> Voltar para a mesa
+        </Link>
+      )}
+      {variant === "window" && <span className="sr-only">Ficha de {characterName} em janela</span>}
       <span className="flex items-center gap-2" aria-live="polite">
         <span className={`h-2 w-2 rounded-full ${CONNECTION_LABELS[connection].dot}`} />
         {CONNECTION_LABELS[connection].label}
@@ -42,6 +49,15 @@ export function SheetStatusBar({
       {rollError && (
         <span role="alert" className="text-error">
           {rollError}
+        </span>
+      )}
+      {variant === "page" && (
+        <span className="ml-auto">
+          <PopoutButton
+            variant="button"
+            target={{ kind: "sheet", id: characterId }}
+            label={`Abrir ficha de ${characterName} em janela`}
+          />
         </span>
       )}
     </div>

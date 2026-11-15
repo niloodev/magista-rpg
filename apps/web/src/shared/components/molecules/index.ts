@@ -5,6 +5,7 @@ export * from "./ConfirmDialog";
 export * from "./EditorModal";
 export * from "./ExpandableText";
 export * from "./FormField";
+export * from "./ImageField";
 export * from "./Modal";
 export * from "./NumberField";
 export * from "./Panel";

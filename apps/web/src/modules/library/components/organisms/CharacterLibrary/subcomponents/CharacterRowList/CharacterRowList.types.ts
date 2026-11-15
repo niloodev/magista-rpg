@@ -1,3 +1,5 @@
+import type { FeatureKey } from "@magista/shared";
+
 import type { ActionMenuItem } from "@/shared/components/molecules";
 
 export interface ICharacterRowItem {
@@ -8,6 +10,7 @@ export interface ICharacterRowItem {
   portraitUrl: string | null;
   path?: string;
   accountLabels?: string[];
+  features?: FeatureKey[];
   menu?: ActionMenuItem[];
 }
 

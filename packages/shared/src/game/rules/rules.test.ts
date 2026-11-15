@@ -73,4 +73,15 @@ describe("rules", () => {
     expect(formatWeight(1500)).toBe("1,5 kg");
     expect(formatWeight(0)).toBe("0 kg");
   });
+
+  it("adds the d20 bonus of the special features to the skill tests only", () => {
+    const sheet = createEmptySheet();
+    sheet.attributes.des.value = 14;
+    const derived = deriveSheet(sheet, { features: ["marked"] });
+    expect(derived.d20Bonus).toBe(2);
+    expect(derived.d20BonusTerms).toEqual([{ label: "Marca", value: 2 }]);
+    expect(derived.skills.acrobacia).toBe(2);
+    expect(derived.skillTests.acrobacia).toBe(4);
+    expect(deriveSheet(sheet).skillTests.acrobacia).toBe(2);
+  });
 });

@@ -105,4 +105,18 @@
       0 calc(100% - var(--cut))
     );
   }
+
+  .marked-border {
+    background: conic-gradient(
+      from var(--marked-angle),
+      rgba(240, 122, 155, 0.25),
+      var(--magista-gold-400) 12%,
+      var(--magista-ruby-600) 24%,
+      rgba(240, 122, 155, 0.25) 40%,
+      rgba(240, 122, 155, 0.25) 60%,
+      var(--magista-gold-300) 72%,
+      rgba(240, 122, 155, 0.25) 84%
+    );
+    animation: marked-border-turn 6s linear infinite;
+  }
 }

@@ -11,12 +11,14 @@ export function CharacterRowList({ label, items, emptyText }: CharacterRowListPr
       {items.map((item) => (
         <li key={item.id}>
           <CharacterRow
+            id={item.id}
             name={item.name}
             subtitle={item.subtitle}
             href={item.href}
             portraitUrl={item.portraitUrl}
             path={item.path}
             accountLabels={item.accountLabels}
+            features={item.features}
             actions={item.menu && <ActionMenu label={`Ações de ${item.name}`} items={item.menu} />}
           />
         </li>

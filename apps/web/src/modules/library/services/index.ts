@@ -8,3 +8,6 @@ export * from "./moveLibraryItem";
 export * from "./renameCharacter";
 export * from "./renameFolder";
 export * from "./setCharacterAccess";
+export * from "./removeCharacterImage";
+export * from "./uploadCharacterImage";
+export * from "./setCharacterFeatures";
