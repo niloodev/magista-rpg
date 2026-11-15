@@ -1,6 +1,6 @@
 import { resolveBoard, type IArenaBounds, type IArenaScene } from "@magista/shared";
 
-import { mediaUrlOf } from "@/core/services/media";
+import { mediaUrlOf, thumbUrlOf } from "@/core/services/media";
 
 export interface ArenaSceneRow {
   id: string;
@@ -24,6 +24,7 @@ export function toArenaScene(row: ArenaSceneRow): IArenaScene {
     name: row.name,
     folderId: row.folderId,
     mapUrl: mediaUrlOf(row.mapKey),
+    mapThumbUrl: thumbUrlOf(row.mapKey),
     width: board.width,
     height: board.height,
     mapWidth: row.mapKey ? row.mapWidth : null,

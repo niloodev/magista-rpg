@@ -10,6 +10,8 @@ const base: ICharacter = {
   name: "Zarkov",
   avatarUrl: null,
   artUrl: null,
+  avatarThumbUrl: null,
+  artThumbUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   features: [],

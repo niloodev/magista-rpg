@@ -45,6 +45,8 @@ describe("folder tree utils", () => {
           position: 0,
           avatarUrl: null,
           artUrl: null,
+          avatarThumbUrl: null,
+          artThumbUrl: null,
           classKey: "sem-classe" as const,
           level: 1,
           accountIds: [],

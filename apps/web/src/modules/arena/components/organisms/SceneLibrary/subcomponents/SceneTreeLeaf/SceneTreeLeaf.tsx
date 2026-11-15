@@ -18,11 +18,18 @@ export const SceneTreeLeaf = memo(function SceneTreeLeaf({
   onPreview,
   onGoLive,
 }: SceneTreeLeafProps) {
-  const { mapUrl, open, menu } = useSceneTreeLeaf({ scene, live, onDialog, onPreview, onGoLive });
+  const { hasMap, thumbUrl, open, menu } = useSceneTreeLeaf({
+    scene,
+    live,
+    onDialog,
+    onPreview,
+    onGoLive,
+  });
   return (
     <SceneRow
       name={scene.name}
-      mapUrl={mapUrl}
+      hasMap={hasMap}
+      thumbUrl={thumbUrl}
       live={live}
       viewing={viewing}
       onOpen={open}

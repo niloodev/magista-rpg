@@ -50,7 +50,7 @@ export function toRenderTokens(
     return {
       id: token.id,
       name: token.name,
-      imageUrl: mediaUrl(token.imageUrl),
+      imageUrl: mediaUrl(token.imageThumbUrl ?? token.imageUrl),
       x: preview?.x ?? token.x,
       y: preview?.y ?? token.y,
       size: token.size,

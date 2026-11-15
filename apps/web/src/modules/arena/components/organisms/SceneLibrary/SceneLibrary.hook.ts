@@ -129,7 +129,10 @@ export function useSceneLibrary({
     [liveSceneId, viewingSceneId, onPreview, onGoLive],
   );
 
-  const portraitOf = useCallback((scene: IArenaScene) => toMediaUrl(scene.mapUrl), []);
+  const portraitOf = useCallback(
+    (scene: IArenaScene) => toMediaUrl(scene.mapThumbUrl ?? scene.mapUrl),
+    [],
+  );
 
   const submitScene = async ({ name, file }: ISceneFormValues): Promise<string | null> => {
     if (dialog?.type !== "createScene") return null;

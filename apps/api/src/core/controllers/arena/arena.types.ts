@@ -13,6 +13,7 @@ import type { IArenaSceneModels } from "@/core/models/arenaScene";
 import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import type { IArenaTokenModels } from "@/core/models/arenaToken";
 import type { ICharacterModels } from "@/core/models/character";
+import type { IImageAssets } from "@/core/controllers/mediaAsset";
 import type { IArenaImageStore } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
@@ -24,6 +25,7 @@ export interface IArenaControllerDeps {
   tokens: IArenaTokenModels;
   characters: Pick<ICharacterModels, "exists" | "listAccessibleIds">;
   images: IArenaImageStore;
+  assets: Pick<IImageAssets, "ingest" | "release">;
 }
 
 /** Who may see a change: the whole table (visible token of the live scene) or only the GM. */

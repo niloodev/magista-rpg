@@ -57,9 +57,18 @@ const rename: IArenaSceneModels["rename"] = async (id, name) => {
 
 const remove: IArenaSceneModels["remove"] = async (id) =>
   getDatabase().$transaction(async (tx) => {
-    const tokens = await tx.arenaToken.findMany({ where: { sceneId: id }, select: { id: true } });
+    const scene = await tx.arenaScene.findUnique({ where: { id }, select: { mapKey: true } });
+    const tokens = await tx.arenaToken.findMany({
+      where: { sceneId: id },
+      select: { id: true, imageKey: true },
+    });
     const { count } = await tx.arenaScene.deleteMany({ where: { id } });
-    return count === 1 ? { tokenIds: tokens.map((token) => token.id) } : null;
+    if (count !== 1) return null;
+    const imageKeys = [scene?.mapKey ?? null, ...tokens.map((token) => token.imageKey)];
+    return {
+      tokenIds: tokens.map((token) => token.id),
+      imageKeys: imageKeys.filter((key): key is string => key !== null),
+    };
   });
 
 const setMapKey: IArenaSceneModels["setMapKey"] = async (id, key, size) =>

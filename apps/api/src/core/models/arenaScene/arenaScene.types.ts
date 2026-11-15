@@ -12,7 +12,7 @@ export interface IArenaSceneModels {
   create: (name: string, folderId: string | null) => Promise<IArenaScene>;
   rename: (id: string, name: string) => Promise<IArenaScene | null>;
   /** Deletes the scene (its tokens go with it); returns the ids of its tokens for media cleanup, or null when missing. */
-  remove: (id: string) => Promise<{ tokenIds: string[] } | null>;
+  remove: (id: string) => Promise<{ tokenIds: string[]; imageKeys: string[] } | null>;
   /**
    * Swaps the map under a row lock and returns the scene plus the key it replaced, or null when missing. A scene
    * that already had a board keeps its width (the height follows the new map); a new one takes the map's natural

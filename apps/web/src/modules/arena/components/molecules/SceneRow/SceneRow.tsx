@@ -12,7 +12,8 @@ import type { SceneRowProps } from "./SceneRow.types";
  */
 export function SceneRow({
   name,
-  mapUrl,
+  hasMap,
+  thumbUrl,
   live,
   viewing,
   onOpen,
@@ -28,13 +29,15 @@ export function SceneRow({
       {dropPosition && dropPosition !== "inside" && <DropIndicator position={dropPosition} />}
       {handle}
       <span className="relative flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-void-800">
-        {mapUrl ? (
+        {thumbUrl ? (
           <Image
-            src={mapUrl}
+            src={thumbUrl}
             alt=""
             fill
             sizes="64px"
             unoptimized
+            loading="lazy"
+            decoding="async"
             draggable={false}
             className="object-cover"
           />
@@ -66,7 +69,7 @@ export function SceneRow({
               {SCENE_TEXTS.viewing}
             </span>
           )}
-          {!mapUrl && <span className="italic">{SCENE_TEXTS.noMap}</span>}
+          {!hasMap && <span className="italic">{SCENE_TEXTS.noMap}</span>}
         </p>
       </div>
       <div className="relative z-10 flex items-center">{actions}</div>

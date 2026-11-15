@@ -151,3 +151,19 @@ model ArenaState {
 
   @@map("arena_state")
 }
+
+model MediaAsset {
+  id          String   @id @db.Uuid
+  hash        String   @unique
+  key         String   @unique
+  thumbKey    String?
+  width       Int
+  height      Int
+  bytes       Int
+  contentType String
+  createdAt   DateTime @default(now())
+  /// Last time an upload linked this asset (a fresh link keeps it from being deleted for a few minutes).
+  linkedAt    DateTime @default(now())
+
+  @@map("media_assets")
+}

@@ -115,6 +115,9 @@ export const characterSummarySchema = z.object({
   name: z.string(),
   avatarUrl: z.string().nullable(),
   artUrl: z.string().nullable(),
+  /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
+  avatarThumbUrl: z.string().nullable(),
+  artThumbUrl: z.string().nullable(),
   classKey: classKeySchema,
   level: z.number().int(),
   folderId: z.string().nullable(),
@@ -128,6 +131,9 @@ export const characterSchema = z.object({
   name: z.string(),
   avatarUrl: z.string().nullable(),
   artUrl: z.string().nullable(),
+  /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
+  avatarThumbUrl: z.string().nullable(),
+  artThumbUrl: z.string().nullable(),
   sheet: characterSheetSchema,
   sheetVersion: z.number().int().nonnegative(),
   features: characterFeaturesSchema,
@@ -139,6 +145,9 @@ export const characterIdSchema = z.uuid();
 export const CHARACTER_IMAGE_KINDS = ["avatar", "art"] as const;
 
 export const CHARACTER_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+/** Largest side of an avatar or artwork, read from the header before decoding it. */
+export const CHARACTER_IMAGE_MAX_SIDE = 8192;
 
 export const CHARACTER_IMAGE_FIELD = "file";
 
@@ -155,6 +164,9 @@ export const characterImagesSchema = z.object({
   id: z.string(),
   avatarUrl: z.string().nullable(),
   artUrl: z.string().nullable(),
+  /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
+  avatarThumbUrl: z.string().nullable(),
+  artThumbUrl: z.string().nullable(),
 });
 
 export const updateSheetInputSchema = z.object({

@@ -98,7 +98,7 @@ Duas imagens distintas, enviadas pelo Mestre (na criação da ficha ou pelo moda
 - **Avatar**: rosto em círculo (o token do Roll20). Usado nos retratos pequenos (biblioteca, feed, cabeçalho) e, no futuro, como token na Arena.
 - **Arte**: arte completa do personagem, aberta em "Ver arte completa".
 
-Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`artKey` no banco; o DTO traz `avatarUrl`/`artUrl`).
+Sem avatar, os retratos usam a arte. Guardadas no storage como assets compartilhados: cada imagem existe uma vez só (pelo conteúdo), regravada em WebP e com uma miniatura de 256 px usada nos retratos pequenos (`avatarKey`/`artKey` no banco; o DTO traz `avatarUrl`/`artUrl` e as miniaturas `avatarThumbUrl`/`artThumbUrl`).
 
 ## Inventário e Traços
 

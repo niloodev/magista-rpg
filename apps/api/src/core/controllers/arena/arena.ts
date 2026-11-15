@@ -26,6 +26,7 @@ import { arenaSceneModels } from "@/core/models/arenaScene";
 import { arenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import { arenaTokenModels } from "@/core/models/arenaToken";
 import { characterModels } from "@/core/models/character";
+import { imageAssets } from "@/core/controllers/mediaAsset";
 import { arenaImages } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
@@ -44,6 +45,7 @@ export function createArenaController({
   tokens,
   characters,
   images,
+  assets,
 }: IArenaControllerDeps): IArenaController {
   const failed = (action: string, error: unknown) => {
     console.error(`${action} failed:`, error);
@@ -252,6 +254,7 @@ export function createArenaController({
       if (!removed) return { error: arenaErrors.sceneNotFound };
       await cleanup(images.removeScene(id));
       for (const tokenId of removed.tokenIds) await cleanup(images.removeToken(tokenId));
+      for (const key of new Set(removed.imageKeys)) await cleanup(assets.release(key));
       return { message: "Cena excluída", payload: { sceneId: id, audience } };
     } catch (error) {
       return failed("deleteScene", error);
@@ -274,18 +277,19 @@ export function createArenaController({
     try {
       if (!(await scenes.findById(id))) return { error: arenaErrors.sceneNotFound };
       await measureOldMaps();
-      const key = await images.storeMap(id, upload.file);
-      if (!key) return { error: arenaErrors.imageInvalid };
+      const stored = await assets.ingest(upload.file);
+      if (!stored) return { error: arenaErrors.imageInvalid };
+      const { key } = stored;
       const change = await scenes.setMapKey(id, key, size).catch(async (error: unknown) => {
-        await cleanup(images.remove(key));
+        await cleanup(assets.release(key));
         throw error;
       });
       if (!change) {
-        await cleanup(images.remove(key));
+        await cleanup(assets.release(key));
         return { error: arenaErrors.sceneNotFound };
       }
       if (change.previousKey && change.previousKey !== key)
-        await cleanup(images.remove(change.previousKey));
+        await cleanup(assets.release(change.previousKey));
       const audience = sceneAudience(id, await scenes.findActiveSceneId());
       return { message: "Mapa salvo", payload: { scene: change.scene, audience } };
     } catch (error) {
@@ -419,6 +423,8 @@ export function createArenaController({
       const removed = await tokens.removeMany(parsed.data.ids);
       if (removed.length === 0) return { error: arenaErrors.tokenNotFound };
       for (const { id } of removed) await cleanup(images.removeToken(id));
+      const imageKeys = new Set(removed.flatMap((token) => token.imageKey ?? []));
+      for (const key of imageKeys) await cleanup(assets.release(key));
       const activeSceneId = await scenes.findActiveSceneId();
       const removals = removed.map((token) => ({
         event: { id: token.id, sceneId: token.sceneId },
@@ -437,6 +443,7 @@ export function createArenaController({
       const removed = await tokens.remove(id);
       if (!removed) return { error: arenaErrors.tokenNotFound };
       await cleanup(images.removeToken(id));
+      await cleanup(assets.release(removed.imageKey));
       const audience = tokenAudience(removed, await scenes.findActiveSceneId());
       return {
         message: "Token removido",
@@ -461,18 +468,19 @@ export function createArenaController({
       const existing = await tokens.findById(id);
       if (!existing) return { error: arenaErrors.tokenNotFound };
       if (existing.characterId) return { error: arenaErrors.npcOnly };
-      const key = await images.storeToken(id, upload.file);
-      if (!key) return { error: arenaErrors.imageInvalid };
+      const stored = await assets.ingest(upload.file);
+      if (!stored) return { error: arenaErrors.imageInvalid };
+      const { key } = stored;
       const change = await tokens.setImageKey(id, key).catch(async (error: unknown) => {
-        await cleanup(images.remove(key));
+        await cleanup(assets.release(key));
         throw error;
       });
       if (!change) {
-        await cleanup(images.remove(key));
+        await cleanup(assets.release(key));
         return { error: arenaErrors.tokenNotFound };
       }
       if (change.previousKey && change.previousKey !== key)
-        await cleanup(images.remove(change.previousKey));
+        await cleanup(assets.release(change.previousKey));
       const audience = tokenAudience(change.token, await scenes.findActiveSceneId());
       return {
         message: "Imagem salva",
@@ -576,4 +584,5 @@ export const arenaController = createArenaController({
   tokens: arenaTokenModels,
   characters: characterModels,
   images: arenaImages,
+  assets: imageAssets,
 });

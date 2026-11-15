@@ -15,6 +15,7 @@ export const characterErrors = {
   imageMissing: "Escolha uma imagem para enviar.",
   imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
   imageTooLarge: "A imagem passa do limite de 8 MB.",
+  imageTooBig: "A imagem passa de 8192 px de lado. Reduza e envie de novo.",
   unexpected: "Não foi possível acessar a ficha agora. Tente novamente.",
 } as const;
 

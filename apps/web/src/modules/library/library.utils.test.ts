@@ -27,6 +27,8 @@ const character = (id: string, name: string, folderId: string | null, position: 
     position,
     avatarUrl: null,
     artUrl: null,
+    avatarThumbUrl: null,
+    artThumbUrl: null,
     classKey: "arcanista",
     level: 3,
     accountIds: [],

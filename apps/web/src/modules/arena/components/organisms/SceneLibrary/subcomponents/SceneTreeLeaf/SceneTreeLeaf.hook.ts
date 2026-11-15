@@ -20,5 +20,5 @@ export function useSceneTreeLeaf({
     () => sceneMenu(scene, live, { open: onDialog, preview: onPreview, goLive: onGoLive }),
     [scene, live, onDialog, onPreview, onGoLive],
   );
-  return { mapUrl: toMediaUrl(scene.mapUrl), open, menu };
+  return { hasMap: scene.mapUrl !== null, thumbUrl: toMediaUrl(scene.mapThumbUrl), open, menu };
 }

@@ -1,16 +1,17 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { optimizeMap } from "./media";
+import { makeThumbnail, optimizeMap } from "./media";
 import { IMAGE_TYPES } from "./media.constants";
 import {
-  arenaMapKeyFor,
-  arenaTokenKeyFor,
+  assetIdOf,
+  assetKeysFor,
   detectImageType,
   isMediaKey,
-  mediaKeyFor,
+  hashImage,
   mediaUrlOf,
   readImageSize,
+  thumbUrlOf,
 } from "./media.utils";
 
 const ID = "6f1c2b8a-1d2e-4f3a-9b8c-7d6e5f4a3b2c";
@@ -33,13 +34,19 @@ describe("detectImageType", () => {
 });
 
 describe("media keys", () => {
-  it("builds a unique servable key per upload", () => {
-    const first = mediaKeyFor(ID, "avatar", IMAGE_TYPES.png);
-    const second = mediaKeyFor(ID, "avatar", IMAGE_TYPES.png);
-    expect(first).toMatch(new RegExp(`^characters/${ID}/avatar-[0-9a-f-]{36}\\.png$`));
-    expect(first).not.toBe(second);
-    expect(isMediaKey(first)).toBe(true);
-    expect(isMediaKey(mediaKeyFor(ID, "art", IMAGE_TYPES.jpeg))).toBe(true);
+  it("builds servable asset keys and derives the thumbnail URL", () => {
+    const { key, thumbKey } = assetKeysFor(ID, IMAGE_TYPES.webp);
+    expect(key).toBe(`media/${ID}/full.webp`);
+    expect(thumbKey).toBe(`media/${ID}/thumb.webp`);
+    expect(isMediaKey(key)).toBe(true);
+    expect(isMediaKey(thumbKey)).toBe(true);
+    expect(isMediaKey(`media/${ID}/other.webp`)).toBe(false);
+    expect(assetIdOf(key)).toBe(ID);
+    expect(assetIdOf(`characters/${ID}/avatar-${ID}.png`)).toBeNull();
+    expect(thumbUrlOf(assetKeysFor(ID, IMAGE_TYPES.png).key)).toBe(`/media/media/${ID}/thumb.webp`);
+    expect(thumbUrlOf(`characters/${ID}/avatar-${ID}.png`)).toBeNull();
+    expect(hashImage(Buffer.from("a"))).toBe(hashImage(Buffer.from("a")));
+    expect(hashImage(Buffer.from("a"))).not.toBe(hashImage(Buffer.from("b")));
   });
 
   it("accepts legacy imported keys and refuses traversal or foreign keys", () => {
@@ -50,13 +57,9 @@ describe("media keys", () => {
     expect(isMediaKey(`characters/${ID}/avatar-${ID}.svg`)).toBe(false);
   });
 
-  it("builds servable Arena keys and refuses foreign Arena paths", () => {
-    const map = arenaMapKeyFor(ID, IMAGE_TYPES.webp);
-    const token = arenaTokenKeyFor(ID, IMAGE_TYPES.png);
-    expect(map).toMatch(new RegExp(`^arena/maps/${ID}/map-[0-9a-f-]{36}\\.webp$`));
-    expect(token).toMatch(new RegExp(`^arena/tokens/${ID}/token-[0-9a-f-]{36}\\.png$`));
-    expect(isMediaKey(map)).toBe(true);
-    expect(isMediaKey(token)).toBe(true);
+  it("still serves Arena keys written before assets", () => {
+    expect(isMediaKey(`arena/maps/${ID}/map-${ID}.webp`)).toBe(true);
+    expect(isMediaKey(`arena/tokens/${ID}/token-${ID}.png`)).toBe(true);
     expect(isMediaKey(`arena/maps/${ID}/token-${ID}.png`)).toBe(false);
     expect(isMediaKey(`arena/other/${ID}/map-${ID}.png`)).toBe(false);
   });
@@ -123,5 +126,19 @@ describe("optimizeMap", () => {
     expect(await optimizeMap(gif)).toBe(gif);
     const broken = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
     expect(await optimizeMap(broken)).toBe(broken);
+  });
+});
+
+describe("makeThumbnail", () => {
+  it("shrinks an image to a small WebP keeping its proportions", async () => {
+    const big = await sharp({
+      create: { width: 1200, height: 600, channels: 3, background: { r: 200, g: 20, b: 60 } },
+    })
+      .png()
+      .toBuffer();
+    const thumb = await makeThumbnail(big);
+    expect(thumb && detectImageType(thumb)).toBe(IMAGE_TYPES.webp);
+    expect(thumb && readImageSize(thumb)).toEqual({ width: 256, height: 128 });
+    expect(await makeThumbnail(Buffer.from("nope"))).toBeNull();
   });
 });

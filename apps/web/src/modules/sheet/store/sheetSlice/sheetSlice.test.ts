@@ -10,6 +10,8 @@ const character: ICharacter = {
   name: "Zarkov",
   avatarUrl: null,
   artUrl: null,
+  avatarThumbUrl: null,
+  artThumbUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   features: [],
@@ -57,8 +59,20 @@ describe("sheet slice", () => {
   it("applies image changes without touching the draft or the save state", () => {
     const store = loaded();
     store.getState().editSheet("c1", (sheet) => void (sheet.identity.alignmentNote = "x"));
-    store.getState().applySheetImages({ id: "c1", avatarUrl: null, artUrl: "/media/art.png" });
-    store.getState().applySheetImages({ id: "other", avatarUrl: "/media/no.png", artUrl: null });
+    store.getState().applySheetImages({
+      id: "c1",
+      avatarUrl: null,
+      artUrl: "/media/art.png",
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
+    store.getState().applySheetImages({
+      id: "other",
+      avatarUrl: "/media/no.png",
+      artUrl: null,
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+    });
     expect(entry(store)).toMatchObject({
       revision: 1,
       saveStatus: "pending",

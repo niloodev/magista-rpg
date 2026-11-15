@@ -8,6 +8,7 @@ const scene: IArenaScene = {
   name: "Ruínas",
   folderId: null,
   mapUrl: null,
+  mapThumbUrl: null,
   width: 1750,
   height: 1750,
   mapWidth: null,

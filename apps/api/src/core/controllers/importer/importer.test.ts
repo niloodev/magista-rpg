@@ -33,9 +33,9 @@ function buildDeps(existing: unknown = null, current: unknown = null): IImporter
     },
     hashPassword: vi.fn().mockResolvedValue("hash"),
     generatePassword: () => "senha-gerada",
-    images: {
-      store: vi.fn().mockResolvedValue("characters/char-1/art-new.png"),
-      remove: vi.fn().mockResolvedValue(undefined),
+    assets: {
+      ingest: vi.fn().mockResolvedValue({ key: "media/new/full.webp", width: 10, height: 10 }),
+      release: vi.fn().mockResolvedValue(undefined),
     },
   };
 }
@@ -56,13 +56,13 @@ describe("importer controller", () => {
         }),
       }),
     );
-    expect(deps.images.store).toHaveBeenCalledWith("char-1", "art", input.art);
+    expect(deps.assets.ingest).toHaveBeenCalledWith(input.art);
     expect(deps.characters.setImageKey).toHaveBeenCalledWith(
       "char-1",
       "art",
-      "characters/char-1/art-new.png",
+      "media/new/full.webp",
     );
-    expect(deps.images.remove).toHaveBeenCalledWith("old-art");
+    expect(deps.assets.release).toHaveBeenCalledWith("old-art");
   });
 
   it("skips existing characters unless forced, never resetting passwords", async () => {
@@ -96,7 +96,7 @@ describe("importer controller", () => {
 
   it("warns when an exported image is not a supported format", async () => {
     const deps = buildDeps();
-    deps.images.store = vi.fn().mockResolvedValue(null);
+    deps.assets.ingest = vi.fn().mockResolvedValue(null);
     const result = await createImporterController(deps).importCharacter(input);
     expect(result).toMatchObject({ payload: { mediaWarning: importerErrors.mediaFailed } });
     expect(deps.characters.setImageKey).not.toHaveBeenCalled();
@@ -104,7 +104,7 @@ describe("importer controller", () => {
 
   it("keeps the account and generated password when copying media fails", async () => {
     const deps = buildDeps();
-    deps.images.store = vi.fn().mockRejectedValue(new Error("disk full"));
+    deps.assets.ingest = vi.fn().mockRejectedValue(new Error("disk full"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const result = await createImporterController(deps).importCharacter(input);
     expect(result).toMatchObject({

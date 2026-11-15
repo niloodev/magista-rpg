@@ -19,6 +19,8 @@ export interface IRemovedArenaToken {
   id: string;
   sceneId: string;
   hidden: boolean;
+  /** Its own image (NPC), to let go of the asset. */
+  imageKey: string | null;
 }
 
 export interface IArenaTokenMove {

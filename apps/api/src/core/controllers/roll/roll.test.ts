@@ -40,6 +40,8 @@ const character: ICharacter = {
   name: "Kael",
   avatarUrl: null,
   artUrl: null,
+  avatarThumbUrl: null,
+  artThumbUrl: null,
   sheet,
   sheetVersion: 1,
   features: [],

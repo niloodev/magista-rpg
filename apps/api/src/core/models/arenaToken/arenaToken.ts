@@ -63,7 +63,7 @@ const remove: IArenaTokenModels["remove"] = async (id) =>
   getDatabase().$transaction(async (tx) => {
     const row = await tx.arenaToken.findUnique({
       where: { id },
-      select: { id: true, sceneId: true, hidden: true },
+      select: { id: true, sceneId: true, hidden: true, imageKey: true },
     });
     if (!row) return null;
     await tx.arenaToken.delete({ where: { id } });
@@ -88,7 +88,7 @@ const removeMany: IArenaTokenModels["removeMany"] = async (ids) => {
   return getDatabase().$transaction(async (tx) => {
     const rows = await tx.arenaToken.findMany({
       where: { id: { in: ids } },
-      select: { id: true, sceneId: true, hidden: true },
+      select: { id: true, sceneId: true, hidden: true, imageKey: true },
     });
     await tx.arenaToken.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });
     return rows;

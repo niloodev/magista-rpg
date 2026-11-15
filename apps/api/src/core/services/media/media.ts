@@ -16,21 +16,26 @@ import { ARENA_MAP_MAX_PIXELS } from "@magista/shared";
 
 import { getEnv } from "@/core/services/env";
 
-import { MAP_WEBP_EFFORT, MAP_WEBP_MAX_SIDE, MAP_WEBP_QUALITY } from "./media.constants";
+import {
+  MAP_WEBP_EFFORT,
+  MAP_WEBP_MAX_SIDE,
+  MAP_WEBP_QUALITY,
+  MEDIA_ASSET_PREFIX,
+  THUMB_MAX_SIDE,
+  THUMB_WEBP_QUALITY,
+} from "./media.constants";
 import type {
   IArenaImageStore,
+  IAssetFileStore,
   ICharacterImageStore,
-  IImageType,
   IMediaStorage,
 } from "./media.types";
 import {
-  arenaMapKeyFor,
   arenaMapPrefix,
-  arenaTokenKeyFor,
   arenaTokenPrefix,
+  assetKeysFor,
   characterMediaPrefix,
   detectImageType,
-  mediaKeyFor,
   readImageSize,
 } from "./media.utils";
 
@@ -128,13 +133,7 @@ export const mediaStorage: IMediaStorage = {
  */
 export function createCharacterImageStore(storage: IMediaStorage): ICharacterImageStore {
   return {
-    store: async (characterId, kind, body) => {
-      const type = detectImageType(body);
-      if (!type) return null;
-      const key = mediaKeyFor(characterId, kind, type);
-      await storage.putObject(key, body, type.contentType);
-      return key;
-    },
+    sizeOf: readImageSize,
     remove: (key) => storage.deleteObject(key),
     removeAll: (characterId) => storage.deletePrefix(characterMediaPrefix(characterId)),
   };
@@ -163,16 +162,56 @@ export async function optimizeMap(body: Buffer): Promise<Buffer> {
 }
 
 /**
+ * A small WebP version of an image (at most `THUMB_MAX_SIDE` on its largest side, the first frame of a GIF), or
+ * null when the image cannot be decoded.
+ */
+export async function makeThumbnail(body: Buffer): Promise<Buffer | null> {
+  try {
+    return await sharp(body, { limitInputPixels: ARENA_MAP_MAX_PIXELS })
+      .resize(THUMB_MAX_SIDE, THUMB_MAX_SIDE, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: THUMB_WEBP_QUALITY })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Files of the shared image assets: each asset keeps its optimized image and its thumbnail under its own
+ * folder, written once and never changed (so URLs can be cached forever).
+ */
+export function createAssetFileStore(storage: IMediaStorage): IAssetFileStore {
+  return {
+    put: async (assetId, body) => {
+      if (!detectImageType(body)) return null;
+      const thumb = await makeThumbnail(body);
+      if (!thumb) return null;
+      const full = await optimizeMap(body);
+      const type = detectImageType(full);
+      if (!type) return null;
+      const keys = assetKeysFor(assetId, type);
+      await storage.putObject(keys.key, full, type.contentType);
+      await storage.putObject(keys.thumbKey, thumb, "image/webp");
+      return { ...keys, bytes: full.length, contentType: type.contentType };
+    },
+    readOriginal: async (key) => {
+      const stored = await storage.getObject(key);
+      if (!stored) return null;
+      const chunks: Buffer[] = [];
+      for await (const chunk of stored.body) chunks.push(Buffer.from(chunk as Uint8Array));
+      return Buffer.concat(chunks);
+    },
+    remove: (assetId) => storage.deletePrefix(`${MEDIA_ASSET_PREFIX}${assetId}/`),
+    removeKey: (key) => storage.deleteObject(key),
+  };
+}
+
+export const assetFiles = createAssetFileStore(mediaStorage);
+
+/**
  * Arena images (scene maps and NPC token images) on top of the object storage, validated by file signature.
  */
 export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore {
-  const store = async (body: Buffer, keyFor: (type: IImageType) => string) => {
-    const type = detectImageType(body);
-    if (!type) return null;
-    const key = keyFor(type);
-    await storage.putObject(key, body, type.contentType);
-    return key;
-  };
   const readMapSize = async (key: string) => {
     const stored = await storage.getObject(key);
     if (!stored) return null;
@@ -183,9 +222,6 @@ export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore 
   return {
     sizeOf: readImageSize,
     readMapSize,
-    storeMap: async (sceneId, body) =>
-      store(await optimizeMap(body), (type) => arenaMapKeyFor(sceneId, type)),
-    storeToken: (tokenId, body) => store(body, (type) => arenaTokenKeyFor(tokenId, type)),
     remove: (key) => storage.deleteObject(key),
     removeScene: (sceneId) => storage.deletePrefix(arenaMapPrefix(sceneId)),
     removeToken: (tokenId) => storage.deletePrefix(arenaTokenPrefix(tokenId)),

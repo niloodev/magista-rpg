@@ -17,6 +17,7 @@ interface CharacterImages {
   name: string;
   avatarUrl: string | null;
   artUrl: string | null;
+  avatarThumbUrl: string | null;
 }
 
 async function characterNamed(name: string) {
@@ -69,10 +70,13 @@ test.describe("imagens dos personagens (avatar e arte)", () => {
       })
       .toEqual([true, true]);
     const created = await characterNamed(NAME);
-    expect(created?.avatarUrl).toMatch(/^\/media\/characters\/.+\/avatar-.+\.png$/);
+    expect(created?.avatarUrl).toMatch(/^\/media\/media\/.+\/full\.(webp|png)$/);
+    expect(created?.avatarThumbUrl).toMatch(/^\/media\/media\/.+\/thumb\.webp$/);
     const media = await page.request.get(`http://localhost:3333${created?.artUrl}`);
-    expect(media.headers()["content-type"]).toBe("image/png");
-    await expect(rowOf(page, NAME).locator("img")).toHaveAttribute("src", /avatar-/);
+    expect(media.headers()["content-type"]).toMatch(/^image\/(webp|png)$/);
+    const thumb = await page.request.get(`http://localhost:3333${created?.avatarThumbUrl}`);
+    expect(thumb.headers()["content-type"]).toBe("image/webp");
+    await expect(rowOf(page, NAME).locator("img")).toHaveAttribute("src", /thumb\.webp/);
   });
 
   test("a ficha mostra o avatar no retrato e a arte em Ver arte completa", async ({ page }) => {
@@ -81,7 +85,10 @@ test.describe("imagens dos personagens (avatar e arte)", () => {
     await page.goto(`/ficha/${created?.id}`);
     await expect(page.locator("[data-skeleton-region]")).toHaveCount(0);
     await page.getByRole("button", { name: "Ver arte completa" }).click();
-    await expect(page.getByRole("dialog").locator("img")).toHaveAttribute("src", /art-/);
+    await expect(page.getByRole("dialog").locator("img")).toHaveAttribute(
+      "src",
+      new RegExp(`${created?.artUrl ?? "-"}$`),
+    );
   });
 
   test("Mestre troca e remove imagens pelo modal Imagens; arquivo falso é recusado", async ({
@@ -109,8 +116,7 @@ test.describe("imagens dos personagens (avatar e arte)", () => {
     await expect.poll(async () => (await characterNamed(NAME))?.artUrl ?? null).toBeNull();
     const after = await characterNamed(NAME);
     expect(after?.avatarUrl).not.toBe(before?.avatarUrl);
-    const old = await page.request.get(`http://localhost:3333${before?.avatarUrl}`);
-    expect(old.status()).toBe(404);
+    expect(after?.avatarThumbUrl).toMatch(/\/thumb\.webp$/);
   });
 
   test("jogador não vê nem consegue enviar imagens", async ({ page }) => {

@@ -1,12 +1,12 @@
-import { randomUUID } from "node:crypto";
-
-import type { CharacterImageKind } from "@magista/shared";
+import { createHash } from "node:crypto";
 
 import {
   ARENA_MAP_MEDIA_PREFIX,
   ARENA_TOKEN_MEDIA_PREFIX,
   CHARACTER_MEDIA_PREFIX,
   IMAGE_TYPES,
+  MEDIA_ASSET_FULL_PATTERN,
+  MEDIA_ASSET_PREFIX,
   MEDIA_KEY_PATTERN,
   MEDIA_ROUTE,
 } from "./media.constants";
@@ -31,17 +31,6 @@ export function detectImageType(buffer: Buffer): IImageType | null {
 }
 
 /**
- * Builds a fresh object key for a character image; every upload gets a new key so URLs can be cached forever.
- */
-export function mediaKeyFor(
-  characterId: string,
-  kind: CharacterImageKind,
-  type: IImageType,
-): string {
-  return `${characterMediaPrefix(characterId)}${kind}-${randomUUID()}.${type.extension}`;
-}
-
-/**
  * Prefix that holds every object of one character.
  */
 export function characterMediaPrefix(characterId: string): string {
@@ -63,17 +52,47 @@ export function arenaTokenPrefix(tokenId: string): string {
 }
 
 /**
- * Fresh key for an Arena scene map.
+ * Keys of the full image and the thumbnail of a shared asset.
  */
-export function arenaMapKeyFor(sceneId: string, type: IImageType): string {
-  return `${arenaMapPrefix(sceneId)}map-${randomUUID()}.${type.extension}`;
+export function assetKeysFor(assetId: string, type: IImageType): { key: string; thumbKey: string } {
+  return {
+    key: `${MEDIA_ASSET_PREFIX}${assetId}/full.${type.extension}`,
+    thumbKey: `${MEDIA_ASSET_PREFIX}${assetId}/thumb.${IMAGE_TYPES.webp.extension}`,
+  };
 }
 
 /**
- * Fresh key for an Arena token image.
+ * Asset id of a shared asset key, or null for older keys (stored before assets existed).
  */
-export function arenaTokenKeyFor(tokenId: string, type: IImageType): string {
-  return `${arenaTokenPrefix(tokenId)}token-${randomUUID()}.${type.extension}`;
+export function assetIdOf(key: string | null): string | null {
+  return key ? (MEDIA_ASSET_FULL_PATTERN.exec(key)?.[1] ?? null) : null;
+}
+
+/**
+ * Public URL of the thumbnail of a stored image, or null when the key is not a shared asset.
+ */
+export function thumbUrlOf(key: string | null): string | null {
+  const assetId = assetIdOf(key);
+  return assetId ? mediaUrlOf(assetKeysFor(assetId, IMAGE_TYPES.webp).thumbKey) : null;
+}
+
+/**
+ * Full and thumbnail URLs of a character's stored images.
+ */
+export function characterImageUrls(avatarKey: string | null, artKey: string | null) {
+  return {
+    avatarUrl: mediaUrlOf(avatarKey),
+    artUrl: mediaUrlOf(artKey),
+    avatarThumbUrl: thumbUrlOf(avatarKey),
+    artThumbUrl: thumbUrlOf(artKey),
+  };
+}
+
+/**
+ * Content hash of an uploaded image (the same bytes always give the same asset).
+ */
+export function hashImage(body: Buffer): string {
+  return createHash("sha256").update(body).digest("hex");
 }
 
 /**

@@ -7,7 +7,19 @@ export const MEDIA_MAX_BYTES = CHARACTER_IMAGE_MAX_BYTES;
 export const MEDIA_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 export const MEDIA_KEY_PATTERN =
-  /^(characters\/[0-9a-f-]{36}\/(avatar|art)-[0-9a-f-]{36}|legacy\/(avatars|tokens)\/[0-9a-f-]{36}|arena\/maps\/[0-9a-f-]{36}\/map-[0-9a-f-]{36}|arena\/tokens\/[0-9a-f-]{36}\/token-[0-9a-f-]{36})\.(png|jpg|jpeg|webp|gif)$/;
+  /^(characters\/[0-9a-f-]{36}\/(avatar|art)-[0-9a-f-]{36}|legacy\/(avatars|tokens)\/[0-9a-f-]{36}|arena\/maps\/[0-9a-f-]{36}\/map-[0-9a-f-]{36}|arena\/tokens\/[0-9a-f-]{36}\/token-[0-9a-f-]{36}|media\/[0-9a-f-]{36}\/(full|thumb))\.(png|jpg|jpeg|webp|gif)$/;
+
+/** Prefix of the shared image assets (one folder per asset with its full and thumbnail versions). */
+export const MEDIA_ASSET_PREFIX = "media/";
+
+/** Asset key of the full image ("media/<id>/full.webp"), with the asset id. */
+export const MEDIA_ASSET_FULL_PATTERN = /^media\/([0-9a-f-]{36})\/full\.(png|jpg|jpeg|webp|gif)$/;
+
+/** Largest side of a thumbnail (portraits, tokens, the scene list). */
+export const THUMB_MAX_SIDE = 256;
+
+/** WebP quality of a thumbnail. */
+export const THUMB_WEBP_QUALITY = 80;
 
 export const CHARACTER_MEDIA_PREFIX = "characters/";
 

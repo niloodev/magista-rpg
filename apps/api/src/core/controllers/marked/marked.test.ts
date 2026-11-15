@@ -20,6 +20,8 @@ function character(id: string, name: string, marked = true): ICharacter {
     name,
     avatarUrl: null,
     artUrl: null,
+    avatarThumbUrl: null,
+    artThumbUrl: null,
     sheet,
     sheetVersion: 1,
     features: marked ? ["marked"] : [],

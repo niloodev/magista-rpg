@@ -56,6 +56,8 @@ export const arenaSceneSchema = z.object({
   name: z.string(),
   folderId: z.string().nullable(),
   mapUrl: z.string().nullable(),
+  /** Small version of the map (256 px WebP) for the scene list; null for maps stored before thumbnails. */
+  mapThumbUrl: z.string().nullable(),
   /** Board size in world pixels (the map image is stretched to it, always keeping its aspect ratio). */
   width: z.number(),
   height: z.number(),
@@ -71,6 +73,8 @@ export const arenaTokenSchema = z.object({
   characterId: z.string().nullable(),
   name: z.string(),
   imageUrl: z.string().nullable(),
+  /** Small version of the token portrait (256 px WebP), or null. */
+  imageThumbUrl: z.string().nullable(),
   x: z.number(),
   y: z.number(),
   size: z.number().int(),

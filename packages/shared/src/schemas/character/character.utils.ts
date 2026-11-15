@@ -1,6 +1,6 @@
 import { ATTRIBUTE_KEYS, SKILL_KEYS } from "../../game/catalog/catalog.constants";
 import { CHARACTER_SHEET_VERSION, characterSheetSchema } from "./character.schemas";
-import type { ICharacterSheet } from "./character.types";
+import type { ICharacterImageUrls, ICharacterSheet } from "./character.types";
 
 /**
  * Builds an empty level 1 sheet with every attribute and skill present.
@@ -65,4 +65,12 @@ export function mergeGmOnlyFields(
     }
   }
   return merged;
+}
+
+/**
+ * URL for a small portrait of a character (feed, rows, tokens): the avatar, else the art, preferring their
+ * thumbnails so a full-body artwork is never downloaded just to fill a small circle.
+ */
+export function characterPortrait(images: ICharacterImageUrls): string | null {
+  return images.avatarThumbUrl ?? images.avatarUrl ?? images.artThumbUrl ?? images.artUrl ?? null;
 }

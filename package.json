@@ -24,6 +24,7 @@
     "db:seed": "npm run db:seed -w @magista/api",
     "db:studio": "npm run db:studio -w @magista/api",
     "import:roll20": "npm run import:roll20 -w @magista/api --",
+    "media:assets": "npm run media:assets -w @magista/api",
     "import:roll20-pages": "npm run import:roll20-pages -w @magista/api --",
     "account:password": "npm run account:password -w @magista/api --",
     "test:e2e": "npm run e2e -w @magista/e2e",

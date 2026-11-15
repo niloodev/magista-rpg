@@ -53,14 +53,14 @@ export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = 
   setExpandedLibraryFolders: (expandedFolderIds) =>
     set((state) => ({ library: { ...state.library, expandedFolderIds } })),
   setLibraryQuery: (query) => set((state) => ({ library: { ...state.library, query } })),
-  applyLibraryImages: ({ id, avatarUrl, artUrl }) =>
+  applyLibraryImages: ({ id, ...images }) =>
     set((state) =>
       state.library.characters.some((character) => character.id === id)
         ? {
             library: {
               ...state.library,
               characters: state.library.characters.map((character) =>
-                character.id === id ? { ...character, avatarUrl, artUrl } : character,
+                character.id === id ? { ...character, ...images } : character,
               ),
             },
           }
