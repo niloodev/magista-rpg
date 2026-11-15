@@ -778,6 +778,14 @@ describe("arena controller: board size", () => {
     });
   });
 
+  it("stops looking for old maps once a pass found none", async () => {
+    const { controller, scenes } = build();
+    await controller.listLibrary(gm);
+    await controller.listLibrary(gm);
+    await controller.getView(gm);
+    expect(scenes.findUnmeasuredMaps).toHaveBeenCalledTimes(1);
+  });
+
   it("measures old maps once when loading the Arena", async () => {
     const { controller, scenes, images } = build({
       unmeasured: [{ id: PREP, mapKey: "arena/maps/old.png" }],

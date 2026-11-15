@@ -62,6 +62,7 @@ export function createArenaController({
 
   const measuredMaps = new Set<string>();
   let measuring: Promise<void> | null = null;
+  let allMeasured = false;
 
   /**
    * Measures, once per server process, the maps of scenes stored before their natural size was recorded, so
@@ -69,10 +70,12 @@ export function createArenaController({
    * be measured is not tried again until the server restarts.
    */
   const measureOldMaps = () => {
+    if (allMeasured) return Promise.resolve();
     measuring ??= (async () => {
       const pending = (await scenes.findUnmeasuredMaps()).filter(
         ({ mapKey }) => !measuredMaps.has(mapKey),
       );
+      if (pending.length === 0) allMeasured = true;
       for (const { id, mapKey } of pending) {
         measuredMaps.add(mapKey);
         const size = await images.readMapSize(mapKey).catch((error: unknown) => {

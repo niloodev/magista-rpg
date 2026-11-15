@@ -444,3 +444,22 @@ export function parseLibraryShape(value: unknown): ILibraryShape | null {
       })),
   };
 }
+
+/**
+ * A reloaded list that keeps the previous object of every item that did not change (and the previous array when
+ * nothing changed), so a refetch after the GM's own move does not redraw every memoized row.
+ */
+export function reuseUnchanged<T extends { id: string }>(previous: T[], next: T[]): T[] {
+  const before = new Map(previous.map((item) => [item.id, item]));
+  let changed = previous.length !== next.length;
+  const merged = next.map((item, index) => {
+    const old = before.get(item.id);
+    if (old && JSON.stringify(old) === JSON.stringify(item)) {
+      if (previous[index] !== old) changed = true;
+      return old;
+    }
+    changed = true;
+    return item;
+  });
+  return changed ? merged : previous;
+}

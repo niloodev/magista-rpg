@@ -138,6 +138,17 @@ async function loadTexture(url: string, maxSize: number): Promise<ILoadedTexture
 }
 
 /**
+ * Destroys a texture and closes the decoded bitmap behind it (Pixi only drops its reference, leaving the
+ * memory of a large map until the garbage collector runs).
+ */
+function destroyTexture(texture: Texture | null | undefined): void {
+  if (!texture) return;
+  const resource: unknown = texture.source.resource;
+  texture.destroy(true);
+  if (typeof ImageBitmap !== "undefined" && resource instanceof ImageBitmap) resource.close();
+}
+
+/**
  * The Arena board drawn with PixiJS: map, tokens, camera (pan, zoom, pinch) and token dragging.
  * It only redraws when something changes or animates, so an idle board costs no GPU time; the light mode
  * (performance mode) also renders at native resolution without antialias and caps animation at ~30 fps.
@@ -267,7 +278,7 @@ export class ArenaRenderer implements IArenaRenderer {
     if (mapUrl) {
       loaded = await loadTexture(mapUrl, this.maxTextureSize).catch(() => null);
       if (this.destroyed || version !== this.sceneVersion) {
-        loaded?.texture.destroy(true);
+        destroyTexture(loaded?.texture);
         return;
       }
       if (!loaded) this.mapUrl = undefined;
@@ -276,7 +287,7 @@ export class ArenaRenderer implements IArenaRenderer {
     const current = this.scene;
     this.options.callbacks.onMapError(Boolean(mapUrl) && !loaded);
     this.mapLayer.removeChildren().forEach((child) => child.destroy());
-    this.mapTexture?.destroy(true);
+    destroyTexture(this.mapTexture);
     this.mapTexture = loaded?.texture ?? null;
     this.bounds = current ? { width: current.width, height: current.height } : ARENA_EMPTY_BOUNDS;
     this.mapLayer.addChild(loaded ? new Sprite(loaded.texture) : new Graphics());
@@ -442,9 +453,9 @@ export class ArenaRenderer implements IArenaRenderer {
     this.app.stage.removeChildren();
     this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
-    this.mapTexture?.destroy(true);
+    destroyTexture(this.mapTexture);
     for (const pending of this.portraits.values())
-      void pending.then((texture) => texture?.destroy(true));
+      void pending.then((texture) => destroyTexture(texture));
     this.portraits.clear();
     this.app.destroy({ removeView: true });
   };
@@ -587,7 +598,7 @@ export class ArenaRenderer implements IArenaRenderer {
     for (const [url, pending] of this.portraits) {
       if (used.has(url)) continue;
       this.portraits.delete(url);
-      void pending.then((texture) => texture?.destroy(true));
+      void pending.then((texture) => destroyTexture(texture));
     }
   }
 
@@ -615,6 +626,10 @@ export class ArenaRenderer implements IArenaRenderer {
     const texture = await pending;
     if (!texture || this.destroyed || view.container.destroyed || view.data.imageUrl !== url)
       return;
+    if (this.portraits.get(url) !== pending) {
+      void this.attachPortrait(view);
+      return;
+    }
     view.portrait?.destroy();
     view.portrait = new Sprite(texture);
     view.portrait.anchor.set(0.5);

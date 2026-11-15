@@ -339,7 +339,7 @@ export function useArenaPage() {
     [saveTokens],
   );
 
-  const onSizeChange = (size: number | null) => {
+  const onSizeChange = useStableCallback((size: number | null) => {
     if (size === null || selectedTokens.length === 0) return;
     const clamped = Math.min(Math.max(size, ARENA_TOKEN_SIZE_MIN), ARENA_TOKEN_SIZE_MAX);
     const patches = selectedTokens.map((token) => ({ id: token.id, size: clamped }));
@@ -350,13 +350,14 @@ export function useArenaPage() {
       const sizes = flushSize();
       if (sizes) void saveTokens(sizes);
     }, ARENA_SIZE_COMMIT_MS);
-  };
+  });
 
   const summary = selectionSummary(selectedTokens, isGm, view?.controllableCharacterIds ?? []);
   const { allHidden, sheetTarget } = summary;
 
-  const onToggleHidden = () =>
-    void saveTokens(selectedTokens.map((token) => ({ id: token.id, hidden: !allHidden })));
+  const onToggleHidden = useStableCallback(
+    () => void saveTokens(selectedTokens.map((token) => ({ id: token.id, hidden: !allHidden }))),
+  );
 
   const onConfirmRemove = async () => {
     setConfirmRemove(false);
@@ -372,10 +373,10 @@ export function useArenaPage() {
     store.getState().selectArenaTokens([], "replace");
   };
 
-  const onPickToken = (tokenId: string) => {
+  const onPickToken = useStableCallback((tokenId: string) => {
     store.getState().selectArenaTokens([tokenId], "replace");
     controlsRef.current?.centerOn(tokenId);
-  };
+  });
 
   const nudgeSelected = (delta: IArenaPoint, large: boolean) => {
     const selected = new Set(selectedTokenIds);
@@ -453,10 +454,13 @@ export function useArenaPage() {
     setAnnouncement(ARENA_PREVIEW_TEXTS.wentLive);
   };
 
-  const broadcast =
-    isGm && view?.scene
-      ? { live: view.scene.id === view.activeSceneId, hasLive: view.activeSceneId !== null }
-      : null;
+  const broadcastLive = view?.scene ? view.scene.id === view.activeSceneId : false;
+  const broadcastHasLive = (view?.activeSceneId ?? null) !== null;
+  const broadcastShown = isGm && Boolean(view?.scene);
+  const broadcast = useMemo(
+    () => (broadcastShown ? { live: broadcastLive, hasLive: broadcastHasLive } : null),
+    [broadcastShown, broadcastLive, broadcastHasLive],
+  );
 
   const { left: insetLeft, right: insetRight } = fitPanels(
     sidebar.rollsOpen ? sidebar.rollsWidth : 0,
@@ -510,6 +514,15 @@ export function useArenaPage() {
     store.getState().closeDockedSheet(characterId),
   );
   const onGoLiveStable = useStableCallback((sceneId: string) => void onGoLive(sceneId));
+  const onOpenProfile = useStableCallback(() => setProfileOpen(true));
+  const onRequestRemove = useStableCallback(() => setConfirmRemove(true));
+  const onGoLiveViewed = useStableCallback(() => {
+    if (viewingSceneId) void onGoLive(viewingSceneId);
+  });
+  const onBackToLive = useStableCallback(() => store.getState().setArenaViewScene(null));
+  const onZoomIn = useStableCallback(() => controlsRef.current?.zoomIn());
+  const onZoomOut = useStableCallback(() => controlsRef.current?.zoomOut());
+  const onFit = useStableCallback(() => controlsRef.current?.fit());
 
   const scene = view?.scene ?? null;
   const placement = useArenaTokenPlacement({
@@ -535,6 +548,10 @@ export function useArenaPage() {
     [scene],
   );
 
+  const onOpenSelectedSheet = useStableCallback(() => {
+    if (sheetTarget) openSheet(sheetTarget);
+  });
+
   return {
     isGm,
     status,
@@ -558,7 +575,7 @@ export function useArenaPage() {
     controlsRef,
     announcement,
     profileOpen,
-    onOpenProfile: () => setProfileOpen(true),
+    onOpenProfile,
     onCloseProfile: () => setProfileOpen(false),
     onRetry: () => void load(),
     onSelect,
@@ -576,10 +593,8 @@ export function useArenaPage() {
         : null,
     onSizeChange,
     onToggleHidden,
-    onOpenSheet: () => {
-      if (sheetTarget) openSheet(sheetTarget);
-    },
-    onRequestRemove: () => setConfirmRemove(true),
+    onOpenSheet: onOpenSelectedSheet,
+    onRequestRemove,
     confirmRemove,
     confirmRemoveTitle: ARENA_SELECTION_TEXTS.confirmTitle(selectedTokens.length),
     onConfirmRemove: () => void onConfirmRemove(),
@@ -589,7 +604,7 @@ export function useArenaPage() {
     onStageKeyDown,
     stageInsetRight: insetRight,
     stageInsetLeft: insetLeft,
-    hudStyle: { left: insetLeft, right: insetRight },
+    hudStyle: windowPanels,
     sidebarWidth: insetRight || sidebar.width,
     rollsWidth: insetLeft || sidebar.rollsWidth,
     onSidebarResize: (width: number) => updateSidebar({ width }, false),
@@ -599,10 +614,8 @@ export function useArenaPage() {
     rollsOpen: sidebar.rollsOpen,
     onRollsOpen: (rollsOpen: boolean) => updateSidebar({ rollsOpen }),
     broadcast,
-    onGoLiveViewed: () => {
-      if (viewingSceneId) void onGoLive(viewingSceneId);
-    },
-    onBackToLive: () => store.getState().setArenaViewScene(null),
+    onGoLiveViewed,
+    onBackToLive,
     sidebarOpen: sidebar.open,
     sidebarTab: !isGm && sidebar.tab === "scenes" ? "characters" : sidebar.tab,
     onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
@@ -636,8 +649,8 @@ export function useArenaPage() {
     rolls,
     pendingRolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
-    onZoomIn: () => controlsRef.current?.zoomIn(),
-    onZoomOut: () => controlsRef.current?.zoomOut(),
-    onFit: () => controlsRef.current?.fit(),
+    onZoomIn,
+    onZoomOut,
+    onFit,
   };
 }

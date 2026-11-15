@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 
-import { applyMove } from "@/modules/library/library.utils";
+import { applyMove, reuseUnchanged } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultLibraryState } from "./librarySlice.constants";
@@ -23,9 +23,9 @@ export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = 
         ...state.library,
         status: "ready",
         error: null,
-        characters,
-        folders,
-        accounts,
+        characters: reuseUnchanged(state.library.characters, characters),
+        folders: reuseUnchanged(state.library.folders, folders),
+        accounts: reuseUnchanged(state.library.accounts, accounts),
         expandedFolderIds: keptFolderIds(state.library.expandedFolderIds, folders),
       },
     })),

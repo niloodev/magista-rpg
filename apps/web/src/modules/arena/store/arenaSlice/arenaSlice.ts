@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 
-import { applyTreeMove } from "@/modules/library/library.utils";
+import { applyTreeMove, reuseUnchanged } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultArenaState } from "./arenaSlice.constants";
@@ -149,7 +149,12 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
       return {
         arena: {
           ...state.arena,
-          library: { status: "ready", scenes, folders, error: null },
+          library: {
+            status: "ready",
+            scenes: reuseUnchanged(state.arena.library.scenes, scenes),
+            folders: reuseUnchanged(state.arena.library.folders, folders),
+            error: null,
+          },
           expandedFolderIds: state.arena.expandedFolderIds.filter((id) => present.has(id)),
         },
       };

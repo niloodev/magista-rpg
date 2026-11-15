@@ -6,6 +6,7 @@ import {
   applyTreeMove,
   charactersIn,
   buildTreeIndex,
+  reuseUnchanged,
   countLeavesDeep,
   countCharactersDeep,
   dropPositionFor,
@@ -352,5 +353,27 @@ describe("parseLibraryShape", () => {
         0,
       );
     expect(count((parsed?.tree ?? []) as Counted[])).toBeLessThanOrEqual(40);
+  });
+});
+
+describe("reuseUnchanged", () => {
+  it("keeps the previous objects and array when a reload brings the same data", () => {
+    const previous = [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ];
+    const same = reuseUnchanged(previous, [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ]);
+    expect(same).toBe(previous);
+    const renamed = reuseUnchanged(previous, [
+      { id: "a", name: "A" },
+      { id: "b", name: "Bea" },
+    ]);
+    expect(renamed).not.toBe(previous);
+    expect(renamed[0]).toBe(previous[0]);
+    expect(renamed[1]).toEqual({ id: "b", name: "Bea" });
+    expect(reuseUnchanged(previous, [previous[1]!, previous[0]!])).not.toBe(previous);
   });
 });
