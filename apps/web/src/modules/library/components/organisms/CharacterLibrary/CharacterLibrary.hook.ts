@@ -45,7 +45,7 @@ import type { ICharacterRowItem } from "./subcomponents";
  * Loads the character library (and reloads it when the server says it changed), owns search,
  * dialogs, notices and the optimistic move used by drag and drop.
  */
-export function useCharacterLibrary() {
+export function useCharacterLibrary(onPlaceCharacter?: (character: ICharacterSummary) => void) {
   const store = useAppStoreApi();
   const socket = useTableSocket();
   const role = useApp((state) => state.session.data?.account.role);
@@ -205,11 +205,11 @@ export function useCharacterLibrary() {
       path,
       features: character.features,
       accountLabels: isGm ? accessLabels(character, accountLogins) : undefined,
-      menu: isGm ? characterMenu(character, setDialog) : undefined,
+      menu: isGm ? characterMenu(character, setDialog, onPlaceCharacter) : undefined,
     });
     if (!isGm) return playerCharacters.map((character) => toItem(character));
     return results.map(({ character, path }) => toItem(character, path));
-  }, [isGm, playerCharacters, results, accountLogins, library]);
+  }, [isGm, playerCharacters, results, accountLogins, library, onPlaceCharacter]);
 
   const loading = library.status === "idle" || library.status === "loading";
   const visibleCount = isGm ? (searching ? results.length : null) : playerCharacters.length;

@@ -49,10 +49,12 @@ import {
   fitTextureSize,
   distance,
   isEditableTarget,
+  isInVisibleArea,
   parseStoredCamera,
   scaleTokenSize,
   screenToWorld,
   tokensInRect,
+  visibleCenterPoint,
   zoomAt,
 } from "./arenaRenderer.utils";
 
@@ -344,6 +346,17 @@ export class ArenaRenderer implements IArenaRenderer {
     this.applyCamera();
   };
 
+  clientToWorld = (clientX: number, clientY: number): IArenaPoint | null => {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const point = { x: clientX - rect.left, y: clientY - rect.top };
+    if (!this.scene || !isInVisibleArea(point, this.viewport(), this.insets())) return null;
+    if (document.elementFromPoint(clientX, clientY) !== this.app.canvas) return null;
+    return screenToWorld(this.camera, point);
+  };
+
+  visibleCenter = (): IArenaPoint =>
+    screenToWorld(this.camera, visibleCenterPoint(this.viewport(), this.insets()));
+
   retryMap = (): void => {
     this.mapUrl = undefined;
     void this.setScene(this.scene);
@@ -379,6 +392,10 @@ export class ArenaRenderer implements IArenaRenderer {
       this.insetRight,
       this.insetLeft,
     );
+  }
+
+  private insets() {
+    return { top: this.options.insetTop, left: this.insetLeft, right: this.insetRight };
   }
 
   private viewport() {

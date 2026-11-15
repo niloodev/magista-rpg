@@ -25,6 +25,8 @@ export function CharacterLibrary({
   className,
   variant = "page",
   onOpenCharacter,
+  onPlaceCharacter,
+  onDropCharacter,
 }: CharacterLibraryProps) {
   const {
     isGm,
@@ -59,7 +61,7 @@ export function CharacterLibrary({
     folderSummaryOf,
     folderMenuOf,
     portraitUrlOf,
-  } = useCharacterLibrary();
+  } = useCharacterLibrary(onPlaceCharacter);
   const sidebar = variant === "sidebar";
   return (
     <Panel
@@ -114,6 +116,8 @@ export function CharacterLibrary({
             folderMenu={folderMenuOf}
             leafPortrait={portraitUrlOf}
             labels={CHARACTER_TREE_LABELS}
+            freeAxis={Boolean(onDropCharacter)}
+            onDropOutside={onDropCharacter}
             empty={<LibraryEmptyTree onNewFolder={newFolder} onNewCharacter={newCharacter} />}
             renderLeaf={(character, slots) => (
               <CharacterTreeLeaf
@@ -122,6 +126,7 @@ export function CharacterLibrary({
                 accountLogins={accountLogins}
                 onDialog={openDialog}
                 onOpen={onOpenCharacter}
+                onPlace={onPlaceCharacter}
               />
             )}
           />

@@ -24,3 +24,5 @@ export const CHARACTER_TREE_LABELS: IFolderTreeLabels = {
   moveLeaf: (name) => `Mover ficha ${name}`,
   folderActions: (name) => `Ações da pasta ${name}`,
 };
+
+export const PLACE_ON_MAP_LABEL = "Colocar no mapa";

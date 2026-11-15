@@ -5,6 +5,7 @@ import {
   arenaHint,
   arrowDelta,
   panelWidth,
+  placementPoint,
   parseArenaHint,
   parseSidebarState,
   roundPoint,
@@ -118,6 +119,17 @@ describe("arena utils", () => {
       rollsWidth: 340,
     });
     expect(parseSidebarState("not json")).toMatchObject({ open: true, width: 360 });
+  });
+
+  it("keeps a new token inside the map, or anywhere while the map size is unknown", () => {
+    expect(placementPoint({ x: -20, y: 4000.04 }, { width: 1600, height: 1000 })).toEqual({
+      x: 0,
+      y: 1000,
+    });
+    expect(placementPoint({ x: 812.34, y: 90.06 }, { width: 0, height: 0 })).toEqual({
+      x: 812.3,
+      y: 90.1,
+    });
   });
 
   it("rounds positions to one decimal", () => {

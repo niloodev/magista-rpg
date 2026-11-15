@@ -205,3 +205,29 @@ export const DEFAULT_SIDEBAR: IArenaSidebarState = {
 export const ARENA_HINT_DELAY_MS = 500;
 
 export const ARENA_PANEL_TOGGLE_POSITION = "absolute top-[calc(50%+1.75rem)] z-20 -translate-y-1/2";
+
+export const ARENA_PLACEMENT_TEXTS = {
+  npcButton: "Token avulso",
+  npcTitle: "Token avulso",
+  npcHelp:
+    "Um token sem ficha (NPC, criatura ou objeto). Ele entra no centro da vista, selecionado, e só o Mestre o controla.",
+  npcName: "Nome",
+  npcImage: "Imagem",
+  npcImageHint: "PNG, JPG, WEBP ou GIF, até 8 MB. Sem imagem, o token mostra a inicial.",
+  npcSubmit: "Criar token",
+  cancel: "Cancelar",
+  nameRequired: "Dê um nome ao token.",
+  imageTooLarge: "A imagem passa de 8 MB.",
+  imageNotSent: "O token foi criado, mas a imagem não foi enviada.",
+  noScene: "Abra uma cena para colocar tokens.",
+  dragHint: "Arraste uma ficha para o mapa para criar o token ali.",
+} as const;
+
+export const ARENA_CHARACTERS_HINT_ID = "arena-characters-hint";
+
+/** Where the selection bar sits: inside the map area, clear of the zoom column, centered and wrapping when narrow. */
+export const ARENA_SELECTION_BAR_SLOT = {
+  base: "pointer-events-none absolute right-[4.75rem] left-4 z-20 flex justify-center",
+  /** Without the token tray the bar sits on the bottom edge; with it (players), above the tray. */
+  bottom: { free: "bottom-4", aboveTray: "bottom-[5.75rem]" },
+} as const;

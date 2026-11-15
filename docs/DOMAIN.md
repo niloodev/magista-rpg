@@ -117,6 +117,7 @@ Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`ar
 Tabuleiro da mesa (estudo completo em `docs/ARENA.md`). O Mestre cria **cenas**, cada uma com um mapa (imagem até 25 MB, no máximo 16384 px de lado e 64 megapixels), organizadas numa biblioteca com pastas aninhadas (mesma ordem manual da biblioteca de fichas), e escolhe a **cena ativa**, a única que os jogadores veem; ele pode abrir outra cena em prévia sem os jogadores verem. Sem grid por enquanto: tokens têm posição livre em pixels do mapa original.
 
 - **Tokens**: de ficha (nome e retrato da ficha: avatar, ou a arte) ou de NPC (nome e imagem próprios). Cada token tem tamanho (diâmetro de 40 a 600 px do mapa) e pode ficar **oculto** (só o Mestre vê).
+- **Criar tokens**: o Mestre arrasta uma ficha da barra lateral para o mapa (o token nasce onde foi solto), usa "Colocar no mapa" no menu da ficha (centro da vista) ou cria um "Token avulso" de NPC com nome e imagem. Uma ficha pode ter vários tokens na mesma cena.
 - **Quem move**: o jogador move os tokens das fichas liberadas para a conta, só na cena ativa e se o token não estiver oculto; o Mestre move qualquer um e é o único que cria, edita, oculta e remove.
 - Excluir a ficha remove os tokens dela; excluir a cena remove os tokens e o mapa.
 

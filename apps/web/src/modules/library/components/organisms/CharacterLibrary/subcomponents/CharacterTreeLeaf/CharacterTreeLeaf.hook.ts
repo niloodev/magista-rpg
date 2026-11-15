@@ -14,6 +14,7 @@ export function useCharacterTreeLeaf({
   character,
   accountLogins,
   onDialog,
+  onPlace,
 }: Omit<CharacterTreeLeafProps, "slots" | "onOpen">) {
   return useMemo(
     () => ({
@@ -21,8 +22,8 @@ export function useCharacterTreeLeaf({
       href: `/ficha/${character.id}`,
       portraitUrl: toMediaUrl(portraitOf(character)),
       accountLabels: accessLabels(character, accountLogins),
-      menu: characterMenu(character, onDialog),
+      menu: characterMenu(character, onDialog, onPlace),
     }),
-    [character, accountLogins, onDialog],
+    [character, accountLogins, onDialog, onPlace],
   );
 }

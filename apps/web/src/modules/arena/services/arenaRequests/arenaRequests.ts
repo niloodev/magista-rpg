@@ -1,6 +1,9 @@
 import {
+  ARENA_IMAGE_FIELD,
   isErrorResult,
   type ControllerResult,
+  type IArenaToken,
+  type ICreateArenaTokenInput,
   type IArenaMoveResult,
   type IArenaTokenPatch,
   type IArenaView,
@@ -19,6 +22,32 @@ import type { MoveArenaTokensResult } from "./arenaRequests.types";
 export function fetchArena(sceneId?: string): Promise<ControllerResult<IArenaView>> {
   const query = sceneId ? `?sceneId=${encodeURIComponent(sceneId)}` : "";
   return apiRequest<IArenaView>(`/arena${query}`);
+}
+
+/**
+ * Creates a token on a scene (GM): a sheet token (`characterId`) or an NPC (`name`), at a map point. The table
+ * receives it via "arena:token".
+ */
+export function createArenaToken(
+  sceneId: string,
+  input: ICreateArenaTokenInput,
+): Promise<ControllerResult<{ token: IArenaToken }>> {
+  return apiRequest<{ token: IArenaToken }>(`/arena/scenes/${sceneId}/tokens`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/**
+ * Sends the image of an NPC token (GM).
+ */
+export function uploadArenaTokenImage(
+  tokenId: string,
+  file: File,
+): Promise<ControllerResult<unknown>> {
+  const formData = new FormData();
+  formData.append(ARENA_IMAGE_FIELD, file);
+  return apiRequest(`/arena/tokens/${tokenId}/image`, { method: "PUT", formData });
 }
 
 /**

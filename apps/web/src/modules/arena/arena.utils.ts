@@ -1,6 +1,8 @@
 import {
   ARENA_NAME_MAX_LENGTH,
   canControlToken,
+  clampToMap,
+  type IArenaBounds,
   type IArenaPoint,
   type IArenaToken,
   type IArenaView,
@@ -191,4 +193,12 @@ export function saveSidebarState(state: IArenaSidebarState): void {
   } catch {
     return;
   }
+}
+
+/**
+ * Where a new token lands: the point kept inside the map (when the map size is known) and rounded.
+ */
+export function placementPoint(point: IArenaPoint, bounds: IArenaBounds): IArenaPoint {
+  const inside = bounds.width > 0 && bounds.height > 0 ? clampToMap(point, bounds) : point;
+  return roundPoint(inside);
 }

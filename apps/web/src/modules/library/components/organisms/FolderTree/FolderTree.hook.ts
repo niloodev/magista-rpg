@@ -70,6 +70,10 @@ export function useFolderTree<L extends ITreeLeaf>({
   const [drag, setDrag] = useState<ITreeDragState>(IDLE_TREE_DRAG);
   const targetRef = useRef<IDropTarget | null>(null);
   const expandTimer = useRef<{ dragId: string; timer: number } | null>(null);
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const trackPointer = useRef((event: PointerEvent) => {
+    lastPointer.current = { x: event.clientX, y: event.clientY };
+  });
   const reducedMotion = usePrefersReducedMotion();
   const overlayRoot = useDocumentBody();
   const sensors = useSensors(
@@ -84,6 +88,11 @@ export function useFolderTree<L extends ITreeLeaf>({
   };
 
   useEffect(() => clearExpandTimer, []);
+
+  useEffect(() => {
+    const listener = trackPointer.current;
+    return () => window.removeEventListener("pointermove", listener);
+  }, []);
 
   const folders = useMemo(() => {
     const leafView = (leaf: L): ITreeLeafView => ({
@@ -151,8 +160,16 @@ export function useFolderTree<L extends ITreeLeaf>({
     };
   };
 
+  const stopTrackingPointer = () => {
+    window.removeEventListener("pointermove", trackPointer.current);
+    lastPointer.current = null;
+  };
+
   const onDragStart = ({ active, activatorEvent }: DragStartEvent) => {
     targetRef.current = null;
+    stopTrackingPointer();
+    if (onDropOutside && !(activatorEvent instanceof KeyboardEvent))
+      window.addEventListener("pointermove", trackPointer.current);
     setDrag({
       activeId: String(active.id),
       keyboard: activatorEvent instanceof KeyboardEvent,
@@ -171,6 +188,7 @@ export function useFolderTree<L extends ITreeLeaf>({
 
   const finish = () => {
     clearExpandTimer();
+    stopTrackingPointer();
     setDrag(IDLE_TREE_DRAG);
   };
 
@@ -178,10 +196,11 @@ export function useFolderTree<L extends ITreeLeaf>({
     const target = dropTargetOf({ ...event, keyboard: drag.keyboard });
     const keyboard = drag.keyboard;
     if (!keyboard) blockNextClick(POST_DROP_CLICK_GUARD_MS);
+    const pointer = lastPointer.current;
     finish();
     const active = fromDragId(event.active.id);
     if (!target) {
-      const point = keyboard ? null : releasePoint(event.activatorEvent, event.delta);
+      const point = keyboard ? null : (pointer ?? releasePoint(event.activatorEvent, event.delta));
       const leaf = active.kind === leafKind ? leaves.find((item) => item.id === active.id) : null;
       if (point && leaf && !event.over) onDropOutside?.(leaf, point);
       return;

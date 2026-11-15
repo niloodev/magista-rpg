@@ -11,6 +11,8 @@ import {
   screenToWorld,
   tokensInRect,
   zoomAt,
+  isInVisibleArea,
+  visibleCenterPoint,
 } from "./arenaRenderer.utils";
 
 describe("arena camera", () => {
@@ -101,5 +103,22 @@ describe("arena camera", () => {
       centerCamera({ x: 0, y: 0, scale: 1 }, { x: 0, y: 0 }, { width: 1000, height: 800 }, 0, 200)
         .x,
     ).toBe(400);
+  });
+});
+
+describe("visible area", () => {
+  const viewport = { width: 1440, height: 900 };
+  const insets = { top: 56, left: 340, right: 360 };
+
+  it("finds the center between the panels and below the top bar", () => {
+    expect(visibleCenterPoint(viewport, insets)).toEqual({ x: 710, y: 478 });
+    expect(visibleCenterPoint({ width: 100, height: 40 }, insets)).toEqual({ x: 340, y: 56 });
+  });
+
+  it("tells points on the map from points under a panel or the top bar", () => {
+    expect(isInVisibleArea({ x: 700, y: 400 }, viewport, insets)).toBe(true);
+    expect(isInVisibleArea({ x: 200, y: 400 }, viewport, insets)).toBe(false);
+    expect(isInVisibleArea({ x: 1200, y: 400 }, viewport, insets)).toBe(false);
+    expect(isInVisibleArea({ x: 700, y: 30 }, viewport, insets)).toBe(false);
   });
 });

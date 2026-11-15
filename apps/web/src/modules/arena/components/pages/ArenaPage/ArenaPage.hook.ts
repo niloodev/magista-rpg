@@ -33,6 +33,7 @@ import {
   ARENA_PREVIEW_TEXTS,
   ARENA_SELECTION_TEXTS,
   ARENA_SIZE_COMMIT_MS,
+  ARENA_SELECTION_BAR_SLOT,
 } from "@/modules/arena/arena.constants";
 import type {
   ArenaSelectionMode,
@@ -58,6 +59,7 @@ import {
   setArenaLiveScene,
   updateArenaTokens,
 } from "@/modules/arena/services";
+import { useArenaTokenPlacement } from "@/modules/arena/hooks";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
@@ -418,6 +420,13 @@ export function useArenaPage() {
   const insetRight = sidebar.open ? sidebar.width : 0;
 
   const scene = view?.scene ?? null;
+  const placement = useArenaTokenPlacement({
+    sceneId: scene?.id ?? null,
+    enabled: isGm && status === "ready",
+    controlsRef,
+    boundsRef,
+    onError: setActionError,
+  });
   const stageScene = useMemo(
     () => (scene ? { id: scene.id, mapUrl: toMediaUrl(scene.mapUrl) } : null),
     [scene],
@@ -497,6 +506,18 @@ export function useArenaPage() {
     onSidebarTab: (tab: ArenaSidebarTab) => updateSidebar({ tab }),
     onSidebarOpen: (open: boolean) => updateSidebar({ open }),
     onOpenCharacter: (characterId: string) => openPopout({ kind: "sheet", id: characterId }),
+    canPlace: Boolean(scene) && status === "ready",
+    onPlaceCharacter: placement.placeCharacter,
+    onDropCharacter: placement.dropCharacter,
+    npcDialogOpen: placement.npcDialogOpen,
+    onNewNpc: placement.openNpcDialog,
+    onCloseNpc: placement.closeNpcDialog,
+    selectionSlotClassName: `${ARENA_SELECTION_BAR_SLOT.base} ${
+      trayTokens.length > 0
+        ? ARENA_SELECTION_BAR_SLOT.bottom.aboveTray
+        : ARENA_SELECTION_BAR_SLOT.bottom.free
+    }`,
+    onSubmitNpc: placement.submitNpc,
     liveSceneId,
     viewingSceneId,
     onPreviewScene,

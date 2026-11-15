@@ -12,7 +12,7 @@ import {
   ARENA_ZOOM_MAX,
   ARENA_ZOOM_MIN,
 } from "./arenaRenderer.constants";
-import type { IArenaCamera, IArenaViewport } from "./arenaRenderer.types";
+import type { IArenaCamera, IArenaInsets, IArenaViewport } from "./arenaRenderer.types";
 
 /**
  * Keeps the zoom inside the allowed range.
@@ -156,4 +156,30 @@ export function isEditableTarget(target: EventTarget | null): boolean {
  */
 export function scaleTokenSize(size: number, factor: number): number {
   return Math.min(Math.max(Math.round(size * factor), ARENA_TOKEN_SIZE_MIN), ARENA_TOKEN_SIZE_MAX);
+}
+
+/**
+ * Center (in canvas pixels) of the part of the canvas not covered by the HUD.
+ */
+export function visibleCenterPoint(viewport: IArenaViewport, insets: IArenaInsets): IArenaPoint {
+  return {
+    x: insets.left + Math.max(viewport.width - insets.left - insets.right, 0) / 2,
+    y: insets.top + Math.max(viewport.height - insets.top, 0) / 2,
+  };
+}
+
+/**
+ * Whether a canvas point is on the visible map area (not under the top bar or a side panel).
+ */
+export function isInVisibleArea(
+  point: IArenaPoint,
+  viewport: IArenaViewport,
+  insets: IArenaInsets,
+): boolean {
+  return (
+    point.x >= insets.left &&
+    point.x <= viewport.width - insets.right &&
+    point.y >= insets.top &&
+    point.y <= viewport.height
+  );
 }

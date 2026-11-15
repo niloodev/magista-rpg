@@ -1,4 +1,4 @@
-import type { IArenaBounds, IMoveArenaTokenInput } from "@magista/shared";
+import type { IArenaBounds, IArenaPoint, IMoveArenaTokenInput } from "@magista/shared";
 
 import type { ArenaSelectionMode, IArenaSizeUpdate } from "@/modules/arena/arena.types";
 
@@ -11,6 +11,13 @@ export interface IArenaCamera {
 export interface IArenaViewport {
   width: number;
   height: number;
+}
+
+/** Parts of the canvas covered by the HUD (top bar and side panels), in CSS pixels. */
+export interface IArenaInsets {
+  top: number;
+  left: number;
+  right: number;
 }
 
 export type ArenaTokenTone = "own" | "other";
@@ -62,6 +69,10 @@ export interface IArenaRenderer {
   zoomBy: (factor: number) => void;
   fitToMap: () => void;
   centerOn: (tokenId: string) => void;
+  /** Map point under a page point, or null when it falls outside the visible map area (under a panel or a control). */
+  clientToWorld: (clientX: number, clientY: number) => IArenaPoint | null;
+  /** Map point at the center of the visible area (between the panels, below the top bar). */
+  visibleCenter: () => IArenaPoint;
   retryMap: () => void;
   destroy: () => void;
 }

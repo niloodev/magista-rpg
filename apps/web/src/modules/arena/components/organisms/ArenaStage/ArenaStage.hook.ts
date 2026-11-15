@@ -127,6 +127,9 @@ export function useArenaStage({
       zoomOut: () => rendererRef.current?.zoomBy(1 / ARENA_ZOOM_STEP),
       fit: () => rendererRef.current?.fitToMap(),
       centerOn: (tokenId) => rendererRef.current?.centerOn(tokenId),
+      clientToWorld: (clientX, clientY) =>
+        rendererRef.current?.clientToWorld(clientX, clientY) ?? null,
+      visibleCenter: () => rendererRef.current?.visibleCenter() ?? null,
       retryMap: () => rendererRef.current?.retryMap(),
     }),
     [],

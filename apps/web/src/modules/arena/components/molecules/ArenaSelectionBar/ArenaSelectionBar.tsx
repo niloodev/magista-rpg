@@ -25,7 +25,7 @@ export function ArenaSelectionBar({
   return (
     <section
       aria-label={ARENA_SELECTION_TEXTS.region}
-      className={`flex items-center gap-3 whitespace-nowrap border border-white/10 bg-black/70 px-3 py-2 backdrop-blur-sm lite:bg-void-900/95 lite:backdrop-blur-none ${className ?? ""}`}
+      className={`flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 whitespace-nowrap border border-white/10 bg-black/70 px-3 py-2 backdrop-blur-sm lite:bg-void-900/95 lite:backdrop-blur-none ${className ?? ""}`}
     >
       <span className="font-sans text-[15px] text-muted-strong" aria-live="polite">
         {label}

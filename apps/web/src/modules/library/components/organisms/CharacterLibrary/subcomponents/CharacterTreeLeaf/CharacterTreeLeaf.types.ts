@@ -9,4 +9,5 @@ export interface CharacterTreeLeafProps {
   accountLogins: Map<string, string>;
   onDialog: (dialog: LibraryDialog) => void;
   onOpen?: (characterId: string) => void;
+  onPlace?: (character: ICharacterSummary) => void;
 }

@@ -7,19 +7,20 @@ import {
   ARENA_NO_MAP_LABEL,
   ARENA_SELECTION_TEXTS,
 } from "@/modules/arena/arena.constants";
-import { CharacterLibrary } from "@/modules/library/components";
 import { ProfileDialog } from "@/modules/profile/components";
 import { Button, Icon } from "@/shared/components/atoms";
 import { ConfirmDialog } from "@/shared/components/molecules";
 
 import { ArenaNotice, ArenaSelectionBar, ArenaTokenTray, ArenaZoomControls } from "../../molecules";
 import {
+  ArenaCharactersTab,
   ArenaMobileNotice,
   ArenaRollsPanel,
   ArenaSidebar,
   ArenaSkeleton,
   ArenaStage,
   ArenaTopBar,
+  NpcTokenDialog,
   SceneLibrary,
 } from "../../organisms";
 import { useArenaPage } from "./ArenaPage.hook";
@@ -90,6 +91,14 @@ export function ArenaPage() {
     onSidebarTab,
     onSidebarOpen,
     onOpenCharacter,
+    canPlace,
+    onPlaceCharacter,
+    onDropCharacter,
+    npcDialogOpen,
+    onNewNpc,
+    onCloseNpc,
+    selectionSlotClassName,
+    onSubmitNpc,
     liveSceneId,
     viewingSceneId,
     onPreviewScene,
@@ -194,18 +203,20 @@ export function ArenaPage() {
           />
         )}
         {scene && selection && (
-          <ArenaSelectionBar
-            className="pointer-events-auto absolute bottom-4 left-1/2 z-20 -translate-x-1/2"
-            label={selection.label}
-            isGm={isGm}
-            size={selection.size}
-            allHidden={selection.allHidden}
-            canOpenSheet={selection.canOpenSheet}
-            onSizeChange={onSizeChange}
-            onToggleHidden={onToggleHidden}
-            onOpenSheet={onOpenSheet}
-            onRemove={onRequestRemove}
-          />
+          <div className={selectionSlotClassName}>
+            <ArenaSelectionBar
+              className="pointer-events-auto"
+              label={selection.label}
+              isGm={isGm}
+              size={selection.size}
+              allHidden={selection.allHidden}
+              canOpenSheet={selection.canOpenSheet}
+              onSizeChange={onSizeChange}
+              onToggleHidden={onToggleHidden}
+              onOpenSheet={onOpenSheet}
+              onRemove={onRequestRemove}
+            />
+          </div>
         )}
         {scene && (
           <ArenaZoomControls
@@ -225,7 +236,16 @@ export function ArenaPage() {
         width={sidebarWidth}
         onResize={onSidebarResize}
         onResizeCommit={onSidebarResizeCommit}
-        characters={<CharacterLibrary variant="sidebar" onOpenCharacter={onOpenCharacter} />}
+        characters={
+          <ArenaCharactersTab
+            isGm={isGm}
+            canPlace={canPlace}
+            onOpenCharacter={onOpenCharacter}
+            onPlaceCharacter={onPlaceCharacter}
+            onDropCharacter={onDropCharacter}
+            onNewNpc={onNewNpc}
+          />
+        }
         scenes={
           <SceneLibrary
             liveSceneId={liveSceneId}
@@ -247,6 +267,7 @@ export function ArenaPage() {
         {announcement}
       </p>
       <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
+      {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
     </main>
   );
 }

@@ -12,11 +12,13 @@ export function CharacterTreeLeaf({
   accountLogins,
   onDialog,
   onOpen,
+  onPlace,
 }: CharacterTreeLeafProps) {
   const { subtitle, href, portraitUrl, accountLabels, menu } = useCharacterTreeLeaf({
     character,
     accountLogins,
     onDialog,
+    onPlace,
   });
   return (
     <CharacterRow

@@ -2,6 +2,7 @@
 
 import {
   ARENA_PANEL_TOGGLE_POSITION,
+  ARENA_PLACEMENT_TEXTS,
   ARENA_BACK_LABEL,
   ARENA_ROLLS_TEXTS,
   ARENA_SIDEBAR_TEXTS,
@@ -188,7 +189,23 @@ export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
                     <SceneLibrarySkeleton announce={false} />
                   </div>
                 ) : (
-                  <CharacterLibrarySkeleton known={known} gm={gm} variant="sidebar" />
+                  <div className="flex flex-col gap-4">
+                    {gm && (
+                      <div className="flex flex-col gap-2">
+                        <ButtonSkeleton
+                          label={ARENA_PLACEMENT_TEXTS.npcButton}
+                          size="sm"
+                          icon="user-plus"
+                          disabled={noScene}
+                          className="w-full"
+                        />
+                        <p className="font-sans text-xs text-muted-strong">
+                          {noScene ? ARENA_PLACEMENT_TEXTS.noScene : ARENA_PLACEMENT_TEXTS.dragHint}
+                        </p>
+                      </div>
+                    )}
+                    <CharacterLibrarySkeleton known={known} gm={gm} variant="sidebar" />
+                  </div>
                 )}
               </div>
             </div>

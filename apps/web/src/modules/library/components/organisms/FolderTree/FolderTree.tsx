@@ -78,7 +78,10 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
       </div>
       {overlayRoot &&
         createPortal(
-          <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+          <DragOverlay
+            dropAnimation={reducedMotion ? null : undefined}
+            className="pointer-events-none"
+          >
             {preview && (
               <DragPreview
                 kind={preview.kind}
