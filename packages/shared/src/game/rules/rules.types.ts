@@ -1,4 +1,5 @@
 import type { AttributeKey, SkillKey } from "../catalog/catalog.types";
+import type { IFeatureBonusTerm } from "../features/features.types";
 
 export interface IDerivedAttribute {
   value: number;
@@ -13,6 +14,11 @@ export interface IDerivedAbility {
 
 export interface IDerivedSheet {
   proficiency: number;
+  d20Bonus: number;
+  /** Where the d20 bonus comes from (one term per special feature). */
+  d20BonusTerms: IFeatureBonusTerm[];
+  /** Skill value used by the test roll: skill plus the d20 bonus. */
+  skillTests: Record<SkillKey, number>;
   attributes: Record<AttributeKey, IDerivedAttribute>;
   skills: Record<SkillKey, number>;
   armorBonus: number;

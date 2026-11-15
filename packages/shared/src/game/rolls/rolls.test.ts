@@ -27,6 +27,23 @@ describe("rolls", () => {
     );
   });
 
+  it("adds the Marca bonus to every d20 test but not to damage or dice", () => {
+    const marked = { features: ["marked"] as const };
+    const roll = (kind: Parameters<typeof buildRollSpec>[1]) =>
+      buildRollSpec(sheet, kind, marked)?.rows.map((row) => row.expression);
+    expect(roll({ kind: "attribute", key: "con" })).toEqual(["1d20 + 2 + 2"]);
+    expect(roll({ kind: "skill", key: "acrobacia" })).toEqual(["1d20 - 1 + 2"]);
+    expect(roll({ kind: "initiative" })).toEqual(["1d20 - 1 + 2"]);
+    expect(roll({ kind: "block", key: "firme" })).toEqual(["1d20 + 2 + 2"]);
+    expect(roll({ kind: "counterAttack" })).toEqual(["1d20 + 2"]);
+    expect(roll({ kind: "lifeDie" })).toEqual(
+      buildRollSpec(sheet, { kind: "lifeDie" })?.rows.map((row) => row.expression),
+    );
+    expect(roll({ kind: "baseDamage" })).toEqual(
+      buildRollSpec(sheet, { kind: "baseDamage" })?.rows.map((row) => row.expression),
+    );
+  });
+
   it("computes Bloqueio Firme reductions with the raw CON value", () => {
     const spec = buildRollSpec(sheet, { kind: "block", key: "firme" });
     expect(spec?.notes[0]).toContain("9");
@@ -96,6 +113,18 @@ describe("rolls", () => {
       },
     ];
     const spec = buildRollSpec(armed, { kind: "ability", list: "abilities", id: "golpe" });
+
+    it("adds the Marca bonus to the attack only", () => {
+      const marked = buildRollSpec(
+        armed,
+        { kind: "ability", list: "abilities", id: "golpe" },
+        { features: ["marked"] },
+      );
+      expect(marked?.rows.map((row) => row.expression)).toEqual([
+        "1d20 + 2",
+        spec?.rows[1]?.expression,
+      ]);
+    });
 
     it("marks the attack and damage rows", () => {
       expect(spec?.rows.map((row) => row.role)).toEqual(["attack", "damage"]);

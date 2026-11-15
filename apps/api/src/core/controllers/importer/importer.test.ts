@@ -11,7 +11,7 @@ const savedCharacter = {
   id: "char-1",
   name: "Talis",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   updatedAt: "",
@@ -25,16 +25,22 @@ function buildDeps(existing: unknown = null, current: unknown = null): IImporter
     },
     characters: {
       upsertCharacter: vi.fn().mockResolvedValue(savedCharacter),
-      updateMedia: vi.fn().mockResolvedValue(savedCharacter),
+      setImageKey: vi.fn().mockResolvedValue({
+        images: { id: "char-1", avatarUrl: null, artUrl: null },
+        previousKey: "old-art",
+      }),
       findByAccountAndName: vi.fn().mockResolvedValue(current),
     },
     hashPassword: vi.fn().mockResolvedValue("hash"),
     generatePassword: () => "senha-gerada",
-    storeMedia: vi.fn().mockResolvedValue("/media/avatars/char-1.png"),
+    images: {
+      store: vi.fn().mockResolvedValue("characters/char-1/art-new.png"),
+      remove: vi.fn().mockResolvedValue(undefined),
+    },
   };
 }
 
-const input = { raw, avatarPath: "/tmp/avatar.png", tokenPath: null, force: false };
+const input = { raw, avatar: null, art: Buffer.from("png"), force: false };
 
 describe("importer controller", () => {
   it("creates account, character and avatar for a new player", async () => {
@@ -50,9 +56,13 @@ describe("importer controller", () => {
         }),
       }),
     );
-    expect(deps.characters.updateMedia).toHaveBeenCalledWith("char-1", {
-      avatarUrl: "/media/avatars/char-1.png",
-    });
+    expect(deps.images.store).toHaveBeenCalledWith("char-1", "art", input.art);
+    expect(deps.characters.setImageKey).toHaveBeenCalledWith(
+      "char-1",
+      "art",
+      "characters/char-1/art-new.png",
+    );
+    expect(deps.images.remove).toHaveBeenCalledWith("old-art");
   });
 
   it("skips existing characters unless forced, never resetting passwords", async () => {
@@ -84,9 +94,17 @@ describe("importer controller", () => {
     });
   });
 
+  it("warns when an exported image is not a supported format", async () => {
+    const deps = buildDeps();
+    deps.images.store = vi.fn().mockResolvedValue(null);
+    const result = await createImporterController(deps).importCharacter(input);
+    expect(result).toMatchObject({ payload: { mediaWarning: importerErrors.mediaFailed } });
+    expect(deps.characters.setImageKey).not.toHaveBeenCalled();
+  });
+
   it("keeps the account and generated password when copying media fails", async () => {
     const deps = buildDeps();
-    deps.storeMedia = vi.fn().mockRejectedValue(new Error("disk full"));
+    deps.images.store = vi.fn().mockRejectedValue(new Error("disk full"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const result = await createImporterController(deps).importCharacter(input);
     expect(result).toMatchObject({

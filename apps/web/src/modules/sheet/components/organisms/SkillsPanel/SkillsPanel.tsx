@@ -1,6 +1,7 @@
 import { ATTRIBUTE_LABELS, SKILLS } from "@magista/shared";
 
 import type { SheetSectionProps } from "@/modules/sheet/sheet.types";
+import { bonusNote } from "@/modules/sheet/sheet.utils";
 import { Panel, SectionHeader } from "@/shared/components/molecules";
 
 import { SkillRow } from "./subcomponents";
@@ -11,6 +12,7 @@ export function SkillsPanel({ sheet, derived, onEdit, onRoll }: SheetSectionProp
       <SectionHeader title="Perícias" icon="search" />
       <p className="mb-2 font-sans text-sm text-muted-strong">
         Marque a proficiência e clique na perícia para rolar.
+        {bonusNote(derived.d20BonusTerms)}
       </p>
       <ul>
         {SKILLS.map((skill) => (
@@ -18,7 +20,7 @@ export function SkillsPanel({ sheet, derived, onEdit, onRoll }: SheetSectionProp
             key={skill.key}
             name={skill.name}
             attribute={ATTRIBUTE_LABELS[skill.attribute].short}
-            value={derived.skills[skill.key]}
+            value={derived.skillTests[skill.key]}
             proficient={sheet.skills[skill.key].proficient}
             onProficientChange={(proficient) =>
               onEdit((draft) => void (draft.skills[skill.key].proficient = proficient))

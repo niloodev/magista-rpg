@@ -11,7 +11,7 @@ import {
 import type { IconName } from "@/shared/components/atoms";
 import type { TabItem } from "@/shared/components/molecules";
 
-import type { SaveStatus, SheetTab } from "./sheet.types";
+import type { SaveStatus, SheetTab, SheetVariant } from "./sheet.types";
 
 export const AUTOSAVE_DEBOUNCE_MS = 700;
 
@@ -68,3 +68,8 @@ export const OPENING_PIPS = 4;
 export const SHEET_ART_HINT_KEY = "a";
 
 export const PING_FEEDBACK_MS = 2500;
+
+export const SHEET_MAIN_CLASSES: Record<SheetVariant, string> = {
+  page: "relative isolate min-h-screen bg-void-900 px-4 pb-24",
+  window: "relative isolate min-h-screen bg-void-900 px-4 pb-10",
+};

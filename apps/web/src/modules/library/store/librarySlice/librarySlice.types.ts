@@ -1,4 +1,9 @@
-import type { IAccount, IMoveLibraryItemInput } from "@magista/shared";
+import type {
+  IAccount,
+  ICharacterFeaturesEvent,
+  ICharacterImages,
+  IMoveLibraryItemInput,
+} from "@magista/shared";
 
 import type { ILibraryData } from "@/modules/library/library.types";
 import type { LoadStatus } from "@/shared/types";
@@ -23,6 +28,8 @@ export interface LibraryActions {
   setLibraryQuery: (query: string) => void;
   applyLibraryMove: (move: IMoveLibraryItemInput) => ILibraryData;
   restoreLibraryData: (data: ILibraryData) => void;
+  applyLibraryImages: (images: ICharacterImages) => void;
+  applyLibraryFeatures: (event: ICharacterFeaturesEvent) => void;
 }
 
 export type LibrarySlice = LibraryState & LibraryActions;

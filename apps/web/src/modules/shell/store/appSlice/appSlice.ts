@@ -2,6 +2,7 @@ import { createStore } from "zustand/vanilla";
 
 import { createSessionSlice } from "@/modules/auth/store";
 import { createLibrarySlice } from "@/modules/library/store";
+import { createMarkedSlice } from "@/modules/marked/store";
 import { createSheetSlice } from "@/modules/sheet/store";
 import { createTableSlice } from "@/modules/table/store";
 
@@ -16,5 +17,6 @@ export function createAppStore() {
     ...createTableSlice(...args),
     ...createSheetSlice(...args),
     ...createLibrarySlice(...args),
+    ...createMarkedSlice(...args),
   }));
 }

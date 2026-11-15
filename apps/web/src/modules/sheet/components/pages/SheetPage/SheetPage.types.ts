@@ -1,7 +1,10 @@
 import type { ControllerResult, ICharacter, ICharacterSheet } from "@magista/shared";
 
+import type { SheetVariant } from "@/modules/sheet/sheet.types";
+
 export interface SheetPageProps {
   characterId: string;
+  variant?: SheetVariant;
 }
 
 export type SaveAttemptOutcome = "done" | "conflict";

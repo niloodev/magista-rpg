@@ -1,10 +1,17 @@
 "use client";
 
+import { CharacterImagesDialog } from "@/modules/library/components/organisms/CharacterImagesDialog";
 import { ConfirmDialog } from "@/shared/components/molecules";
 
 import { useLibraryDialogs } from "./LibraryDialogs.hook";
 import type { LibraryDialogsProps } from "./LibraryDialogs.types";
-import { AccessDialog, AccountsDialog, MoveDialog, NameDialog } from "./subcomponents";
+import {
+  AccessDialog,
+  AccountsDialog,
+  FeaturesDialog,
+  MoveDialog,
+  NameDialog,
+} from "./subcomponents";
 
 export function LibraryDialogs(props: LibraryDialogsProps) {
   const {
@@ -18,10 +25,12 @@ export function LibraryDialogs(props: LibraryDialogsProps) {
     submitName,
     submitMove,
     submitAccess,
+    submitFeatures,
     submitAccount,
     confirmDelete,
     deleteMessage,
     openAccounts,
+    onNotice,
     onClose,
   } = useLibraryDialogs(props);
   return (
@@ -57,6 +66,7 @@ export function LibraryDialogs(props: LibraryDialogsProps) {
           maxLength={characterNameMax}
           folderOptions={allFolderOptions}
           initialFolderId={dialog.folderId}
+          withImages
           onSubmit={submitName}
           onClose={onClose}
         />
@@ -69,6 +79,18 @@ export function LibraryDialogs(props: LibraryDialogsProps) {
           initialName={dialog.character.name}
           maxLength={characterNameMax}
           onSubmit={submitName}
+          onClose={onClose}
+        />
+      )}
+      {dialog?.type === "images" && (
+        <CharacterImagesDialog
+          key={dialog.character.id}
+          characterId={dialog.character.id}
+          characterName={dialog.character.name}
+          avatarUrl={dialog.character.avatarUrl}
+          artUrl={dialog.character.artUrl}
+          initialError={dialog.error}
+          onSaved={onNotice}
           onClose={onClose}
         />
       )}
@@ -88,6 +110,14 @@ export function LibraryDialogs(props: LibraryDialogsProps) {
           initialAccountIds={dialog.character.accountIds}
           onSubmit={submitAccess}
           onManageAccounts={openAccounts}
+          onClose={onClose}
+        />
+      )}
+      {dialog?.type === "features" && (
+        <FeaturesDialog
+          characterName={dialog.character.name}
+          initialFeatures={dialog.character.features}
+          onSubmit={submitFeatures}
           onClose={onClose}
         />
       )}

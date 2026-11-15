@@ -18,13 +18,16 @@ export function SheetHeaderSkeleton({ gm, art }: SheetHeaderSkeletonProps) {
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Text variant="micro">Ficha do jogador</Text>
+            <div className="mb-2 flex min-h-6 flex-wrap items-center gap-x-4 gap-y-2">
+              <Text variant="micro">Ficha do jogador</Text>
+            </div>
             <p className="font-serif text-4xl md:text-5xl">
               <Skeleton shape="text" className="w-80 max-w-full" />
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <ButtonSkeleton label="Editar identidade" size="sm" icon="pen-line" />
+            {gm && <ButtonSkeleton label="Imagens" size="sm" icon="image" />}
             <ButtonSkeleton
               label="Subir de nível"
               size="sm"

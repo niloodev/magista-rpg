@@ -1,4 +1,4 @@
-import type { IMoveLibraryItemInput } from "@magista/shared";
+import type { FeatureKey, IMoveLibraryItemInput } from "@magista/shared";
 
 import type { DropPosition, ILibraryData, LibraryDialog } from "@/modules/library/library.types";
 import type { ActionMenuItem } from "@/shared/components/molecules";
@@ -26,6 +26,7 @@ export interface ITreeCharacterView {
   href: string;
   portraitUrl: string | null;
   accountLabels: string[];
+  features: FeatureKey[];
   menu: ActionMenuItem[];
 }
 

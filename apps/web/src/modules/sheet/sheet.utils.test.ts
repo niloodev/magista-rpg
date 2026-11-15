@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bonusNote,
   createAbility,
   createItem,
   formatSigned,
@@ -18,8 +19,8 @@ describe("sheet utils", () => {
   });
 
   it("prefers the round token for portraits", () => {
-    expect(portraitOf({ tokenUrl: "/t.png", avatarUrl: "/a.png" })).toBe("/t.png");
-    expect(portraitOf({ tokenUrl: null, avatarUrl: "/a.png" })).toBe("/a.png");
+    expect(portraitOf({ avatarUrl: "/t.png", artUrl: "/a.png" })).toBe("/t.png");
+    expect(portraitOf({ avatarUrl: null, artUrl: "/a.png" })).toBe("/a.png");
   });
 
   it("creates blank entries with unique ids", () => {
@@ -43,5 +44,17 @@ describe("sheet utils", () => {
     expect(validateItem({ ...createItem(), name: "Escudo", armorBonus: 5000 })).toHaveProperty(
       "armorBonus",
     );
+  });
+
+  it("describes the special feature bonuses already in the shown values", () => {
+    expect(bonusNote([])).toBe("");
+    expect(bonusNote([{ label: "Marca", value: 2 }])).toBe(" Valores já somam +2 da Marca.");
+    expect(
+      bonusNote([
+        { label: "Marca", value: 2 },
+        { label: "Fúria", value: 1 },
+        { label: "Bênção", value: 1 },
+      ]),
+    ).toBe(" Valores já somam +2 da Marca, +1 da Fúria e +1 da Bênção.");
   });
 });

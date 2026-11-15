@@ -39,6 +39,7 @@ export default async function globalSetup(): Promise<void> {
     data: { sheet, baseUpdatedAt: current.updatedAt },
   });
   if (!saved.ok()) throw new Error(`Não foi possível resetar a ficha de teste: ${saved.status()}`);
+  await gm.put(`/characters/${player.id}/features`, { data: { features: [] } });
   mkdirSync(dirname(STATE_FILE), { recursive: true });
   writeFileSync(
     STATE_FILE,

@@ -4,7 +4,7 @@ import express, { type Express } from "express";
 import helmet from "helmet";
 
 import { getEnv } from "@/core/services/env";
-import { getMediaRoot, MEDIA_ROUTE } from "@/core/services/media";
+import { MEDIA_ROUTE } from "@/core/services/media";
 import { apiRateLimit, errorHandler, notFoundHandler } from "@/middlewares";
 import {
   accountRoutes,
@@ -13,6 +13,7 @@ import {
   folderRoutes,
   healthRoutes,
   libraryRoutes,
+  mediaRoutes,
 } from "@/routes";
 
 /**
@@ -25,14 +26,7 @@ export function createApp(): Express {
   app.use(helmet({ crossOriginResourcePolicy: { policy: "same-site" } }));
   app.use(apiRateLimit);
   app.use(cors({ origin: getEnv().WEB_ORIGIN, credentials: true }));
-  app.use(
-    MEDIA_ROUTE,
-    express.static(getMediaRoot(), {
-      maxAge: "7d",
-      fallthrough: false,
-      setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
-    }),
-  );
+  app.use(MEDIA_ROUTE, mediaRoutes);
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
   app.use("/health", healthRoutes);

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 
+import { SHEET_MAIN_CLASSES } from "@/modules/sheet/sheet.constants";
+import { POPOUT_BUTTON_TEXT } from "@/modules/shell/components";
 import { RollFeed } from "@/modules/table/components/organisms";
 import { Icon, Skeleton } from "@/shared/components/atoms";
-import { SkeletonRegion } from "@/shared/components/molecules";
+import { ButtonSkeleton, SkeletonRegion } from "@/shared/components/molecules";
 
 import { SHEET_SKELETON_LABEL, SHEET_SKELETON_TITLE } from "./SheetSkeleton.constants";
 import { useSheetSkeleton } from "./SheetSkeleton.hook";
@@ -19,21 +21,33 @@ import {
 /**
  * Full-page placeholder of the sheet, with the same layout as `SheetPage` on its first tab.
  */
-export function SheetSkeleton({ gm = false }: SheetSkeletonProps) {
+export function SheetSkeleton({ gm = false, variant = "page" }: SheetSkeletonProps) {
   const { art } = useSheetSkeleton();
   return (
-    <main className="min-h-screen bg-void-900 px-4 pb-24" aria-busy="true">
+    <main className={SHEET_MAIN_CLASSES[variant]} aria-busy="true">
       <h1 className="sr-only">{SHEET_SKELETON_TITLE}</h1>
       <SkeletonRegion label={SHEET_SKELETON_LABEL}>
         <div className="mx-auto max-w-[1440px] pt-4">
-          <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm text-muted-strong">
-            <Link
-              href="/mesa"
-              className="flex min-h-9 items-center gap-1.5 transition-colors hover:text-accent-text"
-            >
-              <Icon name="arrow-left" size={16} /> Voltar para a mesa
-            </Link>
+          <div className="mb-4 flex min-h-9 flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm text-muted-strong">
+            {variant === "page" && (
+              <Link
+                href="/mesa"
+                className="flex min-h-9 items-center gap-1.5 transition-colors hover:text-accent-text"
+              >
+                <Icon name="arrow-left" size={16} /> Voltar para a mesa
+              </Link>
+            )}
             <Skeleton className="h-3 w-32" />
+            {variant === "page" && (
+              <span className="ml-auto">
+                <ButtonSkeleton
+                  label={POPOUT_BUTTON_TEXT}
+                  size="sm"
+                  variant="ghost"
+                  icon="picture-in-picture-2"
+                />
+              </span>
+            )}
           </div>
           <SheetHeaderSkeleton gm={gm} art={art} />
         </div>

@@ -167,6 +167,7 @@ export function useCharacterLibrary() {
       href: `/ficha/${character.id}`,
       portraitUrl: toMediaUrl(portraitOf(character)),
       path,
+      features: character.features,
       accountLabels: isGm ? accessLabels(character, accountLogins) : undefined,
       menu: isGm ? characterMenu(character, setDialog) : undefined,
     });

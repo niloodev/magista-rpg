@@ -9,9 +9,9 @@ import { useRouteSkeleton } from "./RouteSkeleton.hook";
  * Skeleton of the page being opened, shown while the session is still loading.
  */
 export function RouteSkeleton() {
-  const { sheet, known, gm, loginLength } = useRouteSkeleton();
+  const { sheet, sheetWindow, known, gm, loginLength } = useRouteSkeleton();
   return sheet ? (
-    <SheetSkeleton gm={gm} />
+    <SheetSkeleton gm={gm} variant={sheetWindow ? "window" : "page"} />
   ) : (
     <TableSkeleton known={known} gm={gm} loginLength={loginLength} />
   );

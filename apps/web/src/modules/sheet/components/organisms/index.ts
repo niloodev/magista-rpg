@@ -3,7 +3,6 @@ export * from "./AttributesPanel";
 export * from "./CombatPanel";
 export * from "./InventoryPanel";
 export * from "./LevelUpModal";
-export * from "./MarkedSoulPanel";
 export * from "./SheetHeader";
 export * from "./SheetSkeleton";
 export * from "./SheetSummaryBar";

@@ -9,9 +9,10 @@ const base: ICharacter = {
   id: "c1",
   name: "Zarkov",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
+  features: [],
   updatedAt: "v1",
 };
 

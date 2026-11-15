@@ -5,8 +5,9 @@ import { isErrorResult } from "@magista/shared";
 
 import { importerController } from "@/core/controllers/importer";
 import { disconnectDatabase } from "@/core/services/database";
+import { ensureBucket } from "@/core/services/media";
 
-import { findImage } from "./importRoll20.utils";
+import { readImage } from "./importRoll20.utils";
 
 const USAGE = "Uso: npm run import:roll20 -- <pasta-dos-jogadores> [--force]";
 
@@ -15,7 +16,8 @@ async function run(): Promise<void> {
   const force = args.includes("--force");
   const folderArg = args.find((arg) => !arg.startsWith("--"));
   if (!folderArg) throw new Error(USAGE);
-  const root = resolve(folderArg);
+  const root = resolve(process.env.INIT_CWD ?? ".", folderArg);
+  await ensureBucket();
   const entries = await readdir(root, { withFileTypes: true });
   const folders = entries
     .filter((entry) => entry.isDirectory())
@@ -32,12 +34,15 @@ async function run(): Promise<void> {
       console.warn(`- ${folder}: sem character.json válido, ignorado`);
       continue;
     }
-    const result = await importerController.importCharacter({
-      raw,
-      avatarPath: await findImage(folder, "avatar"),
-      tokenPath: await findImage(folder, "token"),
-      force,
-    });
+    let images: { avatar: Buffer | null; art: Buffer | null };
+    try {
+      images = { avatar: await readImage(folder, "token"), art: await readImage(folder, "avatar") };
+    } catch (error) {
+      failures += 1;
+      console.error(`x ${folder}: ${error instanceof Error ? error.message : error}`);
+      continue;
+    }
+    const result = await importerController.importCharacter({ raw, ...images, force });
     if (isErrorResult(result)) {
       failures += 1;
       console.error(`x ${folder}: ${result.error}`);

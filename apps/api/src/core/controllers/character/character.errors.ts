@@ -5,11 +5,16 @@ export const characterErrors = {
   invalidSheet: "Ficha inválida. Confira os campos e tente novamente.",
   invalidName: "Informe um nome de até 80 caracteres.",
   invalidAccess: "Lista de contas inválida.",
+  invalidFeatures: "Lista de tags inválida.",
   folderNotFound: "Pasta não encontrada.",
   accountNotFound: "Uma das contas escolhidas não existe ou não é de jogador.",
   gmOnlyFields: "Somente o Mestre altera classe, nível, vida máxima e sanidade máxima.",
   aboveMaximum: "Vida e Sanidade atuais não podem passar do máximo.",
   conflict: "A ficha foi alterada em outro lugar. Recarregando a versão mais nova.",
+  invalidImageKind: "Tipo de imagem inválido.",
+  imageMissing: "Escolha uma imagem para enviar.",
+  imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
+  imageTooLarge: "A imagem passa do limite de 8 MB.",
   unexpected: "Não foi possível acessar a ficha agora. Tente novamente.",
 } as const;
 

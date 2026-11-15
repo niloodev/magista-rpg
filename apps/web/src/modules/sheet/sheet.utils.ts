@@ -2,9 +2,11 @@ import type { z } from "zod";
 
 import {
   abilitySchema,
+  formatModifier,
   inventoryItemSchema,
   parseDiceExpression,
   traitSchema,
+  type IFeatureBonusTerm,
   type ISheetAbility,
   type ISheetInventoryItem,
   type ISheetTrait,
@@ -55,13 +57,13 @@ export function formatSigned(value: number): string {
 }
 
 /**
- * Best image for small portraits: the round Roll20 token, falling back to the full art.
+ * Best image for small portraits: the AVATAR (round face token), falling back to the full ART.
  */
 export function portraitOf(character: {
-  tokenUrl: string | null;
   avatarUrl: string | null;
+  artUrl: string | null;
 }): string | null {
-  return character.tokenUrl ?? character.avatarUrl;
+  return character.avatarUrl ?? character.artUrl;
 }
 
 type FieldErrors<T> = Partial<Record<keyof T, string>>;
@@ -105,4 +107,16 @@ export function validateTrait(trait: ISheetTrait): FieldErrors<ISheetTrait> {
   const errors = schemaErrors(traitSchema, trait);
   if (!trait.name.trim()) errors.name = "Dê um nome para o traço.";
   return errors;
+}
+
+/**
+ * Note telling which special feature bonuses the shown test values already include
+ * (" Valores já somam +2 da Marca."), or an empty string when there are none.
+ */
+export function bonusNote(terms: readonly IFeatureBonusTerm[]): string {
+  if (terms.length === 0) return "";
+  const parts = terms.map((term) => `${formatModifier(term.value)} da ${term.label}`);
+  const joined =
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+  return ` Valores já somam ${joined}.`;
 }

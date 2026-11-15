@@ -2,14 +2,16 @@ import type { ControllerResult } from "@magista/shared";
 
 import type { IAccountModels } from "@/core/models/account";
 import type { ICharacterModels } from "@/core/models/character";
-import type { MediaKind } from "@/core/services/media";
+import type { ICharacterImageStore } from "@/core/services/media";
 
 import type { ImporterError } from "./importer.errors";
 
 export interface IImportCharacterInput {
   raw: unknown;
-  avatarPath: string | null;
-  tokenPath: string | null;
+  /** Face token (Roll20 "token"), shown in small portraits. */
+  avatar: Buffer | null;
+  /** Full-body artwork (Roll20 "avatar"). */
+  art: Buffer | null;
   force: boolean;
 }
 
@@ -23,10 +25,10 @@ export interface IImportCharacterPayload {
 
 export interface IImporterControllerDeps {
   accounts: Pick<IAccountModels, "findCredentialsByLogin" | "upsertAccount">;
-  characters: Pick<ICharacterModels, "upsertCharacter" | "updateMedia" | "findByAccountAndName">;
+  characters: Pick<ICharacterModels, "upsertCharacter" | "findByAccountAndName" | "setImageKey">;
   hashPassword: (password: string) => Promise<string>;
   generatePassword: () => string;
-  storeMedia: (kind: MediaKind, ownerId: string, sourcePath: string) => Promise<string>;
+  images: Pick<ICharacterImageStore, "store" | "remove">;
 }
 
 export interface IImporterController {

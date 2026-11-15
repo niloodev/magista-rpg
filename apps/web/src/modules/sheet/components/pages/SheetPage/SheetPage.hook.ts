@@ -111,12 +111,15 @@ export function useSheetPage({ characterId }: SheetPageProps) {
   const requested = sheetState.requestedId === characterId;
   const character =
     requested && sheetState.character?.id === characterId ? sheetState.character : null;
-  const hasArt = character ? Boolean(character.avatarUrl) : null;
+  const hasArt = character ? Boolean(character.artUrl) : null;
 
   useEffect(() => {
     if (hasArt !== null) setHint(SHEET_ART_HINT_KEY, hasArt ? 1 : 0);
   }, [hasArt, setHint]);
-  const derived = useMemo(() => (character ? deriveSheet(character.sheet) : null), [character]);
+  const derived = useMemo(
+    () => (character ? deriveSheet(character.sheet, { features: character.features }) : null),
+    [character],
+  );
 
   const onRoll = useCallback(
     async (roll: IRollKind) => {
@@ -199,6 +202,7 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     onRoll: (roll: IRollKind) => void onRoll(roll),
     onPing: (entry: IPingEntry) => void onPing(entry),
     pingedId,
+    flush,
     onRetrySave: () => void flush(),
   };
 }

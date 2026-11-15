@@ -1,4 +1,4 @@
-import type { ICharacter } from "@magista/shared";
+import type { ICharacter, ICharacterFeaturesEvent, ICharacterImages } from "@magista/shared";
 
 import type { SaveStatus, SheetMutator } from "@/modules/sheet/sheet.types";
 import type { LoadStatus } from "@/shared/types";
@@ -26,6 +26,8 @@ export interface SheetActions {
   markSheetSaveFailed: (characterId: string, error: string) => void;
   applyRemoteCharacter: (character: ICharacter) => void;
   replaceCharacter: (character: ICharacter) => void;
+  applySheetImages: (images: ICharacterImages) => void;
+  applySheetFeatures: (event: ICharacterFeaturesEvent) => void;
 }
 
 export type SheetSlice = SheetState & SheetActions;

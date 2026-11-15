@@ -23,8 +23,10 @@ export type LibraryDialog =
   | { type: "deleteFolder"; folder: IFolder }
   | { type: "createCharacter"; folderId: string | null }
   | { type: "renameCharacter"; character: ICharacterSummary }
+  | { type: "images"; character: ICharacterSummary; error?: string }
   | { type: "deleteCharacter"; character: ICharacterSummary }
   | { type: "access"; character: ICharacterSummary }
+  | { type: "features"; character: ICharacterSummary }
   | { type: "move"; item: ILibraryItemRef; name: string; parentId: string | null }
   | { type: "accounts" };
 

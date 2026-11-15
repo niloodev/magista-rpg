@@ -45,6 +45,13 @@ import {
   UserPlus,
   User,
   Users,
+  Upload,
+  PictureInPicture2,
+  Tag,
+  Hourglass,
+  CircleX,
+  CircleCheck,
+  Link2,
 } from "lucide-react";
 
 export const ICONS = {
@@ -94,4 +101,11 @@ export const ICONS = {
   "user-plus": UserPlus,
   user: User,
   users: Users,
+  upload: Upload,
+  "picture-in-picture-2": PictureInPicture2,
+  tag: Tag,
+  hourglass: Hourglass,
+  "circle-x": CircleX,
+  "circle-check": CircleCheck,
+  "link-2": Link2,
 } as const;

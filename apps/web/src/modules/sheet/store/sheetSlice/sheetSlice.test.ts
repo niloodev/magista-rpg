@@ -7,9 +7,10 @@ const character: ICharacter = {
   id: "c1",
   name: "Zarkov",
   avatarUrl: null,
-  tokenUrl: null,
+  artUrl: null,
   sheet: createEmptySheet(),
   sheetVersion: 1,
+  features: [],
   updatedAt: "v1",
 };
 
@@ -34,6 +35,31 @@ describe("sheet slice", () => {
       saveStatus: "saved",
       character: { updatedAt: "v2" },
     });
+  });
+
+  it("applies feature tags without touching the draft or the save state", () => {
+    const store = loaded();
+    store.getState().editSheet((sheet) => void (sheet.identity.alignmentNote = "x"));
+    store.getState().applySheetFeatures({ id: "c1", features: ["marked"] });
+    store.getState().applySheetFeatures({ id: "other", features: [] });
+    expect(store.getState().sheet).toMatchObject({
+      revision: 1,
+      saveStatus: "pending",
+      character: { features: ["marked"] },
+    });
+  });
+
+  it("applies image changes without touching the draft or the save state", () => {
+    const store = loaded();
+    store.getState().editSheet((sheet) => void (sheet.identity.alignmentNote = "x"));
+    store.getState().applySheetImages({ id: "c1", avatarUrl: null, artUrl: "/media/art.png" });
+    store.getState().applySheetImages({ id: "other", avatarUrl: "/media/no.png", artUrl: null });
+    expect(store.getState().sheet).toMatchObject({
+      revision: 1,
+      saveStatus: "pending",
+      character: { artUrl: "/media/art.png", avatarUrl: null, updatedAt: "v1" },
+    });
+    expect(store.getState().sheet.character?.sheet.identity.alignmentNote).toBe("x");
   });
 
   it("keeps pending when a newer edit happened during the save", () => {

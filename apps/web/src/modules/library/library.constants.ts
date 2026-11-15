@@ -1,3 +1,7 @@
+import type { CharacterImageKind } from "@magista/shared";
+
+import type { ImageFieldShape } from "@/shared/components/molecules";
+
 import type { ILibraryShape } from "./library.types";
 
 export const ROOT_FOLDER_LABEL = "Todas as fichas";
@@ -48,3 +52,26 @@ export const DEFAULT_LIBRARY_SHAPE: ILibraryShape = {
 export const LIBRARY_TITLES = { gm: "Fichas da mesa", player: "Suas fichas" } as const;
 
 export const SEARCH_PLACEHOLDER = "Buscar ficha pelo nome...  ( / )";
+
+/**
+ * AVATAR (face token for small portraits and, later, the Arena) and ART (full artwork) fields of a character.
+ */
+export const CHARACTER_IMAGE_FIELDS: {
+  kind: CharacterImageKind;
+  label: string;
+  description: string;
+  shape: ImageFieldShape;
+}[] = [
+  {
+    kind: "avatar",
+    label: "Avatar",
+    description: "Rosto em círculo, usado nos retratos da mesa e da biblioteca.",
+    shape: "circle",
+  },
+  {
+    kind: "art",
+    label: "Arte",
+    description: 'Arte completa do personagem, aberta em "Ver arte completa".',
+    shape: "portrait",
+  },
+];

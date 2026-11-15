@@ -22,10 +22,11 @@ const character = (id: string, name: string, folderId: string | null, position: 
     folderId,
     position,
     avatarUrl: null,
-    tokenUrl: null,
+    artUrl: null,
     classKey: "arcanista",
     level: 3,
     accountIds: [],
+    features: [],
   }) satisfies ICharacterSummary;
 
 const folders: IFolder[] = [

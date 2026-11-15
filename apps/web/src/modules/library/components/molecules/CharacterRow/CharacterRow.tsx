@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { FeatureBadges } from "@/modules/features/components";
+import { PopoutButton } from "@/modules/shell/components";
 import { Avatar, Icon } from "@/shared/components/atoms";
 
 import { DropIndicator } from "../DropIndicator";
@@ -7,12 +9,14 @@ import { NO_ACCESS_LABEL } from "./CharacterRow.constants";
 import type { CharacterRowProps } from "./CharacterRow.types";
 
 export function CharacterRow({
+  id,
   name,
   subtitle,
   href,
   portraitUrl,
   path,
   accountLabels,
+  features = [],
   actions,
   handle,
   dropPosition = null,
@@ -35,10 +39,15 @@ export function CharacterRow({
             {name}
           </Link>
         </h3>
-        <p className="flex flex-wrap items-center gap-x-3 font-sans text-xs text-muted-strong">
-          <span className="font-semibold tracking-wider uppercase">{subtitle}</span>
+        <p className="flex min-w-0 items-center gap-x-3 overflow-hidden font-sans text-xs text-muted-strong">
+          <span className="truncate font-semibold tracking-wider uppercase">{subtitle}</span>
+          {features.length > 0 && (
+            <span className="shrink-0">
+              <FeatureBadges features={features} size="sm" max={2} compact />
+            </span>
+          )}
           {path && (
-            <span className="flex items-center gap-1">
+            <span className="flex min-w-0 items-center gap-1 truncate">
               <Icon name="folder" size={12} aria-hidden="true" />
               {path}
             </span>
@@ -63,7 +72,10 @@ export function CharacterRow({
           )}
         </div>
       )}
-      {actions && <div className="relative z-10">{actions}</div>}
+      <div className="relative z-10 flex items-center gap-1.5">
+        <PopoutButton target={{ kind: "sheet", id }} label={`Abrir ficha de ${name} em janela`} />
+        {actions}
+      </div>
     </div>
   );
 }

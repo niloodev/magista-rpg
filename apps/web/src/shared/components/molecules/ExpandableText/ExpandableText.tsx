@@ -2,7 +2,7 @@
 
 import { Icon, RichText } from "@/shared/components/atoms";
 
-import { DEFAULT_COLLAPSED_HEIGHT } from "./ExpandableText.constants";
+import { CLAMPED_FADE, DEFAULT_COLLAPSED_HEIGHT } from "./ExpandableText.constants";
 import { useExpandableText } from "./ExpandableText.hook";
 import type { ExpandableTextProps } from "./ExpandableText.types";
 
@@ -18,18 +18,12 @@ export function ExpandableText({
     <div className={className}>
       <div
         id={contentId}
-        className="relative overflow-hidden"
+        className={`relative overflow-hidden ${clamped ? CLAMPED_FADE : ""}`}
         style={{ maxHeight: clamped ? collapsedHeight : undefined }}
       >
         <div ref={contentRef}>
           <RichText text={text} />
         </div>
-        {clamped && (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-void-900 to-transparent"
-          />
-        )}
       </div>
       {overflowing && (
         <button

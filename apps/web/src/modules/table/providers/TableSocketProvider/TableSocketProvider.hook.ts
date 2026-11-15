@@ -1,5 +1,6 @@
 "use client";
 
+import type { ICharacterFeaturesEvent, ICharacterImages } from "@magista/shared";
 import { useEffect, useState } from "react";
 
 import { createTableSocket } from "@/core/services/socket";
@@ -24,6 +25,10 @@ export function useTableSocketProvider() {
   const pushRoll = useApp((state) => state.pushRoll);
   const setRolls = useApp((state) => state.setRolls);
   const setSession = useApp((state) => state.setSession);
+  const applyLibraryImages = useApp((state) => state.applyLibraryImages);
+  const applySheetImages = useApp((state) => state.applySheetImages);
+  const applyLibraryFeatures = useApp((state) => state.applyLibraryFeatures);
+  const applySheetFeatures = useApp((state) => state.applySheetFeatures);
 
   useEffect(() => {
     if (!socket) return;
@@ -52,6 +57,16 @@ export function useTableSocketProvider() {
     socket.on("presence:update", setMembers);
     socket.on("roll:result", pushRoll);
     socket.on("roll:history", setRolls);
+    const onImages = (images: ICharacterImages) => {
+      applyLibraryImages(images);
+      applySheetImages(images);
+    };
+    socket.on("character:images", onImages);
+    const onFeatures = (event: ICharacterFeaturesEvent) => {
+      applyLibraryFeatures(event);
+      applySheetFeatures(event);
+    };
+    socket.on("character:features", onFeatures);
     const connectTimer = window.setTimeout(() => socket.connect(), 0);
     return () => {
       socket.off("connect", onConnect);
@@ -60,12 +75,25 @@ export function useTableSocketProvider() {
       socket.off("presence:update", setMembers);
       socket.off("roll:result", pushRoll);
       socket.off("roll:history", setRolls);
+      socket.off("character:images", onImages);
+      socket.off("character:features", onFeatures);
       window.clearTimeout(connectTimer);
       window.clearTimeout(recheckTimer);
       disposed = true;
       socket.disconnect();
     };
-  }, [socket, setConnection, setMembers, pushRoll, setRolls, setSession]);
+  }, [
+    socket,
+    setConnection,
+    setMembers,
+    pushRoll,
+    setRolls,
+    setSession,
+    applyLibraryImages,
+    applySheetImages,
+    applyLibraryFeatures,
+    applySheetFeatures,
+  ]);
 
   return { socket };
 }

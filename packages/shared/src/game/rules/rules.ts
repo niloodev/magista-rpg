@@ -1,4 +1,6 @@
 import type { ICharacterSheet, ISheetAbility } from "../../schemas/character/character.types";
+import { featureBonusTerms } from "../features/features";
+import type { FeatureKey } from "../features/features.types";
 import {
   ATTRIBUTE_KEYS,
   BASE_DAMAGE_SCALING_PER_LEVEL,
@@ -59,11 +61,12 @@ function deriveAbility(
   attributes: Record<AttributeKey, IDerivedAttribute>,
   proficiency: number,
   baseDamage: string,
+  d20Bonus: number,
 ): IDerivedAbility {
   const attackMod = ability.attackAttribute ? attributes[ability.attackAttribute].modifier : 0;
   const damageMod = ability.damageAttribute ? attributes[ability.damageAttribute].modifier : 0;
   return {
-    attack: joinExpression([D20, attackMod, ability.addProficiency ? proficiency : 0]),
+    attack: joinExpression([D20, attackMod, ability.addProficiency ? proficiency : 0, d20Bonus]),
     damage:
       joinExpression([
         ability.damageDice.trim(),
@@ -75,9 +78,16 @@ function deriveAbility(
 }
 
 /**
- * Computes every derived value of a sheet (modifiers, DCs, skills, CA, dice strings, weights).
+ * Computes every derived value of a sheet (modifiers, DCs, skills, CA, dice strings, weights). Special features of
+ * the character add their d20 bonus (`d20Bonus`) to initiative and attacks; skills stay raw so the bonus is shown
+ * as its own term.
  */
-export function deriveSheet(sheet: ICharacterSheet): IDerivedSheet {
+export function deriveSheet(
+  sheet: ICharacterSheet,
+  context: { features?: readonly FeatureKey[] } = {},
+): IDerivedSheet {
+  const d20BonusTerms = featureBonusTerms(context.features ?? []);
+  const d20Bonus = d20BonusTerms.reduce((sum, term) => sum + term.value, 0);
   const { identity } = sheet;
   const classInfo = CLASSES[identity.class];
   const proficiency = proficiencyForLevel(identity.level);
@@ -94,12 +104,19 @@ export function deriveSheet(sheet: ICharacterSheet): IDerivedSheet {
     Object.fromEntries(
       list.map((ability) => [
         ability.id,
-        deriveAbility(ability, attributes, proficiency, baseDamage),
+        deriveAbility(ability, attributes, proficiency, baseDamage, d20Bonus),
       ]),
     );
 
+  const skillTests = Object.fromEntries(
+    SKILLS.map((skill) => [skill.key, skills[skill.key] + d20Bonus]),
+  ) as IDerivedSheet["skillTests"];
+
   return {
     proficiency,
+    d20Bonus,
+    d20BonusTerms,
+    skillTests,
     attributes,
     skills,
     armorBonus,
@@ -108,7 +125,7 @@ export function deriveSheet(sheet: ICharacterSheet): IDerivedSheet {
     baseDamage,
     lifeDie: joinExpression([classInfo.lifeDie, attributes.con.modifier]),
     sanityDie: joinExpression([SANITY_DIE_BASE, attributes.sab.modifier]),
-    initiative: joinExpression([D20, attributes.des.modifier]),
+    initiative: joinExpression([D20, attributes.des.modifier, d20Bonus]),
     currentWeightGrams: sheet.inventory.items.reduce((sum, item) => sum + item.weightGrams, 0),
     abilities: mapAbilities(sheet.abilities),
     innerRealm: mapAbilities(sheet.innerRealm),

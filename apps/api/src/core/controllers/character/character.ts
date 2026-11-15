@@ -1,16 +1,20 @@
 import {
   characterIdSchema,
+  characterImageKindSchema,
+  type CharacterImageKind,
   createCharacterInputSchema,
   createEmptySheet,
   exceedsResourceMax,
   renameCharacterInputSchema,
   setCharacterAccessInputSchema,
+  setFeaturesInputSchema,
   updateSheetInputSchema,
 } from "@magista/shared";
 
 import { accountModels } from "@/core/models/account";
 import { characterModels } from "@/core/models/character";
 import { folderModels } from "@/core/models/folder";
+import { characterImages, MEDIA_MAX_BYTES } from "@/core/services/media";
 
 import { canAccessCharacter } from "../controllers.utils";
 import { touchesGmOnlyFields } from "./character.utils";
@@ -26,6 +30,7 @@ export function createCharacterController({
   characters,
   folders,
   accounts,
+  images,
 }: ICharacterControllerDeps): ICharacterController {
   const failed = (action: string, error: unknown) => {
     console.error(`${action} failed:`, error);
@@ -127,7 +132,14 @@ export function createCharacterController({
     try {
       if (!(await characters.exists(id))) return { error: characterErrors.notFound };
       const previousAccountIds = await characters.listAccountIds(id);
+      const keys = await characters.findImageKeys(id);
       await characters.remove(id);
+      const cleanup = [keys?.avatarKey, keys?.artKey]
+        .filter((key): key is string => Boolean(key))
+        .map((key) => images.remove(key));
+      await Promise.all([images.removeAll(id), ...cleanup]).catch((error: unknown) => {
+        console.error("deleteCharacter images cleanup failed:", error);
+      });
       return { message: "Ficha excluída", payload: { id, previousAccountIds } };
     } catch (error) {
       return failed("deleteCharacter", error);
@@ -151,7 +163,78 @@ export function createCharacterController({
     }
   };
 
+  const replaceImage = async (id: string, kind: CharacterImageKind, key: string | null) => {
+    const { images: changed, previousKey } = await characters.setImageKey(id, kind, key);
+    if (previousKey && previousKey !== key) {
+      await images.remove(previousKey).catch((error: unknown) => {
+        console.error("old image cleanup failed:", error);
+      });
+    }
+    return { images: changed, accountIds: await characters.listAccountIds(id) };
+  };
+
+  const setImage: ICharacterController["setImage"] = async (viewer, id, upload) => {
+    if (viewer.role !== "GM") return { error: characterErrors.gmOnly };
+    if (!characterIdSchema.safeParse(id).success) return { error: characterErrors.notFound };
+    const kind = characterImageKindSchema.safeParse(upload.kind);
+    if (!kind.success) return { error: characterErrors.invalidImageKind };
+    if (!upload.file || upload.file.length === 0) return { error: characterErrors.imageMissing };
+    if (upload.file.length > MEDIA_MAX_BYTES) return { error: characterErrors.imageTooLarge };
+    try {
+      if (!(await characters.exists(id))) return { error: characterErrors.notFound };
+      const key = await images.store(id, kind.data, upload.file);
+      if (!key) return { error: characterErrors.imageInvalid };
+      try {
+        return { message: "Imagem salva", payload: await replaceImage(id, kind.data, key) };
+      } catch (error) {
+        await images.remove(key).catch(() => undefined);
+        throw error;
+      }
+    } catch (error) {
+      return failed("setImage", error);
+    }
+  };
+
+  const removeImage: ICharacterController["removeImage"] = async (viewer, id, rawKind) => {
+    if (viewer.role !== "GM") return { error: characterErrors.gmOnly };
+    if (!characterIdSchema.safeParse(id).success) return { error: characterErrors.notFound };
+    const kind = characterImageKindSchema.safeParse(rawKind);
+    if (!kind.success) return { error: characterErrors.invalidImageKind };
+    try {
+      if (!(await characters.exists(id))) return { error: characterErrors.notFound };
+      return { message: "Imagem removida", payload: await replaceImage(id, kind.data, null) };
+    } catch (error) {
+      return failed("removeImage", error);
+    }
+  };
+
+  const setFeatures: ICharacterController["setFeatures"] = async (viewer, id, input) => {
+    if (viewer.role !== "GM") return { error: characterErrors.gmOnly };
+    if (!characterIdSchema.safeParse(id).success) return { error: characterErrors.notFound };
+    const parsed = setFeaturesInputSchema.safeParse(input);
+    if (!parsed.success) return { error: characterErrors.invalidFeatures };
+    try {
+      if (!(await characters.exists(id))) return { error: characterErrors.notFound };
+      const change = await characters.setFeatures(id, parsed.data.features);
+      return {
+        message: "Tags atualizadas",
+        payload: {
+          id,
+          features: change.features,
+          accountIds: change.accountIds,
+          added: change.features.filter((key) => !change.previous.includes(key)),
+          removed: change.previous.filter((key) => !change.features.includes(key)),
+        },
+      };
+    } catch (error) {
+      return failed("setFeatures", error);
+    }
+  };
+
   return {
+    setFeatures,
+    setImage,
+    removeImage,
     listCharacters,
     listAccessibleIds,
     getCharacter,
@@ -167,4 +250,5 @@ export const characterController = createCharacterController({
   characters: characterModels,
   folders: folderModels,
   accounts: accountModels,
+  images: characterImages,
 });

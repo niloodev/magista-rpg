@@ -17,11 +17,13 @@ export function TreeCharacter({ character, target, excluded }: TreeCharacterProp
   return (
     <li ref={setRowRef} {...pointerProps} className="select-none">
       <CharacterRow
+        id={character.id}
         name={character.name}
         subtitle={character.subtitle}
         href={character.href}
         portraitUrl={character.portraitUrl}
         accountLabels={character.accountLabels}
+        features={character.features}
         dropPosition={dropPosition}
         dimmed={isDragging}
         handle={<DragHandle label={`Mover ficha ${character.name}`} {...handleProps} />}

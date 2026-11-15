@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 
+import { FeatureSlots } from "@/modules/features/components";
 import {
   AbilitiesPanel,
   AttributesPanel,
   CombatPanel,
   InventoryPanel,
   LevelUpModal,
-  MarkedSoulPanel,
   SheetHeader,
   SheetSkeleton,
   SheetSummaryBar,
@@ -16,7 +16,7 @@ import {
   TraitsPanel,
   VitalsPanel,
 } from "@/modules/sheet/components/organisms";
-import { SHEET_TABS } from "@/modules/sheet/sheet.constants";
+import { SHEET_MAIN_CLASSES, SHEET_TABS } from "@/modules/sheet/sheet.constants";
 import { DiceRollOverlay, RollFeed } from "@/modules/table/components/organisms";
 import { Text } from "@/shared/components/atoms";
 import { TabPanel, Tabs } from "@/shared/components/molecules";
@@ -27,6 +27,7 @@ import type { SheetPageProps } from "./SheetPage.types";
 import { SheetStatusBar } from "./subcomponents";
 
 export function SheetPage(props: SheetPageProps) {
+  const { characterId, variant = "page" } = props;
   const {
     status,
     loadError,
@@ -54,6 +55,7 @@ export function SheetPage(props: SheetPageProps) {
     onPing,
     pingedId,
     onRetrySave,
+    flush,
   } = useSheetPage(props);
 
   if (status === "error") {
@@ -67,10 +69,16 @@ export function SheetPage(props: SheetPageProps) {
     );
   }
 
-  if (!character || !derived) return <SheetSkeleton gm={isGm} />;
+  if (!character || !derived) return <SheetSkeleton gm={isGm} variant={variant} />;
 
   const section = { sheet: character.sheet, derived, onEdit, onRoll, onPing, pingedId, isGm };
   const isActive = (key: string) => activeTab === key;
+  const featureSlot = {
+    features: character.features,
+    characterId: character.id,
+    traits: character.sheet.traits,
+    onBeforeShare: flush,
+  };
 
   return (
     <>
@@ -80,9 +88,13 @@ export function SheetPage(props: SheetPageProps) {
       >
         Pular para o conteúdo da ficha
       </a>
-      <main className="min-h-screen bg-void-900 px-4 pb-24">
+      <main className={SHEET_MAIN_CLASSES[variant]}>
+        <FeatureSlots {...featureSlot} slot="backdrop" />
         <div className="mx-auto max-w-[1440px] pt-4">
           <SheetStatusBar
+            variant={variant}
+            characterId={characterId}
+            characterName={character.name}
             saveStatus={saveStatus}
             saveError={saveError}
             connection={connection}
@@ -159,8 +171,11 @@ export function SheetPage(props: SheetPageProps) {
                 active={isActive("tracos")}
                 className="flex flex-col gap-6 pt-6"
               >
-                <TraitsPanel {...section} />
-                <MarkedSoulPanel />
+                <TraitsPanel
+                  {...section}
+                  addon={<FeatureSlots {...featureSlot} slot="traitsAddon" />}
+                />
+                <FeatureSlots {...featureSlot} slot="traitsSection" />
               </TabPanel>
               <TabPanel
                 idPrefix={SHEET_TABS_ID}

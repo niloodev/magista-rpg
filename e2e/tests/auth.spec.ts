@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 import { GM, PLAYER } from "../support/env";
 import { loginAs } from "../support/session";
 
+const HINTS_COOKIE = "magista-hints";
+
 test.describe("autenticação", () => {
   test("visitante sem sessão é mandado para o login", async ({ page }) => {
     await page.goto("/mesa");
@@ -54,5 +56,21 @@ test.describe("autenticação", () => {
     await page.getByRole("button", { name: "Entrar como Jogador" }).click();
     await page.waitForURL(/\/(mesa|ficha)/);
     await expect(page.getByText(PLAYER.login).first()).toBeVisible();
+  });
+
+  test("sair apaga as dicas do aparelho, para a próxima conta não ver o formato da anterior", async ({
+    page,
+    context,
+  }) => {
+    const hints = async () =>
+      (await context.cookies()).find((cookie) => cookie.name === HINTS_COOKIE)?.value ?? null;
+    await loginAs(page, GM);
+    await expect(page.getByText("Conectado", { exact: true })).toBeVisible();
+    await expect.poll(hints).not.toBeNull();
+    const stored = JSON.parse(Buffer.from((await hints()) ?? "", "base64url").toString());
+    expect(JSON.stringify(stored)).not.toMatch(new RegExp(GM.login, "i"));
+    await page.getByRole("button", { name: "Sair" }).click();
+    await page.waitForURL("**/login");
+    await expect.poll(hints).toBeNull();
   });
 });

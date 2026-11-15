@@ -33,8 +33,10 @@ model Character {
   folder       CharacterFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
   position     Int               @default(0)
   access       CharacterAccess[]
-  avatarUrl    String?
-  tokenUrl     String?
+  avatarKey    String?
+  artKey       String?
+  features     String[]          @default([])
+  markedShare  MarkedShare?
   sheet        Json              @default("{}")
   sheetVersion Int               @default(0)
   legacy       Json?
@@ -69,4 +71,16 @@ model CharacterAccess {
   @@id([characterId, accountId])
   @@index([accountId])
   @@map("character_access")
+}
+
+model MarkedShare {
+  id                String    @id @default(uuid()) @db.Uuid
+  singleton         Boolean   @unique @default(true)
+  sourceCharacterId String    @unique @db.Uuid
+  source            Character @relation(fields: [sourceCharacterId], references: [id], onDelete: Cascade)
+  traitName         String
+  traitDescription  String
+  startedAt         DateTime  @default(now())
+
+  @@map("marked_shares")
 }

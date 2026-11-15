@@ -38,10 +38,11 @@ describe("library tree utils", () => {
           folderId: "b",
           position: 0,
           avatarUrl: null,
-          tokenUrl: null,
+          artUrl: null,
           classKey: "sem-classe" as const,
           level: 1,
           accountIds: [],
+          features: [],
         },
       ],
     };

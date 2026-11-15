@@ -4,3 +4,4 @@ export * from "./characters";
 export * from "./folders";
 export * from "./health";
 export * from "./library";
+export * from "./media";

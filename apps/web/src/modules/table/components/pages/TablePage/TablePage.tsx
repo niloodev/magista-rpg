@@ -55,7 +55,7 @@ export function TablePage() {
         </header>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="flex flex-col gap-6">
-            <CharacterLibrary />
+            <CharacterLibrary className="relative z-10" />
             <PresencePanel status={status} members={members} loadingRows={presenceLoadingRows} />
           </div>
           <RollFeed rolls={rolls} loading={rollsLoading} className="max-h-[75vh]" />

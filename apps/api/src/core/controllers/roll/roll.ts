@@ -41,7 +41,7 @@ export function createRollController(deps: IRollControllerDeps): IRollController
       kind,
       characterId: character.id,
       characterName: character.name,
-      portraitUrl: character.tokenUrl ?? character.avatarUrl,
+      portraitUrl: character.avatarUrl ?? character.artUrl,
       rolledByGm: viewer.role === "GM",
       title: spec.title,
       subtitle: spec.subtitle,
@@ -59,7 +59,9 @@ export function createRollController(deps: IRollControllerDeps): IRollController
       if (!character) return { error: rollErrors.notFound };
       if (!(await canAccessCharacter(viewer, character.id, deps.characters)))
         return { error: rollErrors.forbidden };
-      const spec = buildRollSpec(character.sheet, parsed.data.roll);
+      const spec = buildRollSpec(character.sheet, parsed.data.roll, {
+        features: character.features,
+      });
       if (!spec) return { error: rollErrors.notFound };
       const result = rollSpec(spec, parsed.data.roll.kind, character, viewer);
       if (!result) return { error: rollErrors.invalidExpression };

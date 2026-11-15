@@ -97,6 +97,7 @@ export function useLibraryTree({
       href: `/ficha/${character.id}`,
       portraitUrl: toMediaUrl(portraitOf(character)),
       accountLabels: accessLabels(character, accountLogins),
+      features: character.features,
       menu: characterMenu(character, onDialog),
     }),
     [accountLogins, onDialog],

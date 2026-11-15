@@ -17,5 +17,19 @@ services:
       timeout: 5s
       retries: 10
 
+  storage:
+    image: chrislusf/seaweedfs:4.52
+    container_name: magista-storage
+    restart: unless-stopped
+    command: server -dir=/data -s3 -s3.port=8333 -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-magista}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-magista-dev-secret}
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-8333}:8333"
+    volumes:
+      - magista-storage:/data
+
 volumes:
   magista-db:
+  magista-storage:

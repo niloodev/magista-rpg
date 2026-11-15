@@ -1,5 +1,9 @@
+import { CHARACTER_IMAGE_FIELD } from "@magista/shared";
+
 import { characterErrors, type CharacterError } from "@/core/controllers/character";
 import { rollErrors, type RollError } from "@/core/controllers/roll";
+
+export const IMAGE_FIELD = CHARACTER_IMAGE_FIELD;
 
 export const CHARACTER_ERROR_STATUS: Record<CharacterError, number> = {
   [characterErrors.notFound]: 404,
@@ -8,11 +12,16 @@ export const CHARACTER_ERROR_STATUS: Record<CharacterError, number> = {
   [characterErrors.invalidSheet]: 400,
   [characterErrors.invalidName]: 400,
   [characterErrors.invalidAccess]: 400,
+  [characterErrors.invalidFeatures]: 400,
   [characterErrors.folderNotFound]: 404,
   [characterErrors.accountNotFound]: 400,
   [characterErrors.gmOnlyFields]: 403,
   [characterErrors.aboveMaximum]: 400,
   [characterErrors.conflict]: 409,
+  [characterErrors.invalidImageKind]: 404,
+  [characterErrors.imageMissing]: 400,
+  [characterErrors.imageInvalid]: 415,
+  [characterErrors.imageTooLarge]: 413,
   [characterErrors.unexpected]: 500,
 };
 

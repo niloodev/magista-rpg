@@ -3,7 +3,7 @@ import { LOGIN_MAX_LENGTH } from "@magista/shared";
 import { accountModels } from "@/core/models/account";
 import { characterModels } from "@/core/models/character";
 import { generatePassword, hashPassword } from "@/core/services/auth";
-import { storeMediaFile } from "@/core/services/media";
+import { characterImages } from "@/core/services/media";
 import { fromRoll20Export, type IRoll20Character } from "@/core/services/roll20";
 
 import { importerErrors } from "./importer.errors";
@@ -58,13 +58,20 @@ export function createImporterController(deps: IImporterControllerDeps): IImport
       });
       let mediaWarning: string | null = null;
       try {
-        const media: { avatarUrl?: string; tokenUrl?: string } = {};
-        if (input.avatarPath)
-          media.avatarUrl = await deps.storeMedia("avatar", character.id, input.avatarPath);
-        if (input.tokenPath)
-          media.tokenUrl = await deps.storeMedia("token", character.id, input.tokenPath);
-        if (media.avatarUrl || media.tokenUrl)
-          await deps.characters.updateMedia(character.id, media);
+        const images = [
+          ["avatar", input.avatar],
+          ["art", input.art],
+        ] as const;
+        for (const [kind, body] of images) {
+          if (!body) continue;
+          const key = await deps.images.store(character.id, kind, body);
+          if (!key) {
+            mediaWarning = importerErrors.mediaFailed;
+            continue;
+          }
+          const { previousKey } = await deps.characters.setImageKey(character.id, kind, key);
+          if (previousKey) await deps.images.remove(previousKey).catch(() => undefined);
+        }
       } catch (error) {
         console.error("import media failed:", error);
         mediaWarning = importerErrors.mediaFailed;
@@ -93,5 +100,5 @@ export const importerController = createImporterController({
   characters: characterModels,
   hashPassword,
   generatePassword,
-  storeMedia: storeMediaFile,
+  images: characterImages,
 });
