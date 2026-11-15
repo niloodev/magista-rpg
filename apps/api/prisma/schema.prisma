@@ -37,6 +37,7 @@ model Character {
   artKey       String?
   features     String[]          @default([])
   markedShare  MarkedShare?
+  arenaTokens  ArenaToken[]
   sheet        Json              @default("{}")
   sheetVersion Int               @default(0)
   legacy       Json?
@@ -83,4 +84,48 @@ model MarkedShare {
   startedAt         DateTime  @default(now())
 
   @@map("marked_shares")
+}
+
+model ArenaScene {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  mapKey      String?
+  position    Int          @default(0)
+  tokens      ArenaToken[]
+  activeState ArenaState?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("arena_scenes")
+}
+
+model ArenaToken {
+  id          String     @id @default(uuid()) @db.Uuid
+  sceneId     String     @db.Uuid
+  scene       ArenaScene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  characterId String?    @db.Uuid
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name        String?
+  imageKey    String?
+  x           Float      @default(0)
+  y           Float      @default(0)
+  size        Int        @default(140)
+  hidden      Boolean    @default(false)
+  position    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([sceneId])
+  @@index([characterId])
+  @@map("arena_tokens")
+}
+
+model ArenaState {
+  id            String      @id @default(uuid()) @db.Uuid
+  singleton     Boolean     @unique @default(true)
+  activeSceneId String?     @unique @db.Uuid
+  activeScene   ArenaScene? @relation(fields: [activeSceneId], references: [id], onDelete: SetNull)
+  updatedAt     DateTime    @updatedAt
+
+  @@map("arena_state")
 }

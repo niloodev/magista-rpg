@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { accountRoom, characterRoom, createRateGate } from "./realtime.utils";
+import { accountRoom, characterRoom, createGateRegistry, createRateGate } from "./realtime.utils";
 
 describe("realtime utils", () => {
   it("names rooms", () => {
@@ -14,5 +14,11 @@ describe("realtime utils", () => {
     expect([gate(), gate(), gate()]).toEqual([true, true, false]);
     clock = 1001;
     expect(gate()).toBe(true);
+  });
+
+  it("keeps one independent gate per key", () => {
+    const gateOf = createGateRegistry(1, 1000, () => 0);
+    expect(gateOf("a")).toBe(gateOf("a"));
+    expect([gateOf("a")(), gateOf("a")(), gateOf("b")()]).toEqual([true, false, true]);
   });
 });

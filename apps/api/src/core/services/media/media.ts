@@ -13,8 +13,21 @@ import { Readable } from "node:stream";
 
 import { getEnv } from "@/core/services/env";
 
-import type { ICharacterImageStore, IMediaStorage } from "./media.types";
-import { characterMediaPrefix, detectImageType, mediaKeyFor } from "./media.utils";
+import type {
+  IArenaImageStore,
+  ICharacterImageStore,
+  IImageType,
+  IMediaStorage,
+} from "./media.types";
+import {
+  arenaMapKeyFor,
+  arenaMapPrefix,
+  arenaTokenKeyFor,
+  arenaTokenPrefix,
+  characterMediaPrefix,
+  detectImageType,
+  mediaKeyFor,
+} from "./media.utils";
 
 let client: S3Client | null = null;
 
@@ -123,3 +136,25 @@ export function createCharacterImageStore(storage: IMediaStorage): ICharacterIma
 }
 
 export const characterImages = createCharacterImageStore(mediaStorage);
+
+/**
+ * Arena images (scene maps and NPC token images) on top of the object storage, validated by file signature.
+ */
+export function createArenaImageStore(storage: IMediaStorage): IArenaImageStore {
+  const store = async (body: Buffer, keyFor: (type: IImageType) => string) => {
+    const type = detectImageType(body);
+    if (!type) return null;
+    const key = keyFor(type);
+    await storage.putObject(key, body, type.contentType);
+    return key;
+  };
+  return {
+    storeMap: (sceneId, body) => store(body, (type) => arenaMapKeyFor(sceneId, type)),
+    storeToken: (tokenId, body) => store(body, (type) => arenaTokenKeyFor(tokenId, type)),
+    remove: (key) => storage.deleteObject(key),
+    removeScene: (sceneId) => storage.deletePrefix(arenaMapPrefix(sceneId)),
+    removeToken: (tokenId) => storage.deletePrefix(arenaTokenPrefix(tokenId)),
+  };
+}
+
+export const arenaImages = createArenaImageStore(mediaStorage);

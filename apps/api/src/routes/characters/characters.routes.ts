@@ -5,6 +5,7 @@ import { characterController, characterErrors } from "@/core/controllers/charact
 import { rollController } from "@/core/controllers/roll";
 import { requireAuth } from "@/middlewares";
 import {
+  broadcastArenaRefresh,
   broadcastCharacterFeatures,
   broadcastCharacterImages,
   broadcastCharacterUpdate,
@@ -44,7 +45,9 @@ characterRoutes.patch("/:id", async (req, res: AuthedResponse) => {
     req.body,
   );
   const renamed = sendResult(res, result, CHARACTER_ERROR_STATUS);
-  if (renamed) broadcastLibraryChanged(renamed.accountIds);
+  if (!renamed) return;
+  broadcastLibraryChanged(renamed.accountIds);
+  broadcastArenaRefresh();
 });
 
 characterRoutes.delete("/:id", async (req, res: AuthedResponse) => {
@@ -53,6 +56,7 @@ characterRoutes.delete("/:id", async (req, res: AuthedResponse) => {
   if (!deleted) return;
   syncCharacterAccess(deleted.id, deleted.previousAccountIds, []);
   broadcastLibraryChanged(deleted.previousAccountIds);
+  broadcastArenaRefresh();
   await syncMarkedCharacter(deleted.id);
 });
 
@@ -77,6 +81,7 @@ characterRoutes.put("/:id/access", async (req, res: AuthedResponse) => {
   syncCharacterAccess(character.id, previousAccountIds, character.accountIds);
   const affected = [...new Set([...previousAccountIds, ...character.accountIds])];
   broadcastLibraryChanged(affected);
+  broadcastArenaRefresh(affected);
   await refreshMarkedShare(affected);
 });
 
@@ -117,6 +122,7 @@ characterRoutes.put("/:id/images/:kind", async (req, res: AuthedResponse) => {
   if (!changed) return;
   broadcastCharacterImages(changed.images);
   broadcastLibraryChanged(changed.accountIds);
+  broadcastArenaRefresh();
 });
 
 characterRoutes.delete("/:id/images/:kind", async (req, res: AuthedResponse) => {
@@ -129,4 +135,5 @@ characterRoutes.delete("/:id/images/:kind", async (req, res: AuthedResponse) => 
   if (!changed) return;
   broadcastCharacterImages(changed.images);
   broadcastLibraryChanged(changed.accountIds);
+  broadcastArenaRefresh();
 });

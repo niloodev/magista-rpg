@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { CharacterImageKind } from "@magista/shared";
 
 import {
+  ARENA_MAP_MEDIA_PREFIX,
+  ARENA_TOKEN_MEDIA_PREFIX,
   CHARACTER_MEDIA_PREFIX,
   IMAGE_TYPES,
   MEDIA_KEY_PATTERN,
@@ -44,6 +46,34 @@ export function mediaKeyFor(
  */
 export function characterMediaPrefix(characterId: string): string {
   return `${CHARACTER_MEDIA_PREFIX}${characterId}/`;
+}
+
+/**
+ * Prefix that holds every map uploaded for one Arena scene.
+ */
+export function arenaMapPrefix(sceneId: string): string {
+  return `${ARENA_MAP_MEDIA_PREFIX}${sceneId}/`;
+}
+
+/**
+ * Prefix that holds the image of one Arena token (NPCs).
+ */
+export function arenaTokenPrefix(tokenId: string): string {
+  return `${ARENA_TOKEN_MEDIA_PREFIX}${tokenId}/`;
+}
+
+/**
+ * Fresh key for an Arena scene map.
+ */
+export function arenaMapKeyFor(sceneId: string, type: IImageType): string {
+  return `${arenaMapPrefix(sceneId)}map-${randomUUID()}.${type.extension}`;
+}
+
+/**
+ * Fresh key for an Arena token image.
+ */
+export function arenaTokenKeyFor(tokenId: string, type: IImageType): string {
+  return `${arenaTokenPrefix(tokenId)}token-${randomUUID()}.${type.extension}`;
 }
 
 /**

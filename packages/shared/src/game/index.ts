@@ -4,3 +4,4 @@ export * from "./rolls";
 export * from "./rules";
 export * from "./features";
 export * from "./marked";
+export * from "./arena";

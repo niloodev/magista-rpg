@@ -123,12 +123,14 @@ Dark fantasy, sem os efeitos de luz vetados em `DESIGN.md` (raios, faíscas, shi
 
 ## Fases
 
-1. Estudo de caso (este documento).
-2. Backend: schema e migration, shared, models, controller com testes, rotas, handler de socket, chaves de mídia, seed com cena e tokens de teste.
+1. Estudo de caso (este documento). Concluída.
+2. Backend: schema e migration, shared, models, controller com testes, rotas, handler de socket, chaves de mídia. Concluída (o e2e cria as próprias cenas pela API na fase 3, sem seed, para não sujar a lista de cenas do Mestre).
 3. Arena base: rota, slice, provider, renderer com câmera e tokens, movimento em tempo real com permissão, skeleton, botão na `/mesa`.
 4. Ferramentas do Mestre: cenas, tokens de ficha e NPC, ocultar, tamanho, remover.
 5. Dock: `SheetView` em painel, Rolagens, Tokens e card do token.
 6. Polimento: VFX, SFX, perfil de performance, revisão de design e acessibilidade.
+
+Nota para a fase 3: cada prévia de arraste (`arena:drag`) refaz a autorização no banco (até 3 consultas, limitadas a 30 por segundo por conta). Se pesar, cachear a autorização por conta e token durante o arraste (renovada no `arena:move` e nas mudanças de acesso) ou juntar tudo numa consulta.
 
 Cada fase fecha com lint, typecheck, unitários, e2e (`e2e/tests/arena.spec.ts`) e os três revisores.
 

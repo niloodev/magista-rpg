@@ -10,6 +10,13 @@ import type {
 } from "../game/marked/marked.types";
 import type { IPingRequest, IRollRequest, IRollResult } from "../game/rolls/rolls.types";
 import type { AccountRole } from "../schemas/account";
+import type {
+  IArenaDragEvent,
+  IArenaSceneEvent,
+  IArenaToken,
+  IArenaTokenRemovedEvent,
+  IMoveArenaTokenInput,
+} from "../schemas/arena";
 import type { ICharacter, ICharacterImages } from "../schemas/character";
 import type { ControllerResult } from "./envelope";
 
@@ -43,6 +50,10 @@ export interface ServerToClientEvents {
   "marked:proposal": (proposal: IMarkedProposal) => void;
   "marked:resolved": (resolution: IMarkedResolution) => void;
   "marked:share": (share: IMarkedShare | null) => void;
+  "arena:scene": (event: IArenaSceneEvent) => void;
+  "arena:token": (token: IArenaToken) => void;
+  "arena:token-removed": (event: IArenaTokenRemovedEvent) => void;
+  "arena:dragging": (event: IArenaDragEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -67,6 +78,11 @@ export interface ClientToServerEvents {
     ack: (result: ControllerResult<null>) => void,
   ) => void;
   "marked:stop": (request: IMarkedStopInput, ack: (result: ControllerResult<null>) => void) => void;
+  "arena:drag": (request: IMoveArenaTokenInput) => void;
+  "arena:move": (
+    request: IMoveArenaTokenInput,
+    ack: (result: ControllerResult<IArenaToken>) => void,
+  ) => void;
 }
 
 export interface SocketData {

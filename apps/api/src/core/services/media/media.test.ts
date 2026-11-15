@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { IMAGE_TYPES } from "./media.constants";
-import { detectImageType, isMediaKey, mediaKeyFor, mediaUrlOf } from "./media.utils";
+import {
+  arenaMapKeyFor,
+  arenaTokenKeyFor,
+  detectImageType,
+  isMediaKey,
+  mediaKeyFor,
+  mediaUrlOf,
+} from "./media.utils";
 
 const ID = "6f1c2b8a-1d2e-4f3a-9b8c-7d6e5f4a3b2c";
 
@@ -38,6 +45,17 @@ describe("media keys", () => {
     expect(isMediaKey(`other/${ID}.png`)).toBe(false);
     expect(isMediaKey(`legacy/tokens/${ID}xpng`)).toBe(false);
     expect(isMediaKey(`characters/${ID}/avatar-${ID}.svg`)).toBe(false);
+  });
+
+  it("builds servable Arena keys and refuses foreign Arena paths", () => {
+    const map = arenaMapKeyFor(ID, IMAGE_TYPES.webp);
+    const token = arenaTokenKeyFor(ID, IMAGE_TYPES.png);
+    expect(map).toMatch(new RegExp(`^arena/maps/${ID}/map-[0-9a-f-]{36}\\.webp$`));
+    expect(token).toMatch(new RegExp(`^arena/tokens/${ID}/token-[0-9a-f-]{36}\\.png$`));
+    expect(isMediaKey(map)).toBe(true);
+    expect(isMediaKey(token)).toBe(true);
+    expect(isMediaKey(`arena/maps/${ID}/token-${ID}.png`)).toBe(false);
+    expect(isMediaKey(`arena/other/${ID}/map-${ID}.png`)).toBe(false);
   });
 
   it("maps keys to public URLs", () => {
