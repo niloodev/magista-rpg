@@ -2,7 +2,7 @@ import type { IArenaScene, IArenaToken } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
-import type { IArenaTokenModels } from "@/core/models/arenaToken";
+import type { IArenaMoveGuard, IArenaTokenModels, IArenaTokenMove } from "@/core/models/arenaToken";
 import type { IArenaImageStore } from "@/core/services/media";
 
 import { createArenaController } from "./arena";
@@ -84,6 +84,14 @@ function build(options: { active?: string | null } = {}) {
       tokenList.filter((entry) => entry.sceneId === sceneId && (includeHidden || !entry.hidden)),
     ),
     findById: vi.fn(async (id) => tokenList.find((entry) => entry.id === id) ?? null),
+    findManyByIds: vi.fn(async (ids) => tokenList.filter((entry) => ids.includes(entry.id))),
+    moveMany: vi.fn(async (moves: IArenaTokenMove[], guard?: IArenaMoveGuard) =>
+      moves.flatMap(({ tokenId, x, y }) => {
+        const found = tokenList.find((entry) => entry.id === tokenId);
+        if (!found || (guard && (found.sceneId !== guard.sceneId || found.hidden))) return [];
+        return [{ ...found, x, y }];
+      }),
+    ),
     create: vi.fn(async (sceneId, input) =>
       token(MISSING, sceneId, { ...input, name: input.name ?? "Ana" }),
     ),
@@ -91,16 +99,23 @@ function build(options: { active?: string | null } = {}) {
       const found = tokenList.find((entry) => entry.id === id);
       return found ? { ...found, ...input } : null;
     }),
-    move: vi.fn(async (id, x, y) => {
-      const found = tokenList.find((entry) => entry.id === id);
-      return found ? { ...found, x, y } : null;
-    }),
     remove: vi.fn(async (id) => {
       const found = tokenList.find((entry) => entry.id === id);
       if (!found) return null;
       tokenList = tokenList.filter((entry) => entry.id !== id);
       return { id, sceneId: found.sceneId, hidden: found.hidden };
     }),
+    updateMany: vi.fn(async (patches: { id: string; patch: Partial<IArenaToken> }[]) =>
+      patches.flatMap(({ id, patch }) => {
+        const found = tokenList.find((entry) => entry.id === id);
+        return found ? [{ ...found, ...patch }] : [];
+      }),
+    ),
+    removeMany: vi.fn(async (ids: string[]) =>
+      tokenList
+        .filter((entry) => ids.includes(entry.id))
+        .map(({ id, sceneId, hidden }) => ({ id, sceneId, hidden })),
+    ),
     setImageKey: vi.fn(async (id, key) => {
       const found = tokenList.find((entry) => entry.id === id);
       return found ? { token: { ...found, imageUrl: `/media/${key}` }, previousKey: "old" } : null;
@@ -121,7 +136,6 @@ function build(options: { active?: string | null } = {}) {
     images,
     characters: {
       exists: vi.fn(async (id) => [ANA, BRUNO].includes(id)),
-      hasAccess: vi.fn(async (id, accountId) => access[accountId]?.includes(id) ?? false),
       listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
     },
   });
@@ -166,63 +180,99 @@ describe("arena controller: view", () => {
 });
 
 describe("arena controller: movement", () => {
+  const one = (tokenId: string, x = 1, y = 1) => ({ moves: [{ tokenId, x, y }] });
+
   it("lets a player move their own token on the live scene", async () => {
     const { controller, tokens } = build();
-    const result = await controller.move(alice, { tokenId: T_ANA, x: 300, y: 120.5 });
-    expect(result).toMatchObject({ payload: { token: { x: 300, y: 120.5 }, audience: "table" } });
-    expect(tokens.move).toHaveBeenCalledWith(T_ANA, 300, 120.5, { sceneId: LIVE });
+    const result = await controller.move(alice, one(T_ANA, 300, 120.5));
+    expect(result).toMatchObject({
+      payload: { changes: [{ token: { x: 300, y: 120.5 }, audience: "table" }], refused: [] },
+    });
+    expect(tokens.moveMany).toHaveBeenCalledWith([{ tokenId: T_ANA, x: 300, y: 120.5 }], {
+      sceneId: LIVE,
+    });
   });
 
   it("refuses other characters, NPCs, hidden tokens and other scenes for players", async () => {
     const { controller, tokens } = build();
-    const at = (tokenId: string) => ({ tokenId, x: 1, y: 1 });
-    expect(await controller.move(alice, at(T_BRUNO))).toEqual({ error: arenaErrors.forbidden });
-    expect(await controller.move(alice, at(T_WOLF))).toEqual({ error: arenaErrors.forbidden });
-    expect(await controller.move(alice, at(T_HIDDEN))).toEqual({
+    expect(await controller.move(alice, one(T_BRUNO))).toEqual({ error: arenaErrors.forbidden });
+    expect(await controller.move(alice, one(T_WOLF))).toEqual({ error: arenaErrors.forbidden });
+    expect(await controller.move(alice, one(T_HIDDEN))).toEqual({
       error: arenaErrors.tokenNotFound,
     });
-    expect(await controller.move(alice, at(T_PREP))).toEqual({ error: arenaErrors.tokenNotFound });
-    expect(tokens.move).not.toHaveBeenCalled();
+    expect(await controller.move(alice, one(T_PREP))).toEqual({ error: arenaErrors.tokenNotFound });
+    expect(tokens.moveMany).not.toHaveBeenCalled();
   });
 
-  it("does not store a player move when the token was hidden in the meantime", async () => {
-    const { controller, tokens } = build();
-    vi.mocked(tokens.move).mockResolvedValueOnce(null);
-    expect(await controller.move(alice, { tokenId: T_ANA, x: 1, y: 1 })).toEqual({
-      error: arenaErrors.tokenNotFound,
+  it("moves only the controlled part of a mixed group and reports the rest", async () => {
+    const { controller } = build();
+    const result = await controller.move(alice, {
+      moves: [
+        { tokenId: T_ANA, x: 10, y: 10 },
+        { tokenId: T_BRUNO, x: 20, y: 20 },
+        { tokenId: T_HIDDEN, x: 30, y: 30 },
+      ],
     });
+    expect(result).toMatchObject({
+      payload: { changes: [{ token: { id: T_ANA } }], refused: [T_BRUNO, T_HIDDEN] },
+    });
+  });
+
+  it("reports a move lost to a race (token hidden after the check)", async () => {
+    const { controller, tokens } = build();
+    vi.mocked(tokens.moveMany).mockResolvedValueOnce([]);
+    expect(await controller.move(alice, one(T_ANA))).toEqual({ error: arenaErrors.tokenNotFound });
   });
 
   it("lets the GM move anything and keeps hidden moves between GMs", async () => {
     const { controller } = build();
-    expect(await controller.move(gm, { tokenId: T_HIDDEN, x: 5, y: 5 })).toMatchObject({
-      payload: { audience: "gm" },
+    const result = await controller.move(gm, {
+      moves: [
+        { tokenId: T_HIDDEN, x: 5, y: 5 },
+        { tokenId: T_PREP, x: 5, y: 5 },
+        { tokenId: T_WOLF, x: 5, y: 5 },
+      ],
     });
-    expect(await controller.move(gm, { tokenId: T_PREP, x: 5, y: 5 })).toMatchObject({
-      payload: { audience: "gm" },
-    });
+    if ("error" in result) throw new Error(result.error);
+    const audiences = Object.fromEntries(
+      result.payload.changes.map((change) => [change.token.id, change.audience]),
+    );
+    expect(audiences).toEqual({ [T_HIDDEN]: "gm", [T_PREP]: "gm", [T_WOLF]: "table" });
   });
 
-  it("validates the position", async () => {
+  it("validates the batch", async () => {
     const { controller } = build();
-    expect(await controller.move(gm, { tokenId: T_ANA, x: -1, y: 0 })).toEqual({
+    expect(await controller.move(gm, one(T_ANA, -1, 0))).toEqual({
       error: arenaErrors.invalidMove,
     });
-    expect(await controller.move(gm, { tokenId: MISSING, x: 1, y: 1 })).toEqual({
-      error: arenaErrors.tokenNotFound,
-    });
+    expect(await controller.move(gm, { moves: [] })).toEqual({ error: arenaErrors.invalidMove });
+    expect(await controller.move(gm, one(MISSING))).toEqual({ error: arenaErrors.tokenNotFound });
   });
 
-  it("relays drag previews with the same checks and never persists them", async () => {
+  it("relays drag previews grouped by audience and never persists them", async () => {
     const { controller, tokens } = build();
-    expect(await controller.drag(alice, { tokenId: T_ANA, x: 40, y: 50 })).toEqual({
+    expect(await controller.drag(alice, one(T_ANA, 40, 50))).toEqual({
       message: "Arrastando",
-      payload: { event: { tokenId: T_ANA, x: 40, y: 50 }, audience: "table" },
+      payload: {
+        groups: [{ audience: "table", event: { moves: [{ tokenId: T_ANA, x: 40, y: 50 }] } }],
+      },
     });
-    expect(await controller.drag(alice, { tokenId: T_BRUNO, x: 1, y: 1 })).toEqual({
-      error: arenaErrors.forbidden,
+    const mixed = await controller.drag(gm, {
+      moves: [
+        { tokenId: T_WOLF, x: 1, y: 1 },
+        { tokenId: T_HIDDEN, x: 2, y: 2 },
+      ],
     });
-    expect(tokens.move).not.toHaveBeenCalled();
+    expect(mixed).toMatchObject({
+      payload: {
+        groups: [
+          { audience: "table", event: { moves: [{ tokenId: T_WOLF }] } },
+          { audience: "gm", event: { moves: [{ tokenId: T_HIDDEN }] } },
+        ],
+      },
+    });
+    expect(await controller.drag(alice, one(T_BRUNO))).toEqual({ error: arenaErrors.forbidden });
+    expect(tokens.moveMany).not.toHaveBeenCalled();
   });
 });
 
@@ -360,5 +410,65 @@ describe("arena controller: GM tools", () => {
       payload: { token: { imageUrl: `/media/arena/tokens/${T_WOLF}/token-new.png` } },
     });
     expect(images.remove).toHaveBeenCalledWith("old");
+  });
+});
+
+describe("arena controller: batch edits", () => {
+  it("keeps batch edits for the GM and validates them", async () => {
+    const { controller } = build();
+    expect(await controller.updateTokens(alice, { updates: [{ id: T_ANA, size: 200 }] })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.deleteTokens(alice, { ids: [T_WOLF] })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.updateTokens(gm, { updates: [{ id: T_ANA }] })).toEqual({
+      error: arenaErrors.invalidToken,
+    });
+    expect(await controller.updateTokens(gm, { updates: [{ id: T_ANA, size: 10 }] })).toEqual({
+      error: arenaErrors.invalidToken,
+    });
+    expect(await controller.updateTokens(gm, { updates: [{ id: T_ANA, name: "Outra" }] })).toEqual({
+      error: arenaErrors.characterName,
+    });
+    expect(await controller.deleteTokens(gm, { ids: [] })).toEqual({
+      error: arenaErrors.invalidToken,
+    });
+  });
+
+  it("resizes and hides several tokens, reporting who stops seeing them", async () => {
+    const { controller, tokens } = build();
+    const result = await controller.updateTokens(gm, {
+      updates: [
+        { id: T_ANA, size: 200, name: "Ignorado" },
+        { id: T_WOLF, hidden: true },
+        { id: MISSING, size: 100 },
+      ],
+    });
+    expect(tokens.updateMany).toHaveBeenCalledWith([
+      { id: T_ANA, patch: { size: 200 } },
+      { id: T_WOLF, patch: { hidden: true } },
+    ]);
+    expect(result).toMatchObject({
+      payload: [
+        { token: { id: T_ANA, size: 200 }, audience: "table", previousAudience: "table" },
+        { token: { id: T_WOLF, hidden: true }, audience: "gm", previousAudience: "table" },
+      ],
+    });
+  });
+
+  it("removes several tokens with their media and tells only who saw each", async () => {
+    const { controller, images } = build();
+    const result = await controller.deleteTokens(gm, { ids: [T_WOLF, T_HIDDEN, MISSING] });
+    expect(result).toMatchObject({
+      payload: [
+        { event: { id: T_WOLF, sceneId: LIVE }, audience: "table" },
+        { event: { id: T_HIDDEN, sceneId: LIVE }, audience: "gm" },
+      ],
+    });
+    expect(images.removeToken).toHaveBeenCalledTimes(2);
+    expect(await controller.deleteTokens(gm, { ids: [MISSING] })).toEqual({
+      error: arenaErrors.tokenNotFound,
+    });
   });
 });

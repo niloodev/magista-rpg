@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createArenaTokenInputSchema,
   moveArenaTokenInputSchema,
+  moveArenaTokensInputSchema,
   updateArenaTokenInputSchema,
 } from "../../schemas/arena";
 import { canControlToken, clampToMap } from "./arena";
@@ -45,5 +46,12 @@ describe("arena schemas", () => {
     expect(moveArenaTokenInputSchema.safeParse({ tokenId: ID, x: -1, y: 0 }).success).toBe(false);
     expect(moveArenaTokenInputSchema.safeParse({ tokenId: ID, x: 1e9, y: 0 }).success).toBe(false);
     expect(moveArenaTokenInputSchema.safeParse({ tokenId: ID, x: 12.5, y: 40 }).success).toBe(true);
+  });
+
+  it("accepts group moves without repeated tokens", () => {
+    const move = { tokenId: ID, x: 1, y: 1 };
+    expect(moveArenaTokensInputSchema.safeParse({ moves: [move] }).success).toBe(true);
+    expect(moveArenaTokensInputSchema.safeParse({ moves: [] }).success).toBe(false);
+    expect(moveArenaTokensInputSchema.safeParse({ moves: [move, move] }).success).toBe(false);
   });
 });

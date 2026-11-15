@@ -2,7 +2,11 @@
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 
-import { ARENA_TOP_BAR_HEIGHT, ARENA_ZOOM_STEP } from "@/modules/arena/arena.constants";
+import {
+  ARENA_BOTTOM_INSET,
+  ARENA_TOP_BAR_HEIGHT,
+  ARENA_ZOOM_STEP,
+} from "@/modules/arena/arena.constants";
 import type { ArenaStageStatus } from "@/modules/arena/arena.types";
 import type { IArenaRenderer } from "@/modules/arena/services/arenaRenderer";
 import { usePrefersReducedMotion } from "@/shared/hooks";
@@ -18,23 +22,25 @@ import { readSerifFont } from "./ArenaStage.utils";
 export function useArenaStage({
   scene,
   tokens,
-  selectedTokenId,
+  selectedTokenIds,
   controlsRef,
   onSelect,
   onDragMove,
   onDrop,
+  onResize,
+  resizable,
   onBounds,
   onMapError,
 }: ArenaStageHookProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<IArenaRenderer | null>(null);
-  const callbacksRef = useRef({ onSelect, onDragMove, onDrop, onBounds, onMapError });
+  const callbacksRef = useRef({ onSelect, onDragMove, onDrop, onResize, onBounds, onMapError });
   const [renderer, setRenderer] = useState<IArenaRenderer | null>(null);
   const [status, setStatus] = useState<ArenaStageStatus>("loading");
   const lite = usePrefersReducedMotion();
 
   useEffect(() => {
-    callbacksRef.current = { onSelect, onDragMove, onDrop, onBounds, onMapError };
+    callbacksRef.current = { onSelect, onDragMove, onDrop, onResize, onBounds, onMapError };
   });
 
   useEffect(() => {
@@ -51,11 +57,13 @@ export function useArenaStage({
         created = await ArenaRenderer.create(host, {
           lite,
           insetTop: ARENA_TOP_BAR_HEIGHT,
+          insetBottom: ARENA_BOTTOM_INSET,
           fontFamily,
           callbacks: {
-            onSelect: (id) => callbacksRef.current.onSelect(id),
-            onDragMove: (id, point) => callbacksRef.current.onDragMove(id, point),
-            onDrop: (id, point) => callbacksRef.current.onDrop(id, point),
+            onSelect: (ids, mode) => callbacksRef.current.onSelect(ids, mode),
+            onDragMove: (moves) => callbacksRef.current.onDragMove(moves),
+            onDrop: (moves) => callbacksRef.current.onDrop(moves),
+            onResize: (updates) => callbacksRef.current.onResize(updates),
             onMapError: (failed) => {
               if (!disposed) callbacksRef.current.onMapError(failed);
             },
@@ -99,8 +107,12 @@ export function useArenaStage({
   }, [renderer, tokens]);
 
   useEffect(() => {
-    renderer?.setSelection(selectedTokenId);
-  }, [renderer, selectedTokenId]);
+    renderer?.setSelection(selectedTokenIds);
+  }, [renderer, selectedTokenIds]);
+
+  useEffect(() => {
+    renderer?.setResizable(resizable);
+  }, [renderer, resizable]);
 
   useImperativeHandle(
     controlsRef,

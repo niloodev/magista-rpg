@@ -4,7 +4,7 @@ import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultArenaState } from "./arenaSlice.constants";
 import type { ArenaSlice } from "./arenaSlice.types";
-import { omitKey, upsertToken } from "./arenaSlice.utils";
+import { nextSelection, omitKey, upsertToken } from "./arenaSlice.utils";
 
 export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set) => ({
   ...defaultArenaState,
@@ -18,7 +18,7 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
     })),
   finishArenaLoad: (view) =>
     set((state) => {
-      const selected = state.arena.selectedTokenId;
+      const present = new Set(view.tokens.map((token) => token.id));
       return {
         arena: {
           ...state.arena,
@@ -26,7 +26,7 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           view,
           error: null,
           previews: {},
-          selectedTokenId: view.tokens.some((token) => token.id === selected) ? selected : null,
+          selectedTokenIds: state.arena.selectedTokenIds.filter((id) => present.has(id)),
         },
       };
     }),
@@ -55,36 +55,71 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           ...state.arena,
           view: { ...view, tokens: view.tokens.filter((token) => token.id !== id) },
           previews: omitKey(state.arena.previews, id),
-          selectedTokenId: state.arena.selectedTokenId === id ? null : state.arena.selectedTokenId,
+          selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => selected !== id),
         },
       };
     }),
-  applyArenaDrag: ({ tokenId, x, y }) =>
+  applyArenaDrag: ({ moves }) =>
     set((state) => {
-      if (!state.arena.view?.tokens.some((token) => token.id === tokenId)) return state;
-      return {
-        arena: { ...state.arena, previews: { ...state.arena.previews, [tokenId]: { x, y } } },
-      };
+      const present = new Set(state.arena.view?.tokens.map((token) => token.id));
+      const known = moves.filter((move) => present.has(move.tokenId));
+      if (known.length === 0) return state;
+      const previews = { ...state.arena.previews };
+      for (const { tokenId, x, y } of known) previews[tokenId] = { x, y };
+      return { arena: { ...state.arena, previews } };
     }),
   clearArenaDrag: (tokenId) =>
     set((state) => ({
       arena: { ...state.arena, previews: omitKey(state.arena.previews, tokenId) },
     })),
-  placeArenaToken: (tokenId, { x, y }) =>
+  placeArenaTokens: (moves) =>
     set((state) => {
       const view = state.arena.view;
       if (!view) return state;
+      const byId = new Map(moves.map((move) => [move.tokenId, move]));
       return {
         arena: {
           ...state.arena,
           view: {
             ...view,
-            tokens: view.tokens.map((token) => (token.id === tokenId ? { ...token, x, y } : token)),
+            tokens: view.tokens.map((token) => {
+              const move = byId.get(token.id);
+              return move ? { ...token, x: move.x, y: move.y } : token;
+            }),
           },
         },
       };
     }),
-  selectArenaToken: (tokenId) =>
-    set((state) => ({ arena: { ...state.arena, selectedTokenId: tokenId } })),
+  patchArenaTokens: (patches) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (!view) return state;
+      const byId = new Map(patches.map((patch) => [patch.id, patch]));
+      return {
+        arena: {
+          ...state.arena,
+          view: {
+            ...view,
+            tokens: view.tokens.map((token) => {
+              const patch = byId.get(token.id);
+              if (!patch) return token;
+              return {
+                ...token,
+                size: patch.size ?? token.size,
+                hidden: patch.hidden ?? token.hidden,
+                name: patch.name ?? token.name,
+              };
+            }),
+          },
+        },
+      };
+    }),
+  selectArenaTokens: (tokenIds, mode) =>
+    set((state) => ({
+      arena: {
+        ...state.arena,
+        selectedTokenIds: nextSelection(state.arena.selectedTokenIds, tokenIds, mode),
+      },
+    })),
   resetArena: () => set(defaultArenaState),
 });

@@ -10,6 +10,7 @@ export interface ArenaToken {
   name: string;
   x: number;
   y: number;
+  size: number;
   hidden: boolean;
 }
 

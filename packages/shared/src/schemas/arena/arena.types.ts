@@ -7,6 +7,9 @@ import type {
   createArenaSceneInputSchema,
   createArenaTokenInputSchema,
   moveArenaTokenInputSchema,
+  moveArenaTokensInputSchema,
+  updateArenaTokensInputSchema,
+  deleteArenaTokensInputSchema,
   renameArenaSceneInputSchema,
   setActiveSceneInputSchema,
   updateArenaTokenInputSchema,
@@ -30,11 +33,23 @@ export type IUpdateArenaTokenInput = z.infer<typeof updateArenaTokenInputSchema>
 
 export type IMoveArenaTokenInput = z.infer<typeof moveArenaTokenInputSchema>;
 
+export type IMoveArenaTokensInput = z.infer<typeof moveArenaTokensInputSchema>;
+
+export type IUpdateArenaTokensInput = z.infer<typeof updateArenaTokensInputSchema>;
+
+export type IArenaTokenPatch = IUpdateArenaTokensInput["updates"][number];
+
+export type IDeleteArenaTokensInput = z.infer<typeof deleteArenaTokensInputSchema>;
+
+/** Tokens stored by a move, plus the ids that were refused (not controlled, hidden or gone). */
+export interface IArenaMoveResult {
+  tokens: IArenaToken[];
+  refused: string[];
+}
+
 /** Live drag preview relayed to the other tabs (never persisted). */
 export interface IArenaDragEvent {
-  tokenId: string;
-  x: number;
-  y: number;
+  moves: IMoveArenaTokenInput[];
 }
 
 export interface IArenaTokenRemovedEvent {

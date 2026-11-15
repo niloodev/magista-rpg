@@ -1,4 +1,6 @@
-import type { IArenaBounds, IArenaPoint } from "@magista/shared";
+import type { IArenaBounds, IMoveArenaTokenInput } from "@magista/shared";
+
+import type { ArenaSelectionMode, IArenaSizeUpdate } from "@/modules/arena/arena.types";
 
 export interface IArenaCamera {
   x: number;
@@ -32,9 +34,10 @@ export interface IArenaRenderScene {
 }
 
 export interface IArenaRendererCallbacks {
-  onSelect: (tokenId: string | null) => void;
-  onDragMove: (tokenId: string, point: IArenaPoint) => void;
-  onDrop: (tokenId: string, point: IArenaPoint) => void;
+  onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
+  onDragMove: (moves: IMoveArenaTokenInput[]) => void;
+  onDrop: (moves: IMoveArenaTokenInput[]) => void;
+  onResize: (updates: IArenaSizeUpdate[]) => void;
   onSceneReady: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
 }
@@ -43,6 +46,8 @@ export interface IArenaRendererOptions {
   lite: boolean;
   /** Height covered by the top bar, left out when fitting or centering. */
   insetTop: number;
+  /** Height kept free at the bottom when fitting (selection bar, tray and zoom). */
+  insetBottom: number;
   fontFamily: string;
   callbacks: IArenaRendererCallbacks;
 }
@@ -50,7 +55,8 @@ export interface IArenaRendererOptions {
 export interface IArenaRenderer {
   setScene: (scene: IArenaRenderScene | null) => Promise<void>;
   setTokens: (tokens: IArenaRenderToken[]) => void;
-  setSelection: (tokenId: string | null) => void;
+  setSelection: (tokenIds: string[]) => void;
+  setResizable: (resizable: boolean) => void;
   zoomBy: (factor: number) => void;
   fitToMap: () => void;
   centerOn: (tokenId: string) => void;

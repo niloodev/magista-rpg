@@ -5,11 +5,12 @@ import {
   canControlToken,
   createArenaSceneInputSchema,
   createArenaTokenInputSchema,
-  type IArenaToken,
-  moveArenaTokenInputSchema,
+  deleteArenaTokensInputSchema,
+  moveArenaTokensInputSchema,
   renameArenaSceneInputSchema,
   setActiveSceneInputSchema,
   updateArenaTokenInputSchema,
+  updateArenaTokensInputSchema,
 } from "@magista/shared";
 
 import { arenaSceneModels } from "@/core/models/arenaScene";
@@ -18,7 +19,7 @@ import { characterModels } from "@/core/models/character";
 import { arenaImages } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
-import { arenaErrors, type ArenaError } from "./arena.errors";
+import { arenaErrors } from "./arena.errors";
 import type { IArenaController, IArenaControllerDeps } from "./arena.types";
 import { sceneAudience, tokenAudience } from "./arena.utils";
 
@@ -45,22 +46,14 @@ export function createArenaController({
       console.error("arena media cleanup failed:", error);
     });
 
-  const authorizeControl = async (
-    viewer: IViewer,
-    tokenId: string,
-  ): Promise<{ token: IArenaToken; activeSceneId: string | null } | { error: ArenaError }> => {
-    const token = await tokens.findById(tokenId);
-    if (!token) return { error: arenaErrors.tokenNotFound };
+  const authorizeMany = async (viewer: IViewer, ids: string[]) => {
+    const found = await tokens.findManyByIds(ids);
     const activeSceneId = await scenes.findActiveSceneId();
-    if (viewer.role === "GM") return { token, activeSceneId };
-    if (token.sceneId !== activeSceneId || token.hidden)
-      return { error: arenaErrors.tokenNotFound };
-    const granted =
-      token.characterId && (await characters.hasAccess(token.characterId, viewer.accountId))
-        ? [token.characterId]
-        : [];
-    if (!canControlToken(viewer, token, granted)) return { error: arenaErrors.forbidden };
-    return { token, activeSceneId };
+    if (viewer.role === "GM") return { allowed: found, forbidden: false, activeSceneId };
+    const accessible = await characters.listAccessibleIds(viewer.accountId);
+    const visible = found.filter((token) => token.sceneId === activeSceneId && !token.hidden);
+    const allowed = visible.filter((token) => canControlToken(viewer, token, accessible));
+    return { allowed, forbidden: visible.length > allowed.length, activeSceneId };
   };
 
   const getView: IArenaController["getView"] = async (viewer, requestedSceneId) => {
@@ -233,6 +226,62 @@ export function createArenaController({
     }
   };
 
+  const updateTokens: IArenaController["updateTokens"] = async (viewer, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    const parsed = updateArenaTokensInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidToken };
+    try {
+      const existing = await tokens.findManyByIds(parsed.data.updates.map((update) => update.id));
+      const byId = new Map(existing.map((token) => [token.id, token]));
+      const patches = parsed.data.updates.flatMap(({ id, name, size, hidden }) => {
+        const token = byId.get(id);
+        if (!token) return [];
+        const patch = {
+          ...(size === undefined ? {} : { size }),
+          ...(hidden === undefined ? {} : { hidden }),
+          ...(name === undefined || token.characterId ? {} : { name }),
+        };
+        return Object.keys(patch).length > 0 ? [{ id, patch }] : [];
+      });
+      if (patches.length === 0)
+        return {
+          error: existing.length > 0 ? arenaErrors.characterName : arenaErrors.tokenNotFound,
+        };
+      const updated = await tokens.updateMany(patches);
+      const activeSceneId = await scenes.findActiveSceneId();
+      const changes = updated.map((token) => {
+        const before = byId.get(token.id) ?? token;
+        return {
+          token,
+          audience: tokenAudience(token, activeSceneId),
+          previousAudience: tokenAudience(before, activeSceneId),
+        };
+      });
+      return { message: "Tokens atualizados", payload: changes };
+    } catch (error) {
+      return failed("updateTokens", error);
+    }
+  };
+
+  const deleteTokens: IArenaController["deleteTokens"] = async (viewer, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    const parsed = deleteArenaTokensInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidToken };
+    try {
+      const removed = await tokens.removeMany(parsed.data.ids);
+      if (removed.length === 0) return { error: arenaErrors.tokenNotFound };
+      for (const { id } of removed) await cleanup(images.removeToken(id));
+      const activeSceneId = await scenes.findActiveSceneId();
+      const removals = removed.map((token) => ({
+        event: { id: token.id, sceneId: token.sceneId },
+        audience: tokenAudience(token, activeSceneId),
+      }));
+      return { message: "Tokens removidos", payload: removals };
+    } catch (error) {
+      return failed("deleteTokens", error);
+    }
+  };
+
   const deleteToken: IArenaController["deleteToken"] = async (viewer, id) => {
     if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     if (!isId(id)) return { error: arenaErrors.tokenNotFound };
@@ -283,39 +332,58 @@ export function createArenaController({
   };
 
   const move: IArenaController["move"] = async (viewer, input) => {
-    const parsed = moveArenaTokenInputSchema.safeParse(input);
+    const parsed = moveArenaTokensInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidMove };
-    const { tokenId, x, y } = parsed.data;
+    const { moves } = parsed.data;
     try {
-      const allowed = await authorizeControl(viewer, tokenId);
-      if ("error" in allowed) return allowed;
+      const auth = await authorizeMany(
+        viewer,
+        moves.map((entry) => entry.tokenId),
+      );
+      if (auth.allowed.length === 0)
+        return { error: auth.forbidden ? arenaErrors.forbidden : arenaErrors.tokenNotFound };
+      const allowedIds = new Set(auth.allowed.map((token) => token.id));
       const guard =
-        viewer.role === "GM" || !allowed.activeSceneId
-          ? undefined
-          : { sceneId: allowed.activeSceneId };
-      const token = await tokens.move(tokenId, x, y, guard);
-      if (!token) return { error: arenaErrors.tokenNotFound };
-      const audience = tokenAudience(token, await scenes.findActiveSceneId());
-      return { message: "Token movido", payload: { token, audience, previousAudience: audience } };
+        viewer.role === "GM" || !auth.activeSceneId ? undefined : { sceneId: auth.activeSceneId };
+      const moved = await tokens.moveMany(
+        moves.filter((entry) => allowedIds.has(entry.tokenId)),
+        guard,
+      );
+      if (moved.length === 0) return { error: arenaErrors.tokenNotFound };
+      const activeSceneId = await scenes.findActiveSceneId();
+      const movedIds = new Set(moved.map((token) => token.id));
+      const changes = moved.map((token) => {
+        const audience = tokenAudience(token, activeSceneId);
+        return { token, audience, previousAudience: audience };
+      });
+      const refused = moves.map((entry) => entry.tokenId).filter((id) => !movedIds.has(id));
+      return { message: "Tokens movidos", payload: { changes, refused } };
     } catch (error) {
       return failed("move", error);
     }
   };
 
   const drag: IArenaController["drag"] = async (viewer, input) => {
-    const parsed = moveArenaTokenInputSchema.safeParse(input);
+    const parsed = moveArenaTokensInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidMove };
-    const { tokenId, x, y } = parsed.data;
+    const { moves } = parsed.data;
     try {
-      const allowed = await authorizeControl(viewer, tokenId);
-      if ("error" in allowed) return allowed;
-      return {
-        message: "Arrastando",
-        payload: {
-          event: { tokenId, x, y },
-          audience: tokenAudience(allowed.token, allowed.activeSceneId),
-        },
-      };
+      const auth = await authorizeMany(
+        viewer,
+        moves.map((entry) => entry.tokenId),
+      );
+      if (auth.allowed.length === 0)
+        return { error: auth.forbidden ? arenaErrors.forbidden : arenaErrors.tokenNotFound };
+      const audienceOf = new Map(
+        auth.allowed.map((token) => [token.id, tokenAudience(token, auth.activeSceneId)]),
+      );
+      const groups = (["table", "gm"] as const)
+        .map((audience) => ({
+          audience,
+          event: { moves: moves.filter((entry) => audienceOf.get(entry.tokenId) === audience) },
+        }))
+        .filter((group) => group.event.moves.length > 0);
+      return { message: "Arrastando", payload: { groups } };
     } catch (error) {
       return failed("drag", error);
     }
@@ -335,6 +403,8 @@ export function createArenaController({
     setTokenImage,
     move,
     drag,
+    updateTokens,
+    deleteTokens,
   };
 }
 

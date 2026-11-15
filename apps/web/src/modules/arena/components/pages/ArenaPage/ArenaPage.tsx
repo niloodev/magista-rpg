@@ -5,16 +5,19 @@ import {
   ARENA_LOAD_RETRY_LABEL,
   ARENA_MAP_ERROR,
   ARENA_NO_MAP_LABEL,
+  ARENA_SELECTION_TEXTS,
 } from "@/modules/arena/arena.constants";
 import { ProfileDialog } from "@/modules/profile/components";
 import { Button, Icon } from "@/shared/components/atoms";
+import { ConfirmDialog } from "@/shared/components/molecules";
 
-import { ArenaNotice, ArenaTokenTray, ArenaZoomControls } from "../../molecules";
-import { ArenaSkeleton, ArenaStage, ArenaTopBar } from "../../organisms";
+import { ArenaNotice, ArenaSelectionBar, ArenaTokenTray, ArenaZoomControls } from "../../molecules";
+import { ArenaMobileNotice, ArenaSkeleton, ArenaStage, ArenaTopBar } from "../../organisms";
 import { useArenaPage } from "./ArenaPage.hook";
 
 export function ArenaPage() {
   const {
+    isGm,
     status,
     loadError,
     scene,
@@ -24,6 +27,8 @@ export function ArenaPage() {
     trayTokens,
     trayLabel,
     selectedTokenId,
+    selectedTokenIds,
+    desktop,
     connection,
     memberCount,
     controlsRef,
@@ -41,12 +46,23 @@ export function ArenaPage() {
     onDragMove,
     onDrop,
     onBounds,
+    onResize,
+    selection,
+    onSizeChange,
+    onToggleHidden,
+    onOpenSheet,
+    onRequestRemove,
+    confirmRemove,
+    confirmRemoveTitle,
+    onConfirmRemove,
+    onCancelRemove,
     onPickToken,
     onStageKeyDown,
     onZoomIn,
     onZoomOut,
     onFit,
   } = useArenaPage();
+  if (!desktop) return <ArenaMobileNotice />;
   if (status === "idle" || status === "loading") return <ArenaSkeleton />;
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-void-900">
@@ -55,13 +71,15 @@ export function ArenaPage() {
           className="absolute inset-0"
           scene={stageScene}
           tokens={renderTokens}
-          selectedTokenId={selectedTokenId}
+          selectedTokenIds={selectedTokenIds}
           controlsRef={controlsRef}
           label={stageLabel}
           onSelect={onSelect}
           onDragMove={onDragMove}
           onDrop={onDrop}
           onBounds={onBounds}
+          onResize={onResize}
+          resizable={isGm}
           onMapError={onMapError}
           onKeyDown={onStageKeyDown}
         />
@@ -122,6 +140,20 @@ export function ArenaPage() {
           onPick={onPickToken}
         />
       )}
+      {scene && selection && (
+        <ArenaSelectionBar
+          className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2"
+          label={selection.label}
+          isGm={isGm}
+          size={selection.size}
+          allHidden={selection.allHidden}
+          canOpenSheet={selection.canOpenSheet}
+          onSizeChange={onSizeChange}
+          onToggleHidden={onToggleHidden}
+          onOpenSheet={onOpenSheet}
+          onRemove={onRequestRemove}
+        />
+      )}
       {scene && (
         <ArenaZoomControls
           className="absolute right-4 bottom-4 z-10"
@@ -130,6 +162,14 @@ export function ArenaPage() {
           onFit={onFit}
         />
       )}
+      <ConfirmDialog
+        open={confirmRemove}
+        title={confirmRemoveTitle}
+        message={ARENA_SELECTION_TEXTS.confirmMessage}
+        confirmLabel={ARENA_SELECTION_TEXTS.remove}
+        onConfirm={onConfirmRemove}
+        onCancel={onCancelRemove}
+      />
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>

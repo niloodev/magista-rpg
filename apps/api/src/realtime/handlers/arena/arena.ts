@@ -34,7 +34,11 @@ export function registerArenaHandlers(
       ack(result);
       return;
     }
-    ack({ message: result.message, payload: result.payload.token });
-    onMoved(result.payload);
+    const { changes, refused } = result.payload;
+    ack({
+      message: result.message,
+      payload: { tokens: changes.map((change) => change.token), refused },
+    });
+    for (const change of changes) onMoved(change);
   });
 }

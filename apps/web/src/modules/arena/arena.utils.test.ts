@@ -1,7 +1,14 @@
 import type { IArenaToken, IArenaView } from "@magista/shared";
 import { describe, expect, it } from "vitest";
 
-import { arenaHint, arrowDelta, parseArenaHint, roundPoint, toRenderTokens } from "./arena.utils";
+import {
+  arenaHint,
+  arrowDelta,
+  parseArenaHint,
+  roundPoint,
+  selectionSummary,
+  toRenderTokens,
+} from "./arena.utils";
 
 function token(id: string, characterId: string | null): IArenaToken {
   return {
@@ -65,5 +72,21 @@ describe("arena utils", () => {
   it("maps arrow keys to directions", () => {
     expect(arrowDelta("ArrowLeft")).toEqual({ x: -1, y: 0 });
     expect(arrowDelta("a")).toBeNull();
+  });
+
+  it("summarizes the selection for the bar", () => {
+    const ana = token("ana", "c-ana");
+    const lobo = { ...token("lobo", null), size: 220, hidden: true };
+    expect(selectionSummary([ana, lobo], true, [])).toEqual({
+      size: 220,
+      allHidden: false,
+      sheetTarget: null,
+    });
+    expect(selectionSummary([ana], false, ["c-ana"])).toMatchObject({ sheetTarget: "c-ana" });
+    expect(selectionSummary([ana], false, [])).toMatchObject({ sheetTarget: null });
+    expect(selectionSummary([lobo], true, [])).toMatchObject({
+      allHidden: true,
+      sheetTarget: null,
+    });
   });
 });

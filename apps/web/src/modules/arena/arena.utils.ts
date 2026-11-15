@@ -2,11 +2,12 @@ import {
   ARENA_NAME_MAX_LENGTH,
   canControlToken,
   type IArenaPoint,
+  type IArenaToken,
   type IArenaView,
 } from "@magista/shared";
 
 import { ARENA_HINT_DEFAULT_NAME, ARENA_HINT_MAX_TRAY } from "@/modules/arena/arena.constants";
-import type { IArenaHint } from "@/modules/arena/arena.types";
+import type { IArenaHint, IArenaSelectionSummary } from "@/modules/arena/arena.types";
 
 import type { IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
 
@@ -64,6 +65,26 @@ export function parseArenaHint(value: unknown): IArenaHint {
     known: true,
     tray: clamp(tray, ARENA_HINT_MAX_TRAY),
     nameLength: clamp(name, ARENA_NAME_MAX_LENGTH),
+  };
+}
+
+/**
+ * What the selection bar shows: the common size (or the largest when they differ, so +/- start from a real
+ * size), whether every token is hidden and which sheet "Abrir ficha" opens (one character token the viewer
+ * may open).
+ */
+export function selectionSummary(
+  tokens: IArenaToken[],
+  isGm: boolean,
+  controllableCharacterIds: string[],
+): IArenaSelectionSummary {
+  const [first] = tokens;
+  const characterId = tokens.length === 1 ? (first?.characterId ?? null) : null;
+  return {
+    size: tokens.length > 0 ? Math.max(...tokens.map((token) => token.size)) : null,
+    allHidden: tokens.length > 0 && tokens.every((token) => token.hidden),
+    sheetTarget:
+      characterId && (isGm || controllableCharacterIds.includes(characterId)) ? characterId : null,
   };
 }
 

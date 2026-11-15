@@ -255,8 +255,9 @@ export function broadcastArenaTokenRemoved({ event, audience }: IArenaTokenRemov
 /**
  * Relays a drag preview to everyone else who may see the token (not to the dragging socket).
  */
-function relayArenaDrag({ event, audience }: IArenaDragRelay, socketId: string): void {
-  io?.to(arenaRoom(audience)).except(socketId).emit("arena:dragging", event);
+function relayArenaDrag({ groups }: IArenaDragRelay, socketId: string): void {
+  for (const { event, audience } of groups)
+    io?.to(arenaRoom(audience)).except(socketId).emit("arena:dragging", event);
 }
 
 /**

@@ -40,3 +40,14 @@ export const ARENA_CAMERA_SAVE_DELAY_MS = 300;
 export const ARENA_LABEL_GAP = 6;
 
 export const ARENA_LABEL_MIN_SCREEN_PX = 12;
+
+export const ARENA_HANDLE_SIZE = 10;
+
+export const ARENA_FRAME_PADDING = 6;
+
+export const RESIZE_CORNERS = [
+  { x: 0, y: 0, cursor: "nwse-resize" },
+  { x: 1, y: 0, cursor: "nesw-resize" },
+  { x: 0, y: 1, cursor: "nesw-resize" },
+  { x: 1, y: 1, cursor: "nwse-resize" },
+] as const;

@@ -16,6 +16,10 @@ export const ARENA_TOKEN_SIZE_MAX = 600;
 
 export const ARENA_TOKEN_SIZE_DEFAULT = 140;
 
+export const ARENA_MOVE_BATCH_MAX = 50;
+
+export const ARENA_EDIT_BATCH_MAX = 100;
+
 export const arenaIdSchema = z.uuid();
 
 const arenaNameSchema = z.string().trim().min(1).max(ARENA_NAME_MAX_LENGTH);
@@ -76,8 +80,41 @@ export const updateArenaTokenInputSchema = z
   })
   .refine((input) => Object.values(input).some((value) => value !== undefined));
 
+const tokenPatchSchema = z
+  .object({
+    id: arenaIdSchema,
+    name: arenaNameSchema.optional(),
+    size: arenaTokenSizeSchema.optional(),
+    hidden: z.boolean().optional(),
+  })
+  .refine((input) => [input.name, input.size, input.hidden].some((value) => value !== undefined));
+
+export const updateArenaTokensInputSchema = z.object({
+  updates: z
+    .array(tokenPatchSchema)
+    .min(1)
+    .max(ARENA_EDIT_BATCH_MAX)
+    .refine((updates) => new Set(updates.map((update) => update.id)).size === updates.length),
+});
+
+export const deleteArenaTokensInputSchema = z.object({
+  ids: z
+    .array(arenaIdSchema)
+    .min(1)
+    .max(ARENA_EDIT_BATCH_MAX)
+    .refine((ids) => new Set(ids).size === ids.length),
+});
+
 export const moveArenaTokenInputSchema = z.object({
   tokenId: arenaIdSchema,
   x: arenaCoordSchema,
   y: arenaCoordSchema,
+});
+
+export const moveArenaTokensInputSchema = z.object({
+  moves: z
+    .array(moveArenaTokenInputSchema)
+    .min(1)
+    .max(ARENA_MOVE_BATCH_MAX)
+    .refine((moves) => new Set(moves.map((move) => move.tokenId)).size === moves.length),
 });

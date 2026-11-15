@@ -18,7 +18,7 @@ import type { ArenaError } from "./arena.errors";
 export interface IArenaControllerDeps {
   scenes: IArenaSceneModels;
   tokens: IArenaTokenModels;
-  characters: Pick<ICharacterModels, "exists" | "hasAccess" | "listAccessibleIds">;
+  characters: Pick<ICharacterModels, "exists" | "listAccessibleIds">;
   images: IArenaImageStore;
 }
 
@@ -55,9 +55,18 @@ export interface IArenaTokenRemoval {
   audience: ArenaAudience;
 }
 
-export interface IArenaDragRelay {
+export interface IArenaMoveChanges {
+  changes: IArenaTokenChange[];
+  refused: string[];
+}
+
+export interface IArenaDragGroup {
   event: IArenaDragEvent;
   audience: ArenaAudience;
+}
+
+export interface IArenaDragRelay {
+  groups: IArenaDragGroup[];
 }
 
 type Result<T> = Promise<ControllerResult<T, ArenaError>>;
@@ -74,6 +83,8 @@ export interface IArenaController {
   updateToken: (viewer: IViewer, id: string, input: unknown) => Result<IArenaTokenChange>;
   deleteToken: (viewer: IViewer, id: string) => Result<IArenaTokenRemoval>;
   setTokenImage: (viewer: IViewer, id: string, upload: IArenaUpload) => Result<IArenaTokenChange>;
-  move: (viewer: IViewer, input: unknown) => Result<IArenaTokenChange>;
+  move: (viewer: IViewer, input: unknown) => Result<IArenaMoveChanges>;
+  updateTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenChange[]>;
+  deleteTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenRemoval[]>;
   drag: (viewer: IViewer, input: unknown) => Result<IArenaDragRelay>;
 }

@@ -1,4 +1,9 @@
-import { clampToMap, type IArenaBounds, type IArenaPoint } from "@magista/shared";
+import {
+  clampToMap,
+  type IArenaBounds,
+  type IArenaPoint,
+  type IMoveArenaTokenInput,
+} from "@magista/shared";
 import {
   Application,
   Circle,
@@ -17,6 +22,9 @@ import {
   ARENA_CAMERA_SAVE_DELAY_MS,
   ARENA_CAMERA_STORAGE_PREFIX,
   ARENA_CLICK_SLOP,
+  ARENA_FRAME_PADDING,
+  ARENA_HANDLE_SIZE,
+  RESIZE_CORNERS,
   ARENA_COLORS,
   ARENA_LABEL_GAP,
   ARENA_LABEL_MIN_SCREEN_PX,
@@ -39,8 +47,12 @@ import {
   centerCamera,
   fitCamera,
   fitTextureSize,
+  distance,
+  isEditableTarget,
   parseStoredCamera,
+  scaleTokenSize,
   screenToWorld,
+  tokensInRect,
   zoomAt,
 } from "./arenaRenderer.utils";
 
@@ -60,11 +72,27 @@ interface ITokenView {
 }
 
 interface IDragState {
-  tokenId: string;
   pointerId: number;
-  offset: IArenaPoint;
+  tokenId: string;
+  /** Offset of each dragged token from the pointer, in map pixels. */
+  offsets: Map<string, IArenaPoint>;
   start: IArenaPoint;
-  point: IArenaPoint;
+  moves: IMoveArenaTokenInput[];
+  moved: boolean;
+}
+
+interface IResizeState {
+  pointerId: number;
+  center: IArenaPoint;
+  startDistance: number;
+  sizes: Map<string, number>;
+}
+
+interface IMarqueeState {
+  pointerId: number;
+  start: IArenaPoint;
+  current: IArenaPoint;
+  additive: boolean;
   moved: boolean;
 }
 
@@ -113,8 +141,16 @@ export class ArenaRenderer implements IArenaRenderer {
   private mapUrl: string | null | undefined = undefined;
   private scene: IArenaRenderScene | null = null;
   private mapTexture: Texture | null = null;
-  private selection: string | null = null;
+  private readonly uiLayer = new Container();
+  private readonly marqueeBox = new Graphics();
+  private readonly selectionFrame = new Graphics();
+  private readonly handles: Graphics[] = [];
+  private resizable = false;
+  private resize: IResizeState | null = null;
+  private selection = new Set<string>();
   private drag: IDragState | null = null;
+  private marquee: IMarqueeState | null = null;
+  private spaceHeld = false;
   private pan: IPanState | null = null;
   private pinch: { distance: number; camera: IArenaCamera } | null = null;
   private frame = 0;
@@ -130,7 +166,20 @@ export class ArenaRenderer implements IArenaRenderer {
     private readonly maxTextureSize: number,
   ) {
     this.world.addChild(this.mapLayer, this.tokenLayer);
-    app.stage.addChild(this.world);
+    this.uiLayer.addChild(this.selectionFrame, this.marqueeBox);
+    for (const corner of RESIZE_CORNERS) {
+      const handle = new Graphics()
+        .rect(-ARENA_HANDLE_SIZE / 2, -ARENA_HANDLE_SIZE / 2, ARENA_HANDLE_SIZE, ARENA_HANDLE_SIZE)
+        .fill({ color: ARENA_COLORS.gold400 })
+        .stroke({ width: 1, color: ARENA_COLORS.black });
+      handle.eventMode = "static";
+      handle.cursor = corner.cursor;
+      handle.visible = false;
+      handle.on("pointerdown", this.onHandleDown);
+      this.handles.push(handle);
+      this.uiLayer.addChild(handle);
+    }
+    app.stage.addChild(this.world, this.uiLayer);
     app.stage.eventMode = "static";
     app.stage.hitArea = app.screen;
     app.stage.on("pointerdown", this.onStageDown);
@@ -140,6 +189,9 @@ export class ArenaRenderer implements IArenaRenderer {
     app.stage.on("pointercancel", this.onPointerCancel);
     app.canvas.addEventListener("wheel", this.onWheel, { passive: false });
     app.canvas.addEventListener("contextmenu", this.preventMenu);
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", this.onWindowBlur);
     this.observer = new ResizeObserver(this.onResize);
     this.observer.observe(host);
   }
@@ -211,7 +263,8 @@ export class ArenaRenderer implements IArenaRenderer {
     }
     if (sceneChanged)
       this.camera =
-        this.storedCamera() ?? fitCamera(this.bounds, this.viewport(), this.options.insetTop);
+        this.storedCamera() ??
+        fitCamera(this.bounds, this.viewport(), this.options.insetTop, this.options.insetBottom);
     this.applyCamera();
     this.options.callbacks.onSceneReady(this.bounds);
   };
@@ -223,9 +276,10 @@ export class ArenaRenderer implements IArenaRenderer {
       const existing = this.tokens.get(data.id);
       const view = existing ?? this.createToken(data);
       const portraitChanged = existing !== undefined && existing.data.imageUrl !== data.imageUrl;
-      view.data = data;
+      const resizing = this.resize?.sizes.has(data.id) ?? false;
+      view.data = resizing ? { ...data, size: view.data.size } : data;
       if (portraitChanged) this.resetPortrait(view);
-      if (this.drag?.tokenId !== data.id) view.target = { x: data.x, y: data.y };
+      if (!this.drag?.offsets.has(data.id)) view.target = { x: data.x, y: data.y };
       if (!existing) view.display = { ...view.target };
       this.drawToken(view);
       this.tokenLayer.addChild(view.container);
@@ -234,17 +288,30 @@ export class ArenaRenderer implements IArenaRenderer {
       if (seen.has(id)) continue;
       view.container.destroy({ children: true });
       this.tokens.delete(id);
-      if (this.drag?.tokenId === id) this.drag = null;
+      this.drag?.offsets.delete(id);
     }
-    const dragged = this.drag ? this.tokens.get(this.drag.tokenId) : null;
-    if (dragged) this.tokenLayer.addChild(dragged.container);
+    for (const id of this.drag?.offsets.keys() ?? []) {
+      const dragged = this.tokens.get(id);
+      if (dragged) this.tokenLayer.addChild(dragged.container);
+    }
     this.invalidate();
   };
 
-  setSelection = (tokenId: string | null): void => {
-    if (this.selection === tokenId) return;
-    this.selection = tokenId;
+  setSelection = (tokenIds: string[]): void => {
+    const next = new Set(tokenIds);
+    if (next.size === this.selection.size && tokenIds.every((id) => this.selection.has(id))) return;
+    this.applySelection(next);
+  };
+
+  private applySelection(next: Set<string>): void {
+    this.selection = next;
     for (const view of this.tokens.values()) this.drawToken(view);
+    this.invalidate();
+  }
+
+  setResizable = (resizable: boolean): void => {
+    if (this.resizable === resizable) return;
+    this.resizable = resizable;
     this.invalidate();
   };
 
@@ -255,7 +322,12 @@ export class ArenaRenderer implements IArenaRenderer {
   };
 
   fitToMap = (): void => {
-    this.camera = fitCamera(this.bounds, this.viewport(), this.options.insetTop);
+    this.camera = fitCamera(
+      this.bounds,
+      this.viewport(),
+      this.options.insetTop,
+      this.options.insetBottom,
+    );
     this.applyCamera();
   };
 
@@ -279,7 +351,11 @@ export class ArenaRenderer implements IArenaRenderer {
     this.observer.disconnect();
     this.app.canvas.removeEventListener("wheel", this.onWheel);
     this.app.canvas.removeEventListener("contextmenu", this.preventMenu);
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
+    window.removeEventListener("blur", this.onWindowBlur);
     this.app.stage.removeChildren();
+    this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
     this.mapTexture?.destroy(true);
     for (const pending of this.portraits.values())
@@ -305,6 +381,7 @@ export class ArenaRenderer implements IArenaRenderer {
     }
     this.lastFrame = now;
     const animating = this.stepTokens();
+    this.drawSelectionFrame();
     this.app.render();
     if (animating) this.invalidate();
   };
@@ -440,7 +517,7 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private drawToken(view: ITokenView): void {
     const { data } = view;
-    const selected = this.selection === data.id;
+    const selected = this.selection.has(data.id);
     const key = [data.size, data.name, data.tone, data.hidden, selected, !!view.portrait].join("|");
     if (key === view.drawnKey) return;
     view.drawnKey = key;
@@ -503,8 +580,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private trackPointer(event: FederatedPointerEvent): void {
     this.pointers.set(event.pointerId, { x: event.global.x, y: event.global.y });
     if (this.pointers.size === 2) {
-      this.drag = null;
-      this.pan = null;
+      this.cancelGesture();
       this.pinch = { distance: this.pointerDistance(), camera: { ...this.camera } };
     }
   }
@@ -515,33 +591,76 @@ export class ArenaRenderer implements IArenaRenderer {
     return Math.hypot(first.x - second.x, first.y - second.y);
   }
 
-  private onTokenDown(tokenId: string, event: FederatedPointerEvent): void {
-    event.stopPropagation();
-    this.trackPointer(event);
-    if (this.pinch) return;
-    this.options.callbacks.onSelect(tokenId);
-    const view = this.tokens.get(tokenId);
-    if (!view || !view.data.controllable || event.button !== 0) return;
-    const point = this.worldPoint(event);
-    this.drag = {
-      tokenId,
-      pointerId: event.pointerId,
-      offset: { x: point.x - view.target.x, y: point.y - view.target.y },
-      start: { x: event.global.x, y: event.global.y },
-      point: { ...view.target },
-      moved: false,
-    };
-    view.container.cursor = "grabbing";
-    this.tokenLayer.addChild(view.container);
+  private wantsPan(event: FederatedPointerEvent): boolean {
+    return event.button === 1 || event.button === 2 || (event.button === 0 && this.spaceHeld);
   }
 
-  private onStageDown = (event: FederatedPointerEvent): void => {
-    this.trackPointer(event);
-    if (this.pinch || event.button === 2) return;
+  private startPan(event: FederatedPointerEvent): void {
     this.pan = {
       pointerId: event.pointerId,
       start: { x: event.global.x, y: event.global.y },
       camera: { ...this.camera },
+      moved: false,
+    };
+    this.app.canvas.style.cursor = "grabbing";
+  }
+
+  private onTokenDown(tokenId: string, event: FederatedPointerEvent): void {
+    event.stopPropagation();
+    this.trackPointer(event);
+    if (this.pinch) return;
+    if (this.wantsPan(event)) {
+      this.startPan(event);
+      return;
+    }
+    if (event.button !== 0) return;
+    if (event.shiftKey) {
+      this.options.callbacks.onSelect([tokenId], "toggle");
+      return;
+    }
+    const group = this.selection.has(tokenId) ? [...this.selection] : [tokenId];
+    if (!this.selection.has(tokenId)) {
+      this.applySelection(new Set(group));
+      this.options.callbacks.onSelect(group, "replace");
+    }
+    const point = this.worldPoint(event);
+    const offsets = new Map<string, IArenaPoint>();
+    for (const id of group) {
+      const view = this.tokens.get(id);
+      if (!view?.data.controllable) continue;
+      offsets.set(id, { x: point.x - view.target.x, y: point.y - view.target.y });
+      this.tokenLayer.addChild(view.container);
+    }
+    if (offsets.size === 0) return;
+    this.drag = {
+      pointerId: event.pointerId,
+      tokenId,
+      offsets,
+      start: { x: event.global.x, y: event.global.y },
+      moves: [],
+      moved: false,
+    };
+    this.app.canvas.style.cursor = "grabbing";
+  }
+
+  private onStageDown = (event: FederatedPointerEvent): void => {
+    this.trackPointer(event);
+    if (this.pinch) return;
+    if (this.wantsPan(event)) {
+      this.startPan(event);
+      return;
+    }
+    if (event.button !== 0) return;
+    if (event.pointerType === "touch") {
+      this.startPan(event);
+      return;
+    }
+    const start = { x: event.global.x, y: event.global.y };
+    this.marquee = {
+      pointerId: event.pointerId,
+      start,
+      current: start,
+      additive: event.shiftKey,
       moved: false,
     };
   };
@@ -557,31 +676,46 @@ export class ArenaRenderer implements IArenaRenderer {
       this.applyCamera();
       return;
     }
+    const screen = { x: event.global.x, y: event.global.y };
+    const resize = this.resize;
+    if (resize && resize.pointerId === event.pointerId) {
+      this.applyResize(resize, screen);
+      return;
+    }
     const drag = this.drag;
     if (drag && drag.pointerId === event.pointerId) {
-      const view = this.tokens.get(drag.tokenId);
-      if (!view) return;
-      const travel = Math.hypot(event.global.x - drag.start.x, event.global.y - drag.start.y);
-      if (!drag.moved && travel < ARENA_CLICK_SLOP) return;
+      if (!drag.moved && distance(screen, drag.start) < ARENA_CLICK_SLOP) return;
       drag.moved = true;
       const world = this.worldPoint(event);
-      drag.point = clampToMap(
-        { x: world.x - drag.offset.x, y: world.y - drag.offset.y },
-        this.bounds,
-      );
-      view.target = { ...drag.point };
-      view.display = { ...drag.point };
-      this.options.callbacks.onDragMove(drag.tokenId, drag.point);
+      drag.moves = [...drag.offsets].flatMap(([tokenId, offset]) => {
+        const view = this.tokens.get(tokenId);
+        if (!view) return [];
+        const point = clampToMap({ x: world.x - offset.x, y: world.y - offset.y }, this.bounds);
+        view.target = { ...point };
+        view.display = { ...point };
+        return [{ tokenId, ...point }];
+      });
+      this.options.callbacks.onDragMove(drag.moves);
       this.invalidate();
+      return;
+    }
+    const marquee = this.marquee;
+    if (marquee && marquee.pointerId === event.pointerId) {
+      if (!marquee.moved && distance(screen, marquee.start) < ARENA_CLICK_SLOP) return;
+      marquee.moved = true;
+      marquee.current = screen;
+      this.drawMarquee(marquee);
       return;
     }
     const pan = this.pan;
     if (pan && pan.pointerId === event.pointerId) {
-      const dx = event.global.x - pan.start.x;
-      const dy = event.global.y - pan.start.y;
-      if (!pan.moved && Math.hypot(dx, dy) < ARENA_CLICK_SLOP) return;
+      if (!pan.moved && distance(screen, pan.start) < ARENA_CLICK_SLOP) return;
       pan.moved = true;
-      this.camera = { ...pan.camera, x: pan.camera.x + dx, y: pan.camera.y + dy };
+      this.camera = {
+        ...pan.camera,
+        x: pan.camera.x + screen.x - pan.start.x,
+        y: pan.camera.y + screen.y - pan.start.y,
+      };
       this.applyCamera();
     }
   };
@@ -592,36 +726,209 @@ export class ArenaRenderer implements IArenaRenderer {
       if (this.pointers.size < 2) this.pinch = null;
       return;
     }
+    const resize = this.resize;
+    if (resize && resize.pointerId === event.pointerId) {
+      this.resize = null;
+      this.finishResize(resize);
+      return;
+    }
     const drag = this.drag;
     if (drag && drag.pointerId === event.pointerId) {
       this.drag = null;
-      const view = this.tokens.get(drag.tokenId);
-      if (view) {
-        view.container.cursor = view.data.controllable ? "grab" : "pointer";
-        if (drag.moved) this.options.callbacks.onDrop(drag.tokenId, drag.point);
+      this.restoreCursor();
+      if (drag.moved && drag.moves.length > 0) this.options.callbacks.onDrop(drag.moves);
+      else if (!drag.moved && this.selection.size > 1) {
+        this.applySelection(new Set([drag.tokenId]));
+        this.options.callbacks.onSelect([drag.tokenId], "replace");
       }
+      return;
+    }
+    const marquee = this.marquee;
+    if (marquee && marquee.pointerId === event.pointerId) {
+      this.marquee = null;
+      this.marqueeBox.clear();
+      this.invalidate();
+      if (!marquee.moved) {
+        if (!marquee.additive) this.options.callbacks.onSelect([], "replace");
+        return;
+      }
+      const corners = [marquee.start, marquee.current].map((point) =>
+        screenToWorld(this.camera, point),
+      );
+      const picked = tokensInRect(
+        [...this.tokens.values()].map((view) => ({ id: view.data.id, ...view.target })),
+        corners[0] ?? marquee.start,
+        corners[1] ?? marquee.current,
+      );
+      this.options.callbacks.onSelect(picked, marquee.additive ? "add" : "replace");
       return;
     }
     const pan = this.pan;
     if (pan && pan.pointerId === event.pointerId) {
       this.pan = null;
-      if (!pan.moved) this.options.callbacks.onSelect(null);
+      this.restoreCursor();
     }
   };
 
   private onPointerCancel = (event: FederatedPointerEvent): void => {
     this.pointers.delete(event.pointerId);
     if (this.pointers.size < 2) this.pinch = null;
-    if (this.drag?.pointerId === event.pointerId) {
-      const view = this.tokens.get(this.drag.tokenId);
-      if (view) {
-        view.container.cursor = view.data.controllable ? "grab" : "pointer";
-        view.target = { x: view.data.x, y: view.data.y };
-        this.invalidate();
-      }
-      this.drag = null;
+    this.cancelGesture();
+  };
+
+  private selectionBox(): { left: number; top: number; right: number; bottom: number } | null {
+    let box: { left: number; top: number; right: number; bottom: number } | null = null;
+    for (const id of this.selection) {
+      const view = this.tokens.get(id);
+      if (!view) continue;
+      const radius = view.data.size / 2;
+      const labelHeight = ARENA_LABEL_GAP + view.label.height;
+      const { x, y } = view.display;
+      box = box
+        ? {
+            left: Math.min(box.left, x - radius),
+            top: Math.min(box.top, y - radius),
+            right: Math.max(box.right, x + radius),
+            bottom: Math.max(box.bottom, y + radius + labelHeight),
+          }
+        : {
+            left: x - radius,
+            top: y - radius,
+            right: x + radius,
+            bottom: y + radius + labelHeight,
+          };
     }
-    if (this.pan?.pointerId === event.pointerId) this.pan = null;
+    return box;
+  }
+
+  private drawSelectionFrame(): void {
+    const box = this.resizable ? this.selectionBox() : null;
+    this.selectionFrame.clear();
+    for (const handle of this.handles) handle.visible = box !== null;
+    if (!box) return;
+    const { scale, x, y } = this.camera;
+    const left = box.left * scale + x - ARENA_FRAME_PADDING;
+    const top = box.top * scale + y - ARENA_FRAME_PADDING;
+    const right = box.right * scale + x + ARENA_FRAME_PADDING;
+    const bottom = box.bottom * scale + y + ARENA_FRAME_PADDING;
+    this.selectionFrame
+      .rect(left, top, right - left, bottom - top)
+      .stroke({ width: 1, color: ARENA_COLORS.gold400, alpha: 0.7 });
+    RESIZE_CORNERS.forEach((corner, index) => {
+      this.handles[index]?.position.set(corner.x ? right : left, corner.y ? bottom : top);
+    });
+  }
+
+  private onHandleDown = (event: FederatedPointerEvent): void => {
+    event.stopPropagation();
+    this.trackPointer(event);
+    if (this.pinch || event.button !== 0) return;
+    const box = this.selectionBox();
+    if (!box) return;
+    const center = {
+      x: ((box.left + box.right) / 2) * this.camera.scale + this.camera.x,
+      y: ((box.top + box.bottom) / 2) * this.camera.scale + this.camera.y,
+    };
+    const sizes = new Map<string, number>();
+    for (const id of this.selection) {
+      const view = this.tokens.get(id);
+      if (view) sizes.set(id, view.data.size);
+    }
+    this.resize = {
+      pointerId: event.pointerId,
+      center,
+      startDistance: Math.max(distance(center, { x: event.global.x, y: event.global.y }), 1),
+      sizes,
+    };
+  };
+
+  private applyResize(resize: IResizeState, screen: IArenaPoint): void {
+    const factor = distance(resize.center, screen) / resize.startDistance;
+    for (const [id, size] of resize.sizes) {
+      const view = this.tokens.get(id);
+      if (!view) continue;
+      view.data = { ...view.data, size: scaleTokenSize(size, factor) };
+      this.drawToken(view);
+    }
+    this.invalidate();
+  }
+
+  private finishResize(resize: IResizeState): void {
+    const updates = [...resize.sizes].flatMap(([id, before]) => {
+      const size = this.tokens.get(id)?.data.size;
+      return size !== undefined && size !== before ? [{ id, size }] : [];
+    });
+    if (updates.length > 0) this.options.callbacks.onResize(updates);
+  }
+
+  private cancelGesture(): void {
+    if (this.drag?.moved) {
+      const originals = [...this.drag.offsets.keys()].flatMap((tokenId) => {
+        const view = this.tokens.get(tokenId);
+        return view ? [{ tokenId, x: view.data.x, y: view.data.y }] : [];
+      });
+      if (originals.length > 0) this.options.callbacks.onDragMove(originals);
+    }
+    if (this.resize) {
+      for (const [id, size] of this.resize.sizes) {
+        const view = this.tokens.get(id);
+        if (!view) continue;
+        view.data = { ...view.data, size };
+        this.drawToken(view);
+      }
+      this.resize = null;
+    }
+    if (this.drag) {
+      for (const id of this.drag.offsets.keys()) {
+        const view = this.tokens.get(id);
+        if (view) view.target = { x: view.data.x, y: view.data.y };
+      }
+    }
+    this.drag = null;
+    this.pan = null;
+    this.marquee = null;
+    this.marqueeBox.clear();
+    this.restoreCursor();
+    this.invalidate();
+  }
+
+  private drawMarquee({ start, current }: IMarqueeState): void {
+    const x = Math.min(start.x, current.x);
+    const y = Math.min(start.y, current.y);
+    const width = Math.abs(current.x - start.x);
+    const height = Math.abs(current.y - start.y);
+    this.marqueeBox
+      .clear()
+      .rect(x, y, width, height)
+      .fill({ color: ARENA_COLORS.ruby500, alpha: 0.12 })
+      .stroke({ width: 1, color: ARENA_COLORS.ruby400, alpha: 0.9 });
+    this.invalidate();
+  }
+
+  private restoreCursor(): void {
+    this.app.canvas.style.cursor = this.spaceHeld ? "grab" : "";
+  }
+
+  private onKeyDown = (event: KeyboardEvent): void => {
+    if (event.code !== "Space" || event.repeat || isEditableTarget(event.target)) return;
+    if (!this.host.contains(document.activeElement) && document.activeElement !== document.body)
+      return;
+    event.preventDefault();
+    this.spaceHeld = true;
+    if (!this.pan) this.app.canvas.style.cursor = "grab";
+  };
+
+  private onKeyUp = (event: KeyboardEvent): void => {
+    if (event.code !== "Space") return;
+    this.spaceHeld = false;
+    if (!this.pan) this.restoreCursor();
+  };
+
+  private onWindowBlur = (): void => {
+    this.spaceHeld = false;
+    this.pointers.clear();
+    this.pinch = null;
+    this.cancelGesture();
   };
 
   private onWheel = (event: WheelEvent): void => {

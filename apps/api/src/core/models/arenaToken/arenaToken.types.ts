@@ -21,6 +21,12 @@ export interface IRemovedArenaToken {
   hidden: boolean;
 }
 
+export interface IArenaTokenMove {
+  tokenId: string;
+  x: number;
+  y: number;
+}
+
 export interface IArenaMoveGuard {
   sceneId: string;
 }
@@ -28,12 +34,17 @@ export interface IArenaMoveGuard {
 export interface IArenaTokenModels {
   listByScene: (sceneId: string, options: { includeHidden: boolean }) => Promise<IArenaToken[]>;
   findById: (id: string) => Promise<IArenaToken | null>;
+  findManyByIds: (ids: string[]) => Promise<IArenaToken[]>;
   /** Appends a token on top of the scene's others. */
   create: (sceneId: string, input: ICreateArenaTokenRow) => Promise<IArenaToken>;
   update: (id: string, input: IUpdateArenaTokenRow) => Promise<IArenaToken | null>;
-  /** Moves a token; with a guard, only while it is still visible on that scene (null otherwise). */
-  move: (id: string, x: number, y: number, guard?: IArenaMoveGuard) => Promise<IArenaToken | null>;
+  /** Moves several tokens in one transaction; with a guard, only those still visible on that scene. */
+  moveMany: (moves: IArenaTokenMove[], guard?: IArenaMoveGuard) => Promise<IArenaToken[]>;
   remove: (id: string) => Promise<IRemovedArenaToken | null>;
+  /** Applies several patches in one transaction and returns the tokens as stored (missing ids are skipped). */
+  updateMany: (patches: { id: string; patch: IUpdateArenaTokenRow }[]) => Promise<IArenaToken[]>;
+  /** Deletes several tokens in one transaction and returns what was removed. */
+  removeMany: (ids: string[]) => Promise<IRemovedArenaToken[]>;
   /** Swaps the NPC image key under a row lock and returns the token plus the key it replaced. */
   setImageKey: (
     id: string,

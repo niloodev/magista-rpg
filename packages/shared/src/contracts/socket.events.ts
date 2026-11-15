@@ -15,7 +15,8 @@ import type {
   IArenaSceneEvent,
   IArenaToken,
   IArenaTokenRemovedEvent,
-  IMoveArenaTokenInput,
+  IArenaMoveResult,
+  IMoveArenaTokensInput,
 } from "../schemas/arena";
 import type { ICharacter, ICharacterImages } from "../schemas/character";
 import type { ControllerResult } from "./envelope";
@@ -78,10 +79,10 @@ export interface ClientToServerEvents {
     ack: (result: ControllerResult<null>) => void,
   ) => void;
   "marked:stop": (request: IMarkedStopInput, ack: (result: ControllerResult<null>) => void) => void;
-  "arena:drag": (request: IMoveArenaTokenInput) => void;
+  "arena:drag": (request: IMoveArenaTokensInput) => void;
   "arena:move": (
-    request: IMoveArenaTokenInput,
-    ack: (result: ControllerResult<IArenaToken>) => void,
+    request: IMoveArenaTokensInput,
+    ack: (result: ControllerResult<IArenaMoveResult>) => void,
   ) => void;
 }
 

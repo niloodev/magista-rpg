@@ -6,13 +6,16 @@ export const ARENA_PATH = "/arena";
 
 export const ARENA_BACK_PREFIX = "Voltar para a ";
 
+export const ARENA_BACK_FULL_LABEL = "Voltar para a mesa";
+
 export const ARENA_LOAD_ERROR_TITLE = "Não foi possível abrir a Arena";
 
 export const ARENA_ZOOM_GROUP_LABEL = "Zoom do mapa";
 
 export const ARENA_MAP_ERROR = "Não foi possível carregar o mapa desta cena.";
 
-export const ARENA_MOVED_LABEL = (name: string) => `${name} movido.`;
+export const ARENA_MOVED_LABEL = (name: string, count: number) =>
+  count > 1 ? `${count} tokens movidos.` : `${name} movido.`;
 
 export const ARENA_STAGE_LABEL = (scene: string, tokens: number) =>
   `Mapa da cena ${scene}, ${tokens} tokens`;
@@ -42,9 +45,7 @@ export const ARENA_UNSUPPORTED_TEXTS = {
 export const ARENA_LOAD_RETRY_LABEL = "Tentar de novo";
 
 export const ARENA_STAGE_HINT =
-  "Clique num token para selecionar. Arraste os seus tokens para mover. Setas movem o token selecionado (Shift move mais). + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção.";
-
-export const ARENA_TRAY_LABEL = "Tokens da cena";
+  "Clique num token para selecionar; Shift+clique soma à seleção e arrastar no vazio seleciona em grupo. Arraste os tokens selecionados para mover. Botão direito, do meio ou Espaço+arrastar movem a câmera. Setas movem a seleção (Shift move mais), Ctrl+A seleciona todos, + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção.";
 
 export const ARENA_MY_TRAY_LABEL = "Meus tokens";
 
@@ -77,3 +78,28 @@ export const ARENA_HINT_KEY = "r";
 export const ARENA_HINT_MAX_TRAY = 12;
 
 export const ARENA_HINT_DEFAULT_NAME = 18;
+
+export const ARENA_MOBILE_TEXTS = {
+  title: "Jogue no PC",
+  body: "A Arena foi feita para telas grandes, com mouse e teclado. Abra a mesa num computador para jogar; no celular você ainda pode ver a mesa e as fichas.",
+} as const;
+
+export const ARENA_SIZE_STEP = 10;
+
+export const ARENA_SIZE_COMMIT_MS = 400;
+
+export const ARENA_SELECTION_TEXTS = {
+  region: "Tokens selecionados",
+  size: "Tamanho",
+  sizeLabel: "tamanho dos tokens selecionados",
+  hide: "Ocultar",
+  show: "Mostrar",
+  openSheet: "Abrir ficha",
+  remove: "Remover",
+  count: (count: number) => (count === 1 ? "1 token selecionado" : `${count} tokens selecionados`),
+  confirmTitle: (count: number) => (count === 1 ? "Remover token?" : `Remover ${count} tokens?`),
+  confirmMessage:
+    "Os tokens saem da cena para todos. As fichas continuam na biblioteca e podem voltar ao mapa depois.",
+} as const;
+
+export const ARENA_BOTTOM_INSET = 72;

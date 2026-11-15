@@ -1,17 +1,23 @@
-import type { IArenaBounds, IArenaPoint } from "@magista/shared";
+import type { IArenaBounds, IMoveArenaTokenInput } from "@magista/shared";
 import type { KeyboardEvent, RefObject } from "react";
 
-import type { IArenaStageControls } from "@/modules/arena/arena.types";
+import type {
+  ArenaSelectionMode,
+  IArenaSizeUpdate,
+  IArenaStageControls,
+} from "@/modules/arena/arena.types";
 import type { IArenaRenderScene, IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
 
 export interface ArenaStageHookProps {
   scene: IArenaRenderScene | null;
   tokens: IArenaRenderToken[];
-  selectedTokenId: string | null;
+  selectedTokenIds: string[];
   controlsRef: RefObject<IArenaStageControls | null>;
-  onSelect: (tokenId: string | null) => void;
-  onDragMove: (tokenId: string, point: IArenaPoint) => void;
-  onDrop: (tokenId: string, point: IArenaPoint) => void;
+  onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
+  onDragMove: (moves: IMoveArenaTokenInput[]) => void;
+  onDrop: (moves: IMoveArenaTokenInput[]) => void;
+  onResize: (updates: IArenaSizeUpdate[]) => void;
+  resizable: boolean;
   onBounds: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
 }

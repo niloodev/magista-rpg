@@ -1,11 +1,14 @@
 import type {
   IArenaDragEvent,
-  IArenaPoint,
   IArenaToken,
   IArenaTokenRemovedEvent,
   IArenaView,
+  IArenaTokenPatch,
+  IMoveArenaTokenInput,
 } from "@magista/shared";
 
+import type { IArenaPoint } from "@magista/shared";
+import type { ArenaSelectionMode } from "@/modules/arena/arena.types";
 import type { LoadStatus } from "@/shared/types";
 
 export interface ArenaState {
@@ -13,7 +16,7 @@ export interface ArenaState {
     status: LoadStatus;
     view: IArenaView | null;
     error: string | null;
-    selectedTokenId: string | null;
+    selectedTokenIds: string[];
     /** Live drag positions from other tabs, by token id (cleared when the final move arrives). */
     previews: Record<string, IArenaPoint>;
   };
@@ -27,8 +30,9 @@ export interface ArenaActions {
   removeArenaToken: (event: IArenaTokenRemovedEvent) => void;
   applyArenaDrag: (event: IArenaDragEvent) => void;
   clearArenaDrag: (tokenId: string) => void;
-  placeArenaToken: (tokenId: string, point: IArenaPoint) => void;
-  selectArenaToken: (tokenId: string | null) => void;
+  placeArenaTokens: (moves: IMoveArenaTokenInput[]) => void;
+  patchArenaTokens: (patches: IArenaTokenPatch[]) => void;
+  selectArenaTokens: (tokenIds: string[], mode: ArenaSelectionMode) => void;
   resetArena: () => void;
 }
 

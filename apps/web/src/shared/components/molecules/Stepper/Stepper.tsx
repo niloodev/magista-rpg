@@ -12,6 +12,7 @@ export function Stepper({
   tone = "ruby",
   label,
   size = "sm",
+  step = 1,
 }: StepperProps) {
   const current = value ?? 0;
   const sizes = STEPPER_SIZES[size];
@@ -23,7 +24,7 @@ export function Stepper({
         aria-label={`Diminuir ${label}`}
         className={buttonClass}
         disabled={min !== undefined && current <= min}
-        onClick={() => onValueChange(current - 1)}
+        onClick={() => onValueChange(current - step)}
       >
         <Icon name="minus" size={sizes.icon} />
       </button>
@@ -41,7 +42,7 @@ export function Stepper({
         aria-label={`Aumentar ${label}`}
         className={buttonClass}
         disabled={max !== undefined && current >= max}
-        onClick={() => onValueChange(current + 1)}
+        onClick={() => onValueChange(current + step)}
       >
         <Icon name="plus" size={sizes.icon} />
       </button>

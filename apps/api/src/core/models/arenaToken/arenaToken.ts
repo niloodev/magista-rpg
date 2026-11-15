@@ -18,6 +18,31 @@ const findById: IArenaTokenModels["findById"] = async (id) => {
   return row ? toArenaToken(row) : null;
 };
 
+const findManyByIds: IArenaTokenModels["findManyByIds"] = async (ids) => {
+  if (ids.length === 0) return [];
+  const rows = await getDatabase().arenaToken.findMany({
+    where: { id: { in: ids } },
+    include: TOKEN_INCLUDE,
+  });
+  return rows.map(toArenaToken);
+};
+
+const moveMany: IArenaTokenModels["moveMany"] = async (moves, guard) => {
+  if (moves.length === 0) return [];
+  const movedIds = await getDatabase().$transaction(async (tx) => {
+    const ids: string[] = [];
+    for (const { tokenId, x, y } of moves) {
+      const where = guard
+        ? { id: tokenId, sceneId: guard.sceneId, hidden: false }
+        : { id: tokenId };
+      const { count } = await tx.arenaToken.updateMany({ where, data: { x, y } });
+      if (count === 1) ids.push(tokenId);
+    }
+    return ids;
+  });
+  return findManyByIds(movedIds);
+};
+
 const create: IArenaTokenModels["create"] = async (sceneId, input) => {
   const row = await getDatabase().$transaction(async (tx) => {
     const last = await tx.arenaToken.aggregate({ where: { sceneId }, _max: { position: true } });
@@ -34,12 +59,6 @@ const update: IArenaTokenModels["update"] = async (id, input) => {
   return count === 1 ? findById(id) : null;
 };
 
-const move: IArenaTokenModels["move"] = async (id, x, y, guard) => {
-  const where = guard ? { id, sceneId: guard.sceneId, hidden: false } : { id };
-  const { count } = await getDatabase().arenaToken.updateMany({ where, data: { x, y } });
-  return count === 1 ? findById(id) : null;
-};
-
 const remove: IArenaTokenModels["remove"] = async (id) =>
   getDatabase().$transaction(async (tx) => {
     const row = await tx.arenaToken.findUnique({
@@ -50,6 +69,31 @@ const remove: IArenaTokenModels["remove"] = async (id) =>
     await tx.arenaToken.delete({ where: { id } });
     return row;
   });
+
+const updateMany: IArenaTokenModels["updateMany"] = async (patches) => {
+  if (patches.length === 0) return [];
+  const updatedIds = await getDatabase().$transaction(async (tx) => {
+    const ids: string[] = [];
+    for (const { id, patch } of patches) {
+      const { count } = await tx.arenaToken.updateMany({ where: { id }, data: patch });
+      if (count === 1) ids.push(id);
+    }
+    return ids;
+  });
+  return findManyByIds(updatedIds);
+};
+
+const removeMany: IArenaTokenModels["removeMany"] = async (ids) => {
+  if (ids.length === 0) return [];
+  return getDatabase().$transaction(async (tx) => {
+    const rows = await tx.arenaToken.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, sceneId: true, hidden: true },
+    });
+    await tx.arenaToken.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });
+    return rows;
+  });
+};
 
 const setImageKey: IArenaTokenModels["setImageKey"] = async (id, key) =>
   getDatabase().$transaction(async (tx) => {
@@ -67,9 +111,12 @@ const setImageKey: IArenaTokenModels["setImageKey"] = async (id, key) =>
 export const arenaTokenModels: IArenaTokenModels = {
   listByScene,
   findById,
+  findManyByIds,
+  moveMany,
   create,
   update,
-  move,
   remove,
+  updateMany,
+  removeMany,
   setImageKey,
 };

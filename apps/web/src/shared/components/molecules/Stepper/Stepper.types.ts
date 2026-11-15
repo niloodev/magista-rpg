@@ -8,4 +8,5 @@ export interface StepperProps {
   tone?: StepperTone;
   label: string;
   size?: "sm" | "lg";
+  step?: number;
 }

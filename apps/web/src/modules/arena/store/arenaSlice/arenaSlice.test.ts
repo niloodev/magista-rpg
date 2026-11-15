@@ -62,8 +62,12 @@ describe("arena slice", () => {
 
   it("tracks drag previews until the final move arrives", () => {
     const store = loaded();
-    store.getState().applyArenaDrag({ tokenId: "a", x: 10, y: 20 });
-    store.getState().applyArenaDrag({ tokenId: "ghost", x: 1, y: 1 });
+    store.getState().applyArenaDrag({
+      moves: [
+        { tokenId: "a", x: 10, y: 20 },
+        { tokenId: "ghost", x: 1, y: 1 },
+      ],
+    });
     expect(store.getState().arena.previews).toEqual({ a: { x: 10, y: 20 } });
     store.getState().applyArenaToken(token("a", { x: 12, y: 22 }));
     expect(store.getState().arena.previews).toEqual({});
@@ -71,17 +75,45 @@ describe("arena slice", () => {
 
   it("drops the selection when its token is removed or disappears on reload", () => {
     const store = loaded();
-    store.getState().selectArenaToken("b");
+    store.getState().selectArenaTokens(["a", "b"], "replace");
     store.getState().removeArenaToken({ id: "b", sceneId: "s1" });
-    expect(store.getState().arena.selectedTokenId).toBeNull();
-    store.getState().selectArenaToken("a");
+    expect(store.getState().arena.selectedTokenIds).toEqual(["a"]);
     store.getState().finishArenaLoad({ ...view, tokens: [token("b")] });
-    expect(store.getState().arena.selectedTokenId).toBeNull();
+    expect(store.getState().arena.selectedTokenIds).toEqual([]);
   });
 
-  it("moves a token locally before the server confirms", () => {
+  it("replaces, adds to and toggles the selection", () => {
     const store = loaded();
-    store.getState().placeArenaToken("b", { x: 300, y: 40 });
-    expect(store.getState().arena.view?.tokens[1]).toMatchObject({ x: 300, y: 40 });
+    store.getState().selectArenaTokens(["a"], "replace");
+    store.getState().selectArenaTokens(["b"], "add");
+    expect(store.getState().arena.selectedTokenIds).toEqual(["a", "b"]);
+    store.getState().selectArenaTokens(["a"], "toggle");
+    expect(store.getState().arena.selectedTokenIds).toEqual(["b"]);
+    store.getState().selectArenaTokens([], "replace");
+    expect(store.getState().arena.selectedTokenIds).toEqual([]);
+  });
+
+  it("moves tokens locally before the server confirms", () => {
+    const store = loaded();
+    store.getState().placeArenaTokens([
+      { tokenId: "a", x: 5, y: 6 },
+      { tokenId: "b", x: 300, y: 40 },
+    ]);
+    expect(store.getState().arena.view?.tokens.map((entry) => [entry.x, entry.y])).toEqual([
+      [5, 6],
+      [300, 40],
+    ]);
+  });
+
+  it("patches size and visibility locally", () => {
+    const store = loaded();
+    store.getState().patchArenaTokens([
+      { id: "a", size: 200 },
+      { id: "b", hidden: true },
+    ]);
+    expect(store.getState().arena.view?.tokens.map((entry) => [entry.size, entry.hidden])).toEqual([
+      [200, false],
+      [140, true],
+    ]);
   });
 });

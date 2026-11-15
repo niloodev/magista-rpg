@@ -1,4 +1,9 @@
-import type { IArenaBounds, IArenaPoint } from "@magista/shared";
+import {
+  ARENA_TOKEN_SIZE_MAX,
+  ARENA_TOKEN_SIZE_MIN,
+  type IArenaBounds,
+  type IArenaPoint,
+} from "@magista/shared";
 
 import {
   ARENA_COMPACT_WIDTH,
@@ -23,8 +28,9 @@ export function fitCamera(
   bounds: IArenaBounds,
   viewport: IArenaViewport,
   insetTop = 0,
+  insetBottom = 0,
 ): IArenaCamera {
-  const visibleHeight = Math.max(viewport.height - insetTop, 1);
+  const visibleHeight = Math.max(viewport.height - insetTop - insetBottom, 1);
   const padding =
     viewport.width < ARENA_COMPACT_WIDTH ? ARENA_FIT_PADDING_COMPACT : ARENA_FIT_PADDING;
   const usableWidth = Math.max(viewport.width - padding * 2, 1);
@@ -106,4 +112,43 @@ export function fitTextureSize(width: number, height: number, max: number) {
     height: Math.max(1, Math.round(height * ratio)),
     scaled: true,
   };
+}
+
+/**
+ * Distance between two points.
+ */
+export function distance(a: IArenaPoint, b: IArenaPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/**
+ * Ids of the tokens whose center lies inside the rectangle spanned by two corners (any order).
+ */
+export function tokensInRect(
+  tokens: { id: string; x: number; y: number }[],
+  a: IArenaPoint,
+  b: IArenaPoint,
+): string[] {
+  const left = Math.min(a.x, b.x);
+  const right = Math.max(a.x, b.x);
+  const top = Math.min(a.y, b.y);
+  const bottom = Math.max(a.y, b.y);
+  return tokens
+    .filter((token) => token.x >= left && token.x <= right && token.y >= top && token.y <= bottom)
+    .map((token) => token.id);
+}
+
+/**
+ * Whether a key event comes from a field where Space types text.
+ */
+export function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
+/**
+ * Token size after scaling by a factor, rounded and kept inside the allowed range.
+ */
+export function scaleTokenSize(size: number, factor: number): number {
+  return Math.min(Math.max(Math.round(size * factor), ARENA_TOKEN_SIZE_MIN), ARENA_TOKEN_SIZE_MAX);
 }

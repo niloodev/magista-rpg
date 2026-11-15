@@ -103,9 +103,7 @@ test.describe("arena", () => {
     await expect(
       gmPage.getByRole("application", { name: `Mapa da cena ${SCENE}, 4 tokens` }),
     ).toBeVisible();
-    await expect(
-      gmPage.getByRole("navigation", { name: "Tokens da cena" }).getByRole("button"),
-    ).toHaveCount(4);
+    await expect(gmPage.getByRole("navigation", { name: "Meus tokens" })).toHaveCount(0);
 
     const playerPage = await (await browser.newContext()).newPage();
     await loginAs(playerPage, PLAYER);
@@ -116,6 +114,46 @@ test.describe("arena", () => {
     await expect(playerPage.getByRole("heading", { level: 1, name: SCENE })).toBeVisible();
   });
 
+  test("o Mestre seleciona todos e move o grupo pelo teclado", async ({ page }) => {
+    await loginAs(page, GM);
+    await openArena(page);
+    const before = (await readArena(gm, sceneId)).tokens;
+    const stage = page.getByRole("application", { name: /Mapa da cena/ });
+    await stage.focus();
+    await page.keyboard.press("Control+a");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByText("4 tokens movidos.")).toBeAttached();
+    await expect
+      .poll(async () => (await readArena(gm, sceneId)).tokens.map((token) => token.x).sort())
+      .toEqual(before.map((token) => token.x + 10).sort());
+  });
+
+  test("o Mestre seleciona com a caixa e move o grupo", async ({ page }) => {
+    await loginAs(page, GM);
+    await openArena(page);
+    const before = (await readArena(gm, sceneId)).tokens;
+    const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
+    await page.mouse.move(8, 64);
+    await page.mouse.down();
+    await page.mouse.move(viewport.width / 2, viewport.height / 2, { steps: 5 });
+    await page.mouse.move(viewport.width - 90, viewport.height - 140, { steps: 5 });
+    await page.mouse.up();
+    const stage = page.getByRole("application", { name: /Mapa da cena/ });
+    await stage.focus();
+    await page.keyboard.press("Shift+ArrowDown");
+    await expect
+      .poll(async () => (await readArena(gm, sceneId)).tokens.map((token) => token.y).sort())
+      .toEqual(before.map((token) => token.y + 50).sort());
+  });
+
+  test("no celular a Arena pede para jogar no PC", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAs(page, PLAYER);
+    await page.goto("/arena");
+    await expect(page.getByRole("heading", { name: "Jogue no PC" })).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+  });
+
   test("a Arena não tem violações de acessibilidade", async ({ page }) => {
     await loginAs(page, PLAYER);
     await openArena(page);
@@ -123,5 +161,40 @@ test.describe("arena", () => {
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"])
       .analyze();
     expect(results.violations.map((violation) => violation.id)).toEqual([]);
+  });
+
+  test("o Mestre muda o tamanho e oculta a seleção pela barra", async ({ page }) => {
+    await loginAs(page, GM);
+    await openArena(page);
+    await page.getByRole("application", { name: /Mapa da cena/ }).focus();
+    await page.keyboard.press("Control+a");
+    const bar = page.getByRole("region", { name: "Tokens selecionados" });
+    await expect(bar).toContainText("4 tokens selecionados");
+    const size = bar.getByRole("textbox", { name: "tamanho dos tokens selecionados" });
+    await size.fill("220");
+    await size.blur();
+    await expect
+      .poll(async () => (await readArena(gm, sceneId)).tokens.map((token) => token.size))
+      .toEqual([220, 220, 220, 220]);
+    await bar.getByRole("button", { name: "Ocultar" }).click();
+    await expect
+      .poll(async () => (await readArena(gm, sceneId)).tokens.every((token) => token.hidden))
+      .toBe(true);
+    await bar.getByRole("button", { name: "Mostrar" }).click();
+    await expect
+      .poll(async () => (await readArena(gm, sceneId)).tokens.some((token) => token.hidden))
+      .toBe(false);
+  });
+
+  test("o Mestre remove a seleção com Delete e confirmação", async ({ page }) => {
+    await loginAs(page, GM);
+    await openArena(page);
+    await page.getByRole("application", { name: /Mapa da cena/ }).focus();
+    await page.keyboard.press("Control+a");
+    await page.keyboard.press("Delete");
+    const dialog = page.getByRole("dialog", { name: "Remover 4 tokens?" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Remover" }).click();
+    await expect.poll(async () => (await readArena(gm, sceneId)).tokens.length).toBe(0);
   });
 });
