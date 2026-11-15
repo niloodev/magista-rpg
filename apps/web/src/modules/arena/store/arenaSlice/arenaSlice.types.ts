@@ -44,6 +44,10 @@ export interface ArenaActions {
   failArenaLoad: (error: string) => void;
   applyArenaToken: (token: IArenaToken) => void;
   removeArenaToken: (event: IArenaTokenRemovedEvent) => void;
+  /** Applies several tokens from one batch event in a single store update. */
+  applyArenaTokens: (tokens: IArenaToken[]) => void;
+  /** Removes several tokens from one batch event in a single store update. */
+  removeArenaTokens: (events: IArenaTokenRemovedEvent[]) => void;
   placeArenaTokens: (moves: IMoveArenaTokenInput[]) => void;
   patchArenaTokens: (patches: IArenaTokenPatch[]) => void;
   selectArenaTokens: (tokenIds: string[], mode: ArenaSelectionMode) => void;

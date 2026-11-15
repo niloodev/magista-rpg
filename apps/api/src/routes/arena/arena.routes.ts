@@ -3,7 +3,13 @@ import { Router } from "express";
 
 import { arenaController, arenaErrors } from "@/core/controllers/arena";
 import { requireAuth } from "@/middlewares";
-import { broadcastArenaScene, broadcastArenaToken, broadcastArenaTokenRemoved } from "@/realtime";
+import {
+  broadcastArenaScene,
+  broadcastArenaToken,
+  broadcastArenaTokenRemoved,
+  broadcastArenaTokens,
+  broadcastArenaTokensRemoved,
+} from "@/realtime";
 
 import { sendResult, viewerOf, type AuthedResponse } from "@/routes/routes.utils";
 import { ARENA_ERROR_STATUS } from "./arena.routes.constants";
@@ -102,13 +108,13 @@ arenaRoutes.post("/scenes/:id/tokens", async (req, res: AuthedResponse) => {
 arenaRoutes.patch("/tokens", async (req, res: AuthedResponse) => {
   const result = await arenaController.updateTokens(viewerOf(res), req.body);
   const changes = sendResult(res, result, ARENA_ERROR_STATUS);
-  for (const change of changes ?? []) broadcastArenaToken(change);
+  if (changes) broadcastArenaTokens(changes);
 });
 
 arenaRoutes.delete("/tokens", async (req, res: AuthedResponse) => {
   const result = await arenaController.deleteTokens(viewerOf(res), req.body);
   const removals = sendResult(res, result, ARENA_ERROR_STATUS);
-  for (const removal of removals ?? []) broadcastArenaTokenRemoved(removal);
+  if (removals) broadcastArenaTokensRemoved(removals);
 });
 
 arenaRoutes.patch("/tokens/:id", async (req, res: AuthedResponse) => {

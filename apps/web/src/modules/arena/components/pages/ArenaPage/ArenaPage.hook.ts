@@ -180,17 +180,22 @@ export function useArenaPage() {
 
   useEffect(() => {
     if (!socket) return;
-    const { applyArenaToken, removeArenaToken } = store.getState();
+    const { applyArenaToken, removeArenaToken, applyArenaTokens, removeArenaTokens } =
+      store.getState();
     const onScene = (event: IArenaSceneEvent) => {
       if (!event.libraryOnly) void load();
     };
     socket.on("arena:scene", onScene);
     socket.on("arena:token", applyArenaToken);
     socket.on("arena:token-removed", removeArenaToken);
+    socket.on("arena:tokens", applyArenaTokens);
+    socket.on("arena:tokens-removed", removeArenaTokens);
     return () => {
       socket.off("arena:scene", onScene);
       socket.off("arena:token", applyArenaToken);
       socket.off("arena:token-removed", removeArenaToken);
+      socket.off("arena:tokens", applyArenaTokens);
+      socket.off("arena:tokens-removed", removeArenaTokens);
     };
   }, [socket, store, load]);
 

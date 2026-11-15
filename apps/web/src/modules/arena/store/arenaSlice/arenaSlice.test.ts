@@ -72,6 +72,25 @@ describe("arena slice", () => {
     ]);
   });
 
+  it("applies and removes a batch of tokens in one update", () => {
+    const store = loaded();
+    store.getState().selectArenaTokens(["a", "b"], "replace");
+    const before = store.getState().arena.view;
+    store.getState().applyArenaTokens([]);
+    expect(store.getState().arena.view).toBe(before);
+    store.getState().applyArenaTokens([token("a", { x: 5, y: 6 }), token("b", { x: 7, y: 8 })]);
+    const moved = store.getState().arena.view?.tokens ?? [];
+    expect(moved.find((entry) => entry.id === "a")).toMatchObject({ x: 5, y: 6 });
+    expect(moved.find((entry) => entry.id === "b")).toMatchObject({ x: 7, y: 8 });
+    store.getState().removeArenaTokens([
+      { id: "a", sceneId: moved[0]!.sceneId },
+      { id: "b", sceneId: "other-scene" },
+    ]);
+    expect(store.getState().arena.view?.tokens.map((entry) => entry.id)).not.toContain("a");
+    expect(store.getState().arena.view?.tokens.map((entry) => entry.id)).toContain("b");
+    expect(store.getState().arena.selectedTokenIds).toEqual(["b"]);
+  });
+
   it("drops the selection when its token is removed or disappears on reload", () => {
     const store = loaded();
     store.getState().selectArenaTokens(["a", "b"], "replace");

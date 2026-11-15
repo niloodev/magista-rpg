@@ -65,6 +65,10 @@ export interface ServerToClientEvents {
   "arena:scene": (event: IArenaSceneEvent) => void;
   "arena:token": (token: IArenaToken) => void;
   "arena:token-removed": (event: IArenaTokenRemovedEvent) => void;
+  /** Several tokens changed at once (a group move or a batch edit), sent as one event. */
+  "arena:tokens": (tokens: IArenaToken[]) => void;
+  /** Several tokens removed at once (or hidden from the players), sent as one event. */
+  "arena:tokens-removed": (events: IArenaTokenRemovedEvent[]) => void;
 }
 
 export interface ClientToServerEvents {

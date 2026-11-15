@@ -11,6 +11,7 @@ import {
   omitKey,
   slotsFor,
   upsertToken,
+  upsertTokens,
   withoutDocked,
   withSheetOnTop,
 } from "./arenaSlice.utils";
@@ -62,6 +63,35 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           ...state.arena,
           view: { ...view, tokens: view.tokens.filter((token) => token.id !== id) },
           selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => selected !== id),
+        },
+      };
+    }),
+  applyArenaTokens: (tokens) =>
+    set((state) => {
+      const view = state.arena.view;
+      const sceneId = view?.scene?.id;
+      const incoming = tokens.filter((token) => token.sceneId === sceneId);
+      if (!view || incoming.length === 0) return state;
+      return {
+        arena: {
+          ...state.arena,
+          view: { ...view, tokens: upsertTokens(view.tokens, incoming) },
+        },
+      };
+    }),
+  removeArenaTokens: (events) =>
+    set((state) => {
+      const view = state.arena.view;
+      const sceneId = view?.scene?.id;
+      const gone = new Set(
+        events.filter((event) => event.sceneId === sceneId).map((event) => event.id),
+      );
+      if (!view || gone.size === 0) return state;
+      return {
+        arena: {
+          ...state.arena,
+          view: { ...view, tokens: view.tokens.filter((token) => !gone.has(token.id)) },
+          selectedTokenIds: state.arena.selectedTokenIds.filter((selected) => !gone.has(selected)),
         },
       };
     }),

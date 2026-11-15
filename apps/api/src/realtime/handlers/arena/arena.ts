@@ -32,6 +32,6 @@ export function registerArenaHandlers(
       message: result.message,
       payload: { tokens: changes.map((change) => change.token), refused },
     });
-    for (const change of changes) onMoved(change);
+    onMoved(changes);
   });
 }

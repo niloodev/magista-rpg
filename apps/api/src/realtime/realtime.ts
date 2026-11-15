@@ -36,7 +36,13 @@ import {
 } from "./handlers";
 import { authenticateSocket } from "./realtime.auth";
 import type { RealtimeServer, RealtimeSocket } from "./realtime.types";
-import { accountRoom, characterRoom, pendingOf } from "./realtime.utils";
+import {
+  accountRoom,
+  characterRoom,
+  groupTokenChanges,
+  groupTokenRemovals,
+  pendingOf,
+} from "./realtime.utils";
 
 let io: RealtimeServer | null = null;
 
@@ -107,7 +113,7 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
       onResolved: broadcastMarkedResolved,
       onShare: broadcastMarkedShare,
     });
-    registerArenaHandlers(socket, { onMoved: broadcastArenaToken });
+    registerArenaHandlers(socket, { onMoved: broadcastArenaTokens });
   });
   io = server;
   return server;
@@ -244,6 +250,38 @@ export function broadcastArenaToken({
       .except(GM_ROOM)
       .emit("arena:token-removed", { id: token.id, sceneId: token.sceneId });
   }
+}
+
+/**
+ * Sends several token changes at once: one `arena:tokens` to the players (what they may see) and one to the GM
+ * (everything), plus one `arena:tokens-removed` to the players for tokens that were hidden, instead of one event
+ * per token. A single change keeps the single event.
+ */
+export function broadcastArenaTokens(changes: IArenaTokenChange[]): void {
+  if (changes.length === 0) return;
+  if (changes.length === 1 && changes[0]) {
+    broadcastArenaToken(changes[0]);
+    return;
+  }
+  const { players, gm, hiddenFromTable } = groupTokenChanges(changes);
+  if (players.length > 0) io?.to(TABLE_ROOM).except(GM_ROOM).emit("arena:tokens", players);
+  if (gm.length > 0) io?.to(GM_ROOM).emit("arena:tokens", gm);
+  if (hiddenFromTable.length > 0)
+    io?.to(TABLE_ROOM).except(GM_ROOM).emit("arena:tokens-removed", hiddenFromTable);
+}
+
+/**
+ * Tells who could see several tokens that they were removed, in one event per room.
+ */
+export function broadcastArenaTokensRemoved(removals: IArenaTokenRemoval[]): void {
+  if (removals.length === 0) return;
+  if (removals.length === 1 && removals[0]) {
+    broadcastArenaTokenRemoved(removals[0]);
+    return;
+  }
+  const groups = groupTokenRemovals(removals);
+  if (groups.table.length > 0) io?.to(TABLE_ROOM).emit("arena:tokens-removed", groups.table);
+  if (groups.gm.length > 0) io?.to(GM_ROOM).emit("arena:tokens-removed", groups.gm);
 }
 
 /**
