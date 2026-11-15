@@ -46,7 +46,16 @@ test.describe("arena: Mestre cria tokens", () => {
     await page.waitForTimeout(500);
     expect((await readArena(gm, sceneId)).tokens).toHaveLength(0);
 
-    await dragTo(page, row, page.getByRole("application"));
+    const rowBox = await row.boundingBox();
+    const mapBox = await page.getByRole("application").boundingBox();
+    if (!rowBox || !mapBox) throw new Error("Ficha ou mapa fora da tela");
+    await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2 + 12, {
+      steps: 4,
+    });
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2, { steps: 20 });
+    await page.mouse.up();
     await expect
       .poll(
         async () =>

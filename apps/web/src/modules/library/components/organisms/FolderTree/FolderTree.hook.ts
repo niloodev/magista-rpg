@@ -66,13 +66,34 @@ export function useFolderTree<L extends ITreeLeaf>({
   leafPortrait,
   labels,
   onDropOutside,
+  outsidePreview,
 }: FolderTreeProps<L>) {
   const [drag, setDrag] = useState<ITreeDragState>(IDLE_TREE_DRAG);
   const targetRef = useRef<IDropTarget | null>(null);
   const expandTimer = useRef<{ dragId: string; timer: number } | null>(null);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const [outsideStart, setOutsideStart] = useState<{ x: number; y: number } | null>(null);
+  const outsideRef = useRef(outsidePreview);
+  const outsideOver = useRef(false);
+  const outsideNode = useRef<HTMLDivElement | null>(null);
   const trackPointer = useRef((event: PointerEvent) => {
-    lastPointer.current = { x: event.clientX, y: event.clientY };
+    const point = { x: event.clientX, y: event.clientY };
+    lastPointer.current = point;
+    const over = outsideRef.current?.isOver(point) ?? false;
+    if (over !== outsideOver.current) {
+      outsideOver.current = over;
+      setOutsideStart(over ? point : null);
+      return;
+    }
+    const node = outsideNode.current;
+    if (over && node) {
+      node.style.left = `${point.x}px`;
+      node.style.top = `${point.y}px`;
+    }
+  });
+
+  useEffect(() => {
+    outsideRef.current = outsidePreview;
   });
   const reducedMotion = usePrefersReducedMotion();
   const overlayRoot = useDocumentBody();
@@ -163,6 +184,8 @@ export function useFolderTree<L extends ITreeLeaf>({
   const stopTrackingPointer = () => {
     window.removeEventListener("pointermove", trackPointer.current);
     lastPointer.current = null;
+    outsideOver.current = false;
+    setOutsideStart(null);
   };
 
   const onDragStart = ({ active, activatorEvent }: DragStartEvent) => {
@@ -234,7 +257,17 @@ export function useFolderTree<L extends ITreeLeaf>({
     return leaf ? { kind: "leaf", name: leaf.name, portraitUrl: leafPortrait(leaf) } : null;
   }, [drag.activeId, folderList, leaves, leafPortrait]);
 
+  const outsideLeaf =
+    outsideStart && outsidePreview && drag.activeId
+      ? leaves.find((item) => toDragId({ kind: leafKind, id: item.id }) === drag.activeId)
+      : undefined;
+
   return {
+    outsideNode,
+    outside:
+      outsideLeaf && outsideStart && outsidePreview
+        ? { point: outsideStart, node: outsidePreview.render(outsideLeaf) }
+        : null,
     folders: folders.root,
     leaves: folders.rootLeaves,
     isEmpty: folders.root.length === 0 && folders.rootLeaves.length === 0,

@@ -42,6 +42,8 @@ export interface FolderTreeProps<L extends ITreeLeaf> {
   freeAxis?: boolean;
   /** A leaf dropped outside every row, with the viewport point where it was released. */
   onDropOutside?: (leaf: L, point: { x: number; y: number }) => void;
+  /** While a leaf is dragged over a spot where dropping it outside works, the row preview turns into this. */
+  outsidePreview?: ITreeOutsidePreview<L>;
 }
 
 export interface IDropTarget {
@@ -81,4 +83,10 @@ export interface ITreePreview {
   kind: "folder" | "leaf";
   name: string;
   portraitUrl: string | null;
+}
+
+/** Preview shown instead of the row while a leaf is over a valid outside drop spot (like a token on a map). */
+export interface ITreeOutsidePreview<L> {
+  isOver: (point: { x: number; y: number }) => boolean;
+  render: (leaf: L) => ReactNode;
 }

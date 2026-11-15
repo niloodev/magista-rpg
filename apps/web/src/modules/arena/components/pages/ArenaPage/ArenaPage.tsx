@@ -101,6 +101,8 @@ export function ArenaPage() {
     onCloseDocked,
     sheetNameFor,
     canPlace,
+    isOverMap,
+    tokenPreviewSize,
     onPlaceCharacter,
     onDropCharacter,
     npcDialogOpen,
@@ -263,6 +265,8 @@ export function ArenaPage() {
             onPlaceCharacter={onPlaceCharacter}
             onDropCharacter={onDropCharacter}
             onNewNpc={onNewNpc}
+            isOverMap={isOverMap}
+            tokenPreviewSize={tokenPreviewSize}
           />
         }
         scenes={

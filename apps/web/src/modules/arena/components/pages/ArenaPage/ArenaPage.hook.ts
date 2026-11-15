@@ -2,6 +2,7 @@
 
 import {
   ARENA_SCENE_NOT_FOUND_MESSAGE,
+  ARENA_TOKEN_SIZE_DEFAULT,
   clampToMap,
   isErrorResult,
   type IArenaBounds,
@@ -430,6 +431,17 @@ export function useArenaPage() {
     viewportWidth,
   );
 
+  const isOverMap = useCallback(
+    (point: { x: number; y: number }) =>
+      controlsRef.current?.clientToWorld(point.x, point.y) != null,
+    [],
+  );
+
+  const tokenPreviewSize = useCallback(
+    () => ARENA_TOKEN_SIZE_DEFAULT * (controlsRef.current?.zoom() ?? 1),
+    [],
+  );
+
   const onDock = (characterId: string, side: ArenaDockSide) => {
     store.getState().dockArenaSheet(characterId, side);
     updateSidebar(side === "left" ? { rollsOpen: true } : { open: true });
@@ -549,6 +561,8 @@ export function useArenaPage() {
     sheetNameFor: (characterId: string) => sheetNameOf(characterId, namesById, libraryCharacters),
     onCloseDocked: (characterId: string) => store.getState().closeDockedSheet(characterId),
     canPlace: Boolean(scene) && status === "ready",
+    isOverMap,
+    tokenPreviewSize,
     onPlaceCharacter: placement.placeCharacter,
     onDropCharacter: placement.dropCharacter,
     npcDialogOpen: placement.npcDialogOpen,

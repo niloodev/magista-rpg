@@ -1,5 +1,7 @@
 import type { ICharacterSummary } from "@magista/shared";
 
+import type { ITreeOutsidePreview } from "@/modules/library/components/organisms/FolderTree";
+
 export type CharacterLibraryVariant = "page" | "sidebar";
 
 export interface CharacterLibraryProps {
@@ -12,4 +14,6 @@ export interface CharacterLibraryProps {
   onPlaceCharacter?: (character: ICharacterSummary) => void;
   /** GM only: a sheet dragged out of the tree and released at a page point (Arena map). */
   onDropCharacter?: (character: ICharacterSummary, point: { x: number; y: number }) => void;
+  /** What a sheet looks like while dragged over a spot where `onDropCharacter` works (a token on the map). */
+  dropPreview?: ITreeOutsidePreview<ICharacterSummary>;
 }

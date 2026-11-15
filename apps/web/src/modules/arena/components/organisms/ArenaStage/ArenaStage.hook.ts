@@ -130,6 +130,7 @@ export function useArenaStage({
       clientToWorld: (clientX, clientY) =>
         rendererRef.current?.clientToWorld(clientX, clientY) ?? null,
       visibleCenter: () => rendererRef.current?.visibleCenter() ?? null,
+      zoom: () => rendererRef.current?.zoom() ?? 1,
       retryMap: () => rendererRef.current?.retryMap(),
     }),
     [],

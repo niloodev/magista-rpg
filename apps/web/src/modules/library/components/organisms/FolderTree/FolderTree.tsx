@@ -22,6 +22,8 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
     rootDropId,
     rootDropActive,
     preview,
+    outside,
+    outsideNode,
     overlayRoot,
     sensors,
     collision,
@@ -82,7 +84,7 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
             dropAnimation={reducedMotion ? null : undefined}
             className="pointer-events-none"
           >
-            {preview && (
+            {preview && !outside && (
               <DragPreview
                 kind={preview.kind}
                 name={preview.name}
@@ -91,6 +93,19 @@ export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
               />
             )}
           </DragOverlay>,
+          overlayRoot,
+        )}
+      {overlayRoot &&
+        outside &&
+        createPortal(
+          <div
+            ref={outsideNode}
+            aria-hidden="true"
+            className="pointer-events-none fixed z-[200] -translate-x-1/2 -translate-y-1/2"
+            style={{ left: outside.point.x, top: outside.point.y }}
+          >
+            {outside.node}
+          </div>,
           overlayRoot,
         )}
     </DndContext>

@@ -4,6 +4,7 @@ export * from "./ArenaMapPlaceholder";
 export * from "./ArenaNotice";
 export * from "./ArenaPanelToggle";
 export * from "./ArenaSelectionBar";
+export * from "./ArenaTokenDragPreview";
 export * from "./ArenaTokenTray";
 export * from "./ArenaZoomControls";
 export * from "./DockedTabPanels";

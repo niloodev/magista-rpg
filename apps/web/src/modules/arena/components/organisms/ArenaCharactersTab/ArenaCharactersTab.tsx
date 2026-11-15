@@ -1,7 +1,10 @@
+"use client";
+
 import { ARENA_CHARACTERS_HINT_ID, ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
 import { CharacterLibrary } from "@/modules/library/components";
 import { Button, Icon } from "@/shared/components/atoms";
 
+import { useArenaCharactersTab } from "./ArenaCharactersTab.hook";
 import type { ArenaCharactersTabProps } from "./ArenaCharactersTab.types";
 
 /**
@@ -15,8 +18,11 @@ export function ArenaCharactersTab({
   onPlaceCharacter,
   onDropCharacter,
   onNewNpc,
+  isOverMap,
+  tokenPreviewSize,
 }: ArenaCharactersTabProps) {
   const placing = isGm && canPlace;
+  const { dropPreview } = useArenaCharactersTab({ isOverMap, tokenPreviewSize });
   return (
     <div className="flex flex-col gap-4">
       {isGm && (
@@ -42,6 +48,7 @@ export function ArenaCharactersTab({
         onOpenCharacter={onOpenCharacter}
         onPlaceCharacter={placing ? onPlaceCharacter : undefined}
         onDropCharacter={placing ? onDropCharacter : undefined}
+        dropPreview={placing ? dropPreview : undefined}
       />
     </div>
   );

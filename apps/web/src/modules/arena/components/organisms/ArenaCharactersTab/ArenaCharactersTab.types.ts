@@ -8,4 +8,8 @@ export interface ArenaCharactersTabProps {
   onPlaceCharacter: (character: ICharacterSummary) => void;
   onDropCharacter: (character: ICharacterSummary, point: { x: number; y: number }) => void;
   onNewNpc: () => void;
+  /** True when a page point is on the map (a sheet dropped there becomes a token). */
+  isOverMap: (point: { x: number; y: number }) => boolean;
+  /** Screen diameter a new token would have now (token size times the camera zoom). */
+  tokenPreviewSize: () => number;
 }

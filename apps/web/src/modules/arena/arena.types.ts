@@ -24,6 +24,8 @@ export interface IArenaStageControls {
   centerOn: (tokenId: string) => void;
   /** Map point under a page point, or null outside the visible map area. */
   clientToWorld: (clientX: number, clientY: number) => IArenaPoint | null;
+  /** Current camera zoom (1 before the map loads). */
+  zoom: () => number;
   /** Map point at the center of the visible area (null before the map loads). */
   visibleCenter: () => IArenaPoint | null;
   retryMap: () => void;

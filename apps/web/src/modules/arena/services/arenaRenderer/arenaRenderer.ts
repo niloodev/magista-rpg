@@ -354,6 +354,8 @@ export class ArenaRenderer implements IArenaRenderer {
     return screenToWorld(this.camera, point);
   };
 
+  zoom = (): number => this.camera.scale;
+
   visibleCenter = (): IArenaPoint =>
     screenToWorld(this.camera, visibleCenterPoint(this.viewport(), this.insets()));
 

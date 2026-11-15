@@ -71,6 +71,8 @@ export interface IArenaRenderer {
   centerOn: (tokenId: string) => void;
   /** Map point under a page point, or null when it falls outside the visible map area (under a panel or a control). */
   clientToWorld: (clientX: number, clientY: number) => IArenaPoint | null;
+  /** Current camera zoom (screen pixels per map pixel). */
+  zoom: () => number;
   /** Map point at the center of the visible area (between the panels, below the top bar). */
   visibleCenter: () => IArenaPoint;
   retryMap: () => void;

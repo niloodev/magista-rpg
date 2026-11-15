@@ -27,6 +27,7 @@ export function CharacterLibrary({
   onOpenCharacter,
   onPlaceCharacter,
   onDropCharacter,
+  dropPreview,
 }: CharacterLibraryProps) {
   const {
     isGm,
@@ -118,6 +119,7 @@ export function CharacterLibrary({
             labels={CHARACTER_TREE_LABELS}
             freeAxis={Boolean(onDropCharacter)}
             onDropOutside={onDropCharacter}
+            outsidePreview={dropPreview}
             empty={<LibraryEmptyTree onNewFolder={newFolder} onNewCharacter={newCharacter} />}
             renderLeaf={(character, slots) => (
               <CharacterTreeLeaf

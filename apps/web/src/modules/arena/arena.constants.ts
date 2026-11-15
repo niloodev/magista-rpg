@@ -279,3 +279,6 @@ export const ARENA_WINDOW_ICON_BUTTON =
 
 /** Map width always left between the side panels (they shrink, never below their minimum, to keep it). */
 export const ARENA_MAP_MIN_WIDTH = 360;
+
+/** Screen diameter limits of the token drag preview, in CSS pixels. */
+export const ARENA_TOKEN_PREVIEW_LIMITS = { min: 40, max: 200 } as const;
