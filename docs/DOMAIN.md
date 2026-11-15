@@ -112,6 +112,15 @@ Sem avatar, os retratos usam a arte. Guardadas no storage local (`avatarKey`/`ar
 - Caminhos do Meio: Onírico (Arcana+Anima), Entropia (Lux+Nox), Vodu (Arcana+Nox), Bênção (Anima+Lux), Anátema (Anima+Nox, valor legado `Morte`), Talismã (Arcana+Lux, valor legado `Vida`).
 - **Alma de Marcado**: uma vez por rodada os Marcados escolhem um traço para compartilhar até o fim da cena (1x por descanso longo); +2 permanente em todos os testes de d20. Implementada como a tag especial `marked` (ver abaixo).
 
+## Arena
+
+Tabuleiro da mesa (estudo completo em `docs/ARENA.md`). O Mestre cria **cenas**, cada uma com um mapa (imagem até 25 MB, no máximo 16384 px de lado e 64 megapixels), organizadas numa biblioteca com pastas aninhadas (mesma ordem manual da biblioteca de fichas), e escolhe a **cena ativa**, a única que os jogadores veem; ele pode abrir outra cena em prévia sem os jogadores verem. Sem grid por enquanto: tokens têm posição livre em pixels do mapa original.
+
+- **Tokens**: de ficha (nome e retrato da ficha: avatar, ou a arte) ou de NPC (nome e imagem próprios). Cada token tem tamanho (diâmetro de 40 a 600 px do mapa) e pode ficar **oculto** (só o Mestre vê).
+- **Criar tokens**: o Mestre arrasta uma ficha da barra lateral para o mapa (o token nasce onde foi solto), usa "Colocar no mapa" no menu da ficha (centro da vista) ou cria um "Token avulso" de NPC com nome e imagem. Uma ficha pode ter vários tokens na mesma cena.
+- **Quem move**: o jogador move os tokens das fichas liberadas para a conta, só na cena ativa e se o token não estiver oculto; o Mestre move qualquer um e é o único que cria, edita, oculta e remove.
+- Excluir a ficha remove os tokens dela; excluir a cena remove os tokens e o mapa.
+
 ## Tags especiais (special features)
 
 Mecânicas exclusivas que o Mestre liga em uma ficha pelo item "Tags especiais" do menu da ficha na biblioteca (`PUT /characters/:id/features`, coluna `features` do personagem, gravada sem mexer no `updatedAt`). O catálogo é `SPECIAL_FEATURES` (`packages/shared/src/game/features`): cada tag declara rótulo, descrição e bônus de d20; a UI de cada uma é registrada em `FEATURE_SHEET_SLOTS` (`apps/web/src/modules/features`), com slots opcionais `backdrop` (fundo da ficha), `traitsAddon` (acima dos traços) e `traitsSection` (seção na aba Traços). Nova tag = entrada no catálogo + componentes no registro.

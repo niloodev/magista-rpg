@@ -28,7 +28,9 @@ export function RollCardSkeleton({ card }: RollCardSkeletonProps) {
           <p className="overflow-hidden font-sans text-sm font-semibold text-clip whitespace-nowrap">
             <Skeleton shape="glyphs">{skeletonSample(card.name)}</Skeleton>
           </p>
-          {card.byGm && <p className="font-sans text-xs text-teal-300">{ROLLED_BY_GM_LABEL}</p>}
+          {card.byGm && (
+            <p className="truncate font-sans text-xs text-teal-300">{ROLLED_BY_GM_LABEL}</p>
+          )}
         </div>
         {card.critical && (
           <span className="flex items-center gap-1 border border-gold-400/70 bg-gold-500/20 px-2 py-1 font-sans text-xs font-bold tracking-widest text-gold-200 uppercase">

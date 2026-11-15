@@ -21,12 +21,14 @@ import {
 /**
  * Full-page placeholder of the sheet, with the same layout as `SheetPage` on its first tab.
  */
-export function SheetSkeleton({ gm = false, variant = "page" }: SheetSkeletonProps) {
-  const { art } = useSheetSkeleton();
+export function SheetSkeleton({ gm = false, variant = "page", art: knownArt }: SheetSkeletonProps) {
+  const { art } = useSheetSkeleton(knownArt);
+  const panel = variant === "panel";
+  const Root = panel ? "div" : "main";
   return (
-    <main className={SHEET_MAIN_CLASSES[variant]} aria-busy="true">
-      <h1 className="sr-only">{SHEET_SKELETON_TITLE}</h1>
-      <SkeletonRegion label={SHEET_SKELETON_LABEL}>
+    <Root className={SHEET_MAIN_CLASSES[variant]} aria-busy="true">
+      {!panel && <h1 className="sr-only">{SHEET_SKELETON_TITLE}</h1>}
+      <SkeletonRegion label={SHEET_SKELETON_LABEL} className="@container">
         <div className="mx-auto max-w-[1440px] pt-4">
           <div className="mb-4 flex min-h-9 flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm text-muted-strong">
             {variant === "page" && (
@@ -53,17 +55,19 @@ export function SheetSkeleton({ gm = false, variant = "page" }: SheetSkeletonPro
         </div>
         <div className="mx-auto max-w-[1440px]">
           <SheetSummarySkeleton />
-          <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="mt-4 grid gap-6 @min-[77rem]:grid-cols-[minmax(0,1fr)_380px]">
             <div className="min-w-0">
-              <SheetTabsSkeleton />
+              <SheetTabsSkeleton panel={panel} />
               <SheetOverviewSkeleton />
             </div>
-            <div className="hidden xl:sticky xl:top-28 xl:block xl:h-[calc(100vh-8rem)]">
-              <RollFeed rolls={[]} loading nested className="h-full" />
-            </div>
+            {!panel && (
+              <div className="hidden @min-[77rem]:sticky @min-[77rem]:top-28 @min-[77rem]:block @min-[77rem]:h-[calc(100vh-8rem)]">
+                <RollFeed rolls={[]} loading nested className="h-full" />
+              </div>
+            )}
           </div>
         </div>
       </SkeletonRegion>
-    </main>
+    </Root>
   );
 }

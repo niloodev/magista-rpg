@@ -13,7 +13,7 @@ export function Select({
     <select
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
-      className={`magista-input cursor-pointer font-sans [&>option]:bg-void-800 [&_optgroup]:bg-void-800 ${compact ? "h-8 px-2 text-xs" : "w-full px-4 py-3 text-base"} ${className ?? ""}`}
+      className={`magista-input cursor-pointer font-sans disabled:cursor-default [&>option]:bg-void-800 [&_optgroup]:bg-void-800 ${compact ? "h-8 px-2 text-xs" : "w-full px-4 py-3 text-base"} ${className ?? ""}`}
       {...props}
     >
       {options.map((option) => (

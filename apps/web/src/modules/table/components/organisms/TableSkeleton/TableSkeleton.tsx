@@ -43,6 +43,14 @@ export function TableSkeleton({ known = false, gm = false, loginLength = 10 }: T
             </div>
             <div className="flex shrink-0 gap-2">
               <ButtonSkeleton
+                label="Arena"
+                variant="primary"
+                size="sm"
+                icon="swords"
+                iconSize={12}
+                labelClassName="max-sm:sr-only"
+              />
+              <ButtonSkeleton
                 label="Perfil"
                 size="sm"
                 icon="user"

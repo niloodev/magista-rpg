@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SAVE_CONFLICT_ERROR } from "./SheetPage.constants";
 import type { SheetSaveDeps, SheetSaveSnapshot } from "./SheetPage.types";
-import { saveWithReconcile } from "./SheetPage.utils";
+import { saveExclusively, saveWithReconcile } from "./SheetPage.utils";
 
 const base: ICharacter = {
   id: "c1",
@@ -83,5 +83,50 @@ describe("saveWithReconcile", () => {
     await saveWithReconcile(deps);
     expect(deps.applyRemote).not.toHaveBeenCalled();
     expect(deps.markFailed).toHaveBeenCalledWith("c1", "Somente o Mestre altera classe.");
+  });
+});
+
+function deferred() {
+  let resolve: () => void = () => undefined;
+  let reject: (error: Error) => void = () => undefined;
+  const promise = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+describe("saveExclusively", () => {
+  it("runs saves of the same sheet one at a time and of other sheets in parallel", async () => {
+    const order: string[] = [];
+    const first = deferred();
+    const second = deferred();
+    const a1 = saveExclusively("a", async () => {
+      order.push("a1:start");
+      await first.promise;
+      order.push("a1:end");
+    });
+    const a2 = saveExclusively("a", async () => {
+      order.push("a2:start");
+      await second.promise;
+    });
+    const b = saveExclusively("b", async () => void order.push("b"));
+    await b;
+    expect(order).toEqual(["a1:start", "b"]);
+    first.resolve();
+    await a1;
+    await Promise.resolve();
+    expect(order).toEqual(["a1:start", "b", "a1:end", "a2:start"]);
+    second.resolve();
+    await a2;
+  });
+
+  it("keeps going after a failed save", async () => {
+    const failing = deferred();
+    const broken = saveExclusively("c", () => failing.promise);
+    const next = saveExclusively("c", async () => undefined);
+    failing.reject(new Error("falhou"));
+    await expect(broken).rejects.toThrow("falhou");
+    await expect(next).resolves.toBeUndefined();
   });
 });

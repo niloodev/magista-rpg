@@ -14,6 +14,12 @@ import {
 } from "@magista/shared";
 import { Server } from "socket.io";
 
+import type {
+  ArenaAudience,
+  IArenaDragRelay,
+  IArenaTokenChange,
+  IArenaTokenRemoval,
+} from "@/core/controllers/arena";
 import { characterController } from "@/core/controllers/character";
 import {
   buildMarkedController,
@@ -23,10 +29,15 @@ import {
 } from "@/core/controllers/marked";
 import { getEnv } from "@/core/services/env";
 
-import { registerMarkedHandlers, registerPresenceHandlers, registerRollHandlers } from "./handlers";
+import {
+  registerArenaHandlers,
+  registerMarkedHandlers,
+  registerPresenceHandlers,
+  registerRollHandlers,
+} from "./handlers";
 import { authenticateSocket } from "./realtime.auth";
 import type { RealtimeServer, RealtimeSocket } from "./realtime.types";
-import { accountRoom, characterRoom } from "./realtime.utils";
+import { accountRoom, characterRoom, pendingOf } from "./realtime.utils";
 
 let io: RealtimeServer | null = null;
 
@@ -97,6 +108,7 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
       onResolved: broadcastMarkedResolved,
       onShare: broadcastMarkedShare,
     });
+    registerArenaHandlers(socket, { onMoved: broadcastArenaToken, onDragged: relayArenaDrag });
   });
   io = server;
   return server;
@@ -161,10 +173,12 @@ export function broadcastCharacterImages(images: ICharacterImages): void {
 }
 
 /**
- * Shares a roll with the whole table once the roller's animation has revealed it, and keeps it in the recent
- * history sent to every socket that connects (in memory; persisted history comes with the chat).
+ * Announces a roll to the whole table at once (who rolls what, without the dice) and shares the result once the
+ * roller's animation has revealed it, keeping it in the recent history sent to every socket that connects
+ * (in memory; persisted history comes with the chat).
  */
 export function broadcastRollResult(roll: IRollResult): void {
+  io?.to(TABLE_ROOM).emit("roll:pending", pendingOf(roll, ROLL_REVEAL_DELAY_MS));
   setTimeout(() => publishToTable(roll), ROLL_REVEAL_DELAY_MS);
 }
 
@@ -212,4 +226,58 @@ export async function syncMarkedCharacter(characterId: string): Promise<void> {
   } catch (error) {
     console.error("syncMarkedCharacter failed:", error);
   }
+}
+
+const arenaRoom = (audience: ArenaAudience) => (audience === "table" ? TABLE_ROOM : GM_ROOM);
+
+/**
+ * Pushes a created or changed token to who may see it. A token that left the players' view (hidden) is removed
+ * from their tabs; GM sockets are also in the table room, so they are excluded from that removal.
+ */
+export function broadcastArenaToken({
+  token,
+  audience,
+  previousAudience,
+}: IArenaTokenChange): void {
+  io?.to(arenaRoom(audience)).emit("arena:token", token);
+  if (audience === "gm" && previousAudience === "table") {
+    io?.to(TABLE_ROOM)
+      .except(GM_ROOM)
+      .emit("arena:token-removed", { id: token.id, sceneId: token.sceneId });
+  }
+}
+
+/**
+ * Tells who could see a token that it was removed.
+ */
+export function broadcastArenaTokenRemoved({ event, audience }: IArenaTokenRemoval): void {
+  io?.to(arenaRoom(audience)).emit("arena:token-removed", event);
+}
+
+/**
+ * Relays a drag preview to everyone else who may see the token (not to the dragging socket).
+ */
+function relayArenaDrag({ groups }: IArenaDragRelay, socketId: string): void {
+  for (const { event, audience } of groups)
+    io?.to(arenaRoom(audience)).except(socketId).emit("arena:dragging", event);
+}
+
+/**
+ * Asks who may see a scene to refetch it (the live scene reaches the table; others only the GM).
+ */
+export function broadcastArenaScene(
+  sceneId: string | null,
+  audience: ArenaAudience,
+  libraryOnly = false,
+): void {
+  io?.to(arenaRoom(audience)).emit("arena:scene", { sceneId, libraryOnly });
+}
+
+/**
+ * Asks tabs to refetch the Arena after a change outside it (character renamed, new images, access or deletion):
+ * the given accounts and the GM, or the whole table when no account is given.
+ */
+export function broadcastArenaRefresh(accountIds?: string[]): void {
+  const rooms = accountIds ? [GM_ROOM, ...accountIds.map(accountRoom)] : [TABLE_ROOM];
+  io?.to(rooms).emit("arena:scene", { sceneId: null });
 }

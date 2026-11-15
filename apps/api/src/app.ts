@@ -8,6 +8,7 @@ import { MEDIA_ROUTE } from "@/core/services/media";
 import { apiRateLimit, errorHandler, notFoundHandler } from "@/middlewares";
 import {
   accountRoutes,
+  arenaRoutes,
   authRoutes,
   characterRoutes,
   folderRoutes,
@@ -35,6 +36,7 @@ export function createApp(): Express {
   app.use("/folders", folderRoutes);
   app.use("/library", libraryRoutes);
   app.use("/accounts", accountRoutes);
+  app.use("/arena", arenaRoutes);
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

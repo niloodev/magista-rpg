@@ -8,4 +8,4 @@ export const BADGE_BASE =
 
 export const MORE_TONE = "border-white/20 bg-black/40 text-muted-strong";
 
-export const COMPACT_LABEL = "max-sm:sr-only";
+export const COMPACT_LABEL = "@max-md:sr-only";

@@ -7,4 +7,6 @@ export interface SheetHeaderProps {
   onEdit: SheetEditor;
   isGm: boolean;
   onLevelUp: () => void;
+  /** Tag of the character name: h1 on the sheet page, h2 inside another page (floating panel). */
+  headingAs?: "h1" | "h2";
 }

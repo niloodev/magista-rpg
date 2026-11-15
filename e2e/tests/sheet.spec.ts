@@ -33,6 +33,12 @@ test.describe("ficha", () => {
     ).toHaveValue("16");
   });
 
+  test("com a mesa conectada, a ficha mostra o ping até o servidor", async ({ page }) => {
+    await loginAs(page, PLAYER);
+    await openSheet(page, e2eState().playerCharacterId);
+    await expect(page.getByText(/^Ping: \d+(\+)? ms$/)).toBeAttached({ timeout: 8000 });
+  });
+
   test("jogador não abre a ficha de outro personagem", async ({ page }) => {
     const { otherCharacterId } = e2eState();
     await loginAs(page, PLAYER);

@@ -17,7 +17,7 @@ export function InventoryEntry({ item, pinged, onPing, onEdit, onDelete }: Inven
         >
           <Icon name={item.armorBonus ? "shield" : "package-search"} size={18} />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 grow basis-40">
           <h3 className="font-sans text-base font-semibold text-foreground">{title}</h3>
           <p className="font-sans text-sm text-muted-strong">{itemSummary(item)}</p>
         </div>
@@ -30,7 +30,7 @@ export function InventoryEntry({ item, pinged, onPing, onEdit, onDelete }: Inven
             icon={<Icon name="pen-line" size={14} />}
             aria-label={`Editar ${title}`}
           >
-            <span className="max-sm:sr-only">Editar</span>
+            <span className="@max-[37rem]:sr-only">Editar</span>
           </Button>
           <Button
             variant="ghost"

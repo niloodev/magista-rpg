@@ -4,6 +4,8 @@ import type { LibraryDialog } from "@/modules/library/library.types";
 import { countLabel } from "@/modules/library/library.utils";
 import type { ActionMenuItem } from "@/shared/components/molecules";
 
+import { PLACE_ON_MAP_LABEL } from "./CharacterLibrary.constants";
+
 /**
  * "3 fichas" / "1 ficha" / "Nenhuma ficha".
  */
@@ -29,8 +31,12 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 export function characterMenu(
   character: ICharacterSummary,
   open: (dialog: LibraryDialog) => void,
+  place?: (character: ICharacterSummary) => void,
 ): ActionMenuItem[] {
   return [
+    ...(place
+      ? [{ label: PLACE_ON_MAP_LABEL, icon: "map-pin" as const, onSelect: () => place(character) }]
+      : []),
     {
       label: "Acesso de jogadores",
       icon: "key-round",

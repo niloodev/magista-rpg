@@ -5,7 +5,7 @@ import { PopoutButton } from "@/modules/shell/components";
 import { Avatar, Icon } from "@/shared/components/atoms";
 
 import { DropIndicator } from "../DropIndicator";
-import { NO_ACCESS_LABEL } from "./CharacterRow.constants";
+import { CHARACTER_ROW_LINK_CLASSES, NO_ACCESS_LABEL } from "./CharacterRow.constants";
 import type { CharacterRowProps } from "./CharacterRow.types";
 
 export function CharacterRow({
@@ -13,6 +13,7 @@ export function CharacterRow({
   name,
   subtitle,
   href,
+  onOpen,
   portraitUrl,
   path,
   accountLabels,
@@ -31,15 +32,22 @@ export function CharacterRow({
       <Avatar src={portraitUrl} name={name} size="sm" decorative />
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-serif text-base tracking-wide text-foreground">
-          <Link
-            href={href}
-            draggable={false}
-            className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ruby-400 focus-visible:after:outline-solid"
-          >
-            {name}
-          </Link>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className={`${CHARACTER_ROW_LINK_CLASSES} block max-w-full cursor-pointer truncate text-left`}
+              title={name}
+            >
+              {name}
+            </button>
+          ) : (
+            <Link href={href} draggable={false} className={CHARACTER_ROW_LINK_CLASSES}>
+              {name}
+            </Link>
+          )}
         </h3>
-        <p className="flex min-w-0 items-center gap-x-3 overflow-hidden font-sans text-xs text-muted-strong">
+        <p className="flex min-w-0 items-center gap-x-2 overflow-hidden font-sans text-xs text-muted-strong">
           <span className="truncate font-semibold tracking-wider uppercase">{subtitle}</span>
           {features.length > 0 && (
             <span className="shrink-0">
@@ -55,7 +63,7 @@ export function CharacterRow({
         </p>
       </div>
       {accountLabels && (
-        <div className="hidden max-w-[45%] flex-wrap justify-end gap-1.5 sm:flex">
+        <div className="hidden max-w-[45%] flex-wrap justify-end gap-1.5 @md:flex">
           <span className="sr-only">Jogadores com acesso:</span>
           {accountLabels.length === 0 ? (
             <span className="font-sans text-xs text-muted-strong italic">{NO_ACCESS_LABEL}</span>

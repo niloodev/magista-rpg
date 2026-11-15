@@ -10,11 +10,11 @@ export function SheetSummaryBar({ character, derived, onEdit }: SheetSummaryBarP
   const { sheet } = character;
   return (
     <section
-      aria-label="Resumo do personagem"
-      className="z-30 -mx-4 border-b border-primary/30 bg-void-900/90 px-4 py-3 backdrop-blur-md md:sticky md:top-0"
+      aria-label={`Resumo de ${character.name}`}
+      className="z-30 -mx-4 border-b border-primary/30 bg-void-900/90 px-4 py-3 backdrop-blur-md @min-[45rem]:sticky @min-[45rem]:top-0"
     >
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 @min-[61rem]:flex">
           <Avatar
             src={toMediaUrl(portraitOf(character))}
             name={character.name}

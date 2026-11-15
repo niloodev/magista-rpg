@@ -19,7 +19,7 @@ export function TraitEntry({ trait, pinged, onPing, onEdit, onDelete }: TraitEnt
             icon={<Icon name="pen-line" size={14} />}
             aria-label={`Editar ${title}`}
           >
-            <span className="max-sm:sr-only">Editar</span>
+            <span className="@max-[37rem]:sr-only">Editar</span>
           </Button>
           <Button
             variant="ghost"

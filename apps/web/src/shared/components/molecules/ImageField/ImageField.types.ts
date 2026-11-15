@@ -1,4 +1,4 @@
-export type ImageFieldShape = "circle" | "portrait";
+export type ImageFieldShape = "circle" | "portrait" | "landscape";
 
 export interface ImageFieldProps {
   id: string;

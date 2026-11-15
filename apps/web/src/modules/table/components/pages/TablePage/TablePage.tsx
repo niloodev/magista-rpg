@@ -1,11 +1,15 @@
 "use client";
 
+import Link from "next/link";
+
+import { ARENA_PATH } from "@/modules/arena/arena.constants";
 import { CharacterLibrary } from "@/modules/library/components";
 import { ProfileDialog } from "@/modules/profile/components";
 import { PresencePanel, RollFeed } from "@/modules/table/components/organisms";
 import { TABLE_TITLES } from "@/modules/table/table.constants";
 import { Button, Icon, Text } from "@/shared/components/atoms";
 
+import { ARENA_LINK_CLASSES } from "./TablePage.constants";
 import { useTablePage } from "./TablePage.hook";
 
 export function TablePage() {
@@ -34,6 +38,10 @@ export function TablePage() {
             </Text>
           </div>
           <div className="flex shrink-0 gap-2">
+            <Link href={ARENA_PATH} className={ARENA_LINK_CLASSES}>
+              <Icon name="swords" size={12} />
+              <span className="max-sm:sr-only">Arena</span>
+            </Link>
             <Button
               variant="secondary"
               size="sm"

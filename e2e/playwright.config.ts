@@ -4,6 +4,8 @@ import { WEB_URL } from "./support/env";
 
 const executablePath = process.env.E2E_CHROMIUM_PATH;
 
+const WEBGL_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -19,7 +21,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
     viewport: { width: 1440, height: 900 },
-    launchOptions: executablePath ? { executablePath } : {},
+    launchOptions: { args: WEBGL_ARGS, ...(executablePath ? { executablePath } : {}) },
   },
   webServer: {
     command: "npm run dev",

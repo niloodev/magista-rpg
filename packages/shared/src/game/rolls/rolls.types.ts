@@ -52,6 +52,19 @@ export interface IRolledSpec {
 
 export type RollResultKind = IRollKind["kind"] | "levelUp" | IPingEntry["kind"];
 
+/** A roll announced before its result is revealed (the table sees who is rolling what, not the dice yet). */
+export interface IRollPending {
+  id: string;
+  kind: RollResultKind;
+  characterId: string;
+  characterName: string;
+  portraitUrl: string | null;
+  rolledByGm: boolean;
+  title: string;
+  subtitle: string;
+  revealAt: string;
+}
+
 export interface IRollResult {
   id: string;
   kind: RollResultKind;

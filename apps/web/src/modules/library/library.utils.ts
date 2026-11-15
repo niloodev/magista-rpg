@@ -26,6 +26,10 @@ import {
 import type {
   DropPosition,
   ILibraryData,
+  ITreeData,
+  ITreeItemRef,
+  ITreeLeaf,
+  ITreeMove,
   ILibraryItemRef,
   ILibraryShape,
   ILibraryShapeHint,
@@ -41,18 +45,39 @@ export function charactersIn(
   characters: ICharacterSummary[],
   folderId: string | null,
 ): ICharacterSummary[] {
-  return characters.filter((character) => character.folderId === folderId).sort(byPosition);
+  return leavesIn(characters, folderId);
+}
+
+/**
+ * Leaves (characters, scenes) that live directly inside a folder (null is the root), in manual order.
+ */
+export function leavesIn<L extends ITreeLeaf>(leaves: L[], folderId: string | null): L[] {
+  return leaves.filter((leaf) => leaf.folderId === folderId).sort(byPosition);
+}
+
+/**
+ * Number of leaves inside a folder, counting every subfolder.
+ */
+export function countLeavesDeep(tree: ITreeData, folderId: string): number {
+  const direct = tree.leaves.filter((leaf) => leaf.folderId === folderId).length;
+  return childFolders(tree.folders, folderId).reduce(
+    (total, child) => total + countLeavesDeep(tree, child.id),
+    direct,
+  );
 }
 
 /**
  * Number of characters inside a folder, counting every subfolder.
  */
 export function countCharactersDeep(data: ILibraryData, folderId: string): number {
-  const direct = data.characters.filter((character) => character.folderId === folderId).length;
-  return childFolders(data.folders, folderId).reduce(
-    (total, child) => total + countCharactersDeep(data, child.id),
-    direct,
-  );
+  return countLeavesDeep(toTreeData(data), folderId);
+}
+
+/**
+ * The character library seen as a generic folder tree.
+ */
+export function toTreeData(data: ILibraryData): ITreeData<ICharacterSummary> {
+  return { folders: data.folders, leaves: data.characters };
 }
 
 /**
@@ -84,10 +109,21 @@ export function characterSubtitle(character: ICharacterSummary): string {
  * Applies a move locally with the same rules as the API, so drag and drop feels instant.
  */
 export function applyMove(data: ILibraryData, move: IMoveLibraryItemInput): ILibraryData {
+  const tree = applyTreeMove(toTreeData(data), move);
+  return { ...data, folders: tree.folders, characters: tree.leaves };
+}
+
+/**
+ * Applies a folder or leaf move to any folder tree, renumbering the old and the new siblings.
+ */
+export function applyTreeMove<L extends ITreeLeaf>(
+  tree: ITreeData<L>,
+  move: ITreeMove,
+): ITreeData<L> {
   if (move.kind === "folder") {
-    const moving = data.folders.find((folder) => folder.id === move.id);
-    if (!moving) return data;
-    const moved = data.folders.map((folder) =>
+    const moving = tree.folders.find((folder) => folder.id === move.id);
+    if (!moving) return tree;
+    const moved = tree.folders.map((folder) =>
       folder.id === move.id ? { ...folder, parentId: move.parentId } : folder,
     );
     const order = insertAt(
@@ -97,7 +133,7 @@ export function applyMove(data: ILibraryData, move: IMoveLibraryItemInput): ILib
     );
     const previous = childFolders(moved, moving.parentId).map((folder) => folder.id);
     return {
-      ...data,
+      ...tree,
       folders: moved.map((folder) => {
         const inTarget = order.indexOf(folder.id);
         if (inTarget >= 0 && folder.parentId === move.parentId)
@@ -107,25 +143,24 @@ export function applyMove(data: ILibraryData, move: IMoveLibraryItemInput): ILib
       }),
     };
   }
-  const moving = data.characters.find((character) => character.id === move.id);
-  if (!moving) return data;
-  const moved = data.characters.map((character) =>
-    character.id === move.id ? { ...character, folderId: move.parentId } : character,
+  const moving = tree.leaves.find((leaf) => leaf.id === move.id);
+  if (!moving) return tree;
+  const moved = tree.leaves.map((leaf) =>
+    leaf.id === move.id ? { ...leaf, folderId: move.parentId } : leaf,
   );
   const order = insertAt(
-    charactersIn(moved, move.parentId).map((character) => character.id),
+    leavesIn(moved, move.parentId).map((leaf) => leaf.id),
     move.id,
     move.index,
   );
-  const previous = charactersIn(moved, moving.folderId).map((character) => character.id);
+  const previous = leavesIn(moved, moving.folderId).map((leaf) => leaf.id);
   return {
-    ...data,
-    characters: moved.map((character) => {
-      const inTarget = order.indexOf(character.id);
-      if (inTarget >= 0 && character.folderId === move.parentId)
-        return { ...character, position: inTarget };
-      const inPrevious = previous.indexOf(character.id);
-      return inPrevious >= 0 ? { ...character, position: inPrevious } : character;
+    ...tree,
+    leaves: moved.map((leaf) => {
+      const inTarget = order.indexOf(leaf.id);
+      if (inTarget >= 0 && leaf.folderId === move.parentId) return { ...leaf, position: inTarget };
+      const inPrevious = previous.indexOf(leaf.id);
+      return inPrevious >= 0 ? { ...leaf, position: inPrevious } : leaf;
     }),
   };
 }
@@ -133,7 +168,7 @@ export function applyMove(data: ILibraryData, move: IMoveLibraryItemInput): ILib
 /**
  * Builds the drag id of a library item ("folder:<id>").
  */
-export function toDragId(item: ILibraryItemRef): string {
+export function toDragId(item: ITreeItemRef): string {
   return `${item.kind}${DRAG_ID_SEPARATOR}${item.id}`;
 }
 
@@ -148,9 +183,9 @@ export function fromDragId(dragId: string | number): { kind: string; id: string 
 
 /**
  * Where a dragged item lands relative to the row under it, from the vertical position of the pointer
- * inside that row (0 = top edge, 1 = bottom edge). Characters only go inside folders or before/after
- * other characters; folders go before/after folders or inside them (middle of the row). The root
- * drop zone always means inside.
+ * inside that row (0 = top edge, 1 = bottom edge). Leaves (characters, scenes) only go inside folders or
+ * before/after leaves of the same kind; folders go before/after folders or inside them (middle of the row).
+ * The root drop zone always means inside.
  */
 export function dropPositionFor(
   activeKind: string,
@@ -159,25 +194,24 @@ export function dropPositionFor(
 ): DropPosition | null {
   if (overKind === ROOT_DROP_KIND) return "inside";
   if (overKind === "folder") {
-    if (activeKind === "character") return "inside";
+    if (activeKind !== "folder") return "inside";
     if (ratio < FOLDER_EDGE_RATIO) return "before";
     if (ratio > 1 - FOLDER_EDGE_RATIO) return "after";
     return "inside";
   }
-  if (overKind === "character" && activeKind === "character")
-    return ratio < 0.5 ? "before" : "after";
+  if (activeKind !== "folder" && overKind === activeKind) return ratio < 0.5 ? "before" : "after";
   return null;
 }
 
-function siblingIds(data: ILibraryData, kind: string, parentId: string | null): string[] {
+function siblingIds(tree: ITreeData, kind: string, parentId: string | null): string[] {
   return kind === "folder"
-    ? childFolders(data.folders, parentId).map((folder) => folder.id)
-    : charactersIn(data.characters, parentId).map((character) => character.id);
+    ? childFolders(tree.folders, parentId).map((folder) => folder.id)
+    : leavesIn(tree.leaves, parentId).map((leaf) => leaf.id);
 }
 
-function parentOf(data: ILibraryData, item: ILibraryItemRef): string | null | undefined {
-  if (item.kind === "folder") return data.folders.find((folder) => folder.id === item.id)?.parentId;
-  return data.characters.find((character) => character.id === item.id)?.folderId;
+function parentOf(tree: ITreeData, item: ITreeItemRef): string | null | undefined {
+  if (item.kind === "folder") return tree.folders.find((folder) => folder.id === item.id)?.parentId;
+  return tree.leaves.find((leaf) => leaf.id === item.id)?.folderId;
 }
 
 /**
@@ -190,7 +224,20 @@ export function moveForDrop(
   target: { kind: string; id: string },
   position: DropPosition,
 ): IMoveLibraryItemInput | null {
-  const currentParent = parentOf(data, active);
+  const move = moveForTreeDrop(toTreeData(data), active, target, position);
+  return move ? { ...move, kind: active.kind } : null;
+}
+
+/**
+ * `moveForDrop` for any folder tree.
+ */
+export function moveForTreeDrop(
+  tree: ITreeData,
+  active: ITreeItemRef,
+  target: ITreeItemRef,
+  position: DropPosition,
+): ITreeMove | null {
+  const currentParent = parentOf(tree, active);
   if (currentParent === undefined) return null;
   let parentId: string | null;
   let index: number;
@@ -199,25 +246,25 @@ export function moveForDrop(
     if (
       active.kind === "folder" &&
       parentId &&
-      isSameOrDescendant(data.folders, parentId, active.id)
+      isSameOrDescendant(tree.folders, parentId, active.id)
     )
       return null;
     if (parentId === currentParent) return null;
-    index = siblingIds(data, active.kind, parentId).length;
+    index = siblingIds(tree, active.kind, parentId).length;
   } else {
     if (target.kind !== active.kind || target.id === active.id) return null;
-    const targetParent = parentOf(data, { kind: active.kind, id: target.id });
+    const targetParent = parentOf(tree, { kind: active.kind, id: target.id });
     if (targetParent === undefined) return null;
     parentId = targetParent;
     if (
       active.kind === "folder" &&
       parentId &&
-      isSameOrDescendant(data.folders, parentId, active.id)
+      isSameOrDescendant(tree.folders, parentId, active.id)
     )
       return null;
-    const rest = siblingIds(data, active.kind, parentId).filter((id) => id !== active.id);
+    const rest = siblingIds(tree, active.kind, parentId).filter((id) => id !== active.id);
     index = rest.indexOf(target.id) + (position === "after" ? 1 : 0);
-    const current = siblingIds(data, active.kind, parentId);
+    const current = siblingIds(tree, active.kind, parentId);
     if (parentId === currentParent && current.indexOf(active.id) === index) return null;
   }
   return { kind: active.kind, id: active.id, parentId, index };

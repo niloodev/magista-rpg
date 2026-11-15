@@ -7,6 +7,8 @@ import {
   presenceLoadingRows,
   presenceRows,
   splitNotes,
+  latencyText,
+  latencyTone,
 } from "./table.utils";
 
 describe("presenceRows", () => {
@@ -135,5 +137,16 @@ describe("dica do feed", () => {
       short: ["curta"],
       long: ["a\nb", "y".repeat(161), "**1x** por descanso"],
     });
+  });
+});
+
+describe("latencyTone", () => {
+  it("goes from teal to gold to red as the ping grows", () => {
+    expect(latencyTone(40)).toBe("text-teal-300");
+    expect(latencyTone(200)).toBe("text-gold-300");
+    expect(latencyTone(900)).toBe("text-error");
+    expect(latencyText(42)).toBe("42 ms");
+    expect(latencyText(1500)).toBe("999+ ms");
+    expect(latencyText(null)).toBeNull();
   });
 });

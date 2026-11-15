@@ -4,10 +4,11 @@ import { Icon } from "@/shared/components/atoms";
 
 import { useTabs } from "./Tabs.hook";
 import type { TabsProps } from "./Tabs.types";
-import { tabIds } from "./Tabs.utils";
+import { tabIds, tabVariantClasses } from "./Tabs.utils";
 
 export function Tabs<K extends string>(props: TabsProps<K>) {
-  const { items, active, onChange, label, idPrefix } = props;
+  const { items, active, onChange, label, idPrefix, dense = false, container = false } = props;
+  const variant = tabVariantClasses(dense, container);
   const { onKeyDown } = useTabs(props);
   return (
     <div
@@ -29,7 +30,7 @@ export function Tabs<K extends string>(props: TabsProps<K>) {
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.key)}
             onKeyDown={onKeyDown}
-            className={`flex min-h-14 min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-1 border-b-2 px-1 font-sans text-xs font-semibold transition-colors sm:min-h-12 sm:flex-none sm:flex-row sm:gap-2 sm:px-4 sm:text-sm sm:tracking-wider sm:uppercase ${selected ? "border-primary text-foreground" : "border-transparent text-muted-strong hover:border-white/20 hover:text-foreground"} ${item.className ?? ""}`}
+            className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 border-b-2 px-1 font-sans text-xs font-semibold transition-colors ${variant} ${selected ? "border-primary text-foreground" : "border-transparent text-muted-strong hover:border-white/20 hover:text-foreground"} ${item.className ?? ""}`}
           >
             {item.icon && (
               <Icon name={item.icon} size={16} className={selected ? "text-accent-text" : ""} />

@@ -16,7 +16,7 @@ import type { SheetHeaderProps } from "./SheetHeader.types";
 import { ArtDialog } from "./subcomponents";
 
 export function SheetHeader(props: SheetHeaderProps) {
-  const { character, isGm, onLevelUp } = props;
+  const { character, isGm, onLevelUp, headingAs = "h1" } = props;
   const { identity } = character.sheet;
   const { draft, open, close, change, save, imagesOpen, openImages, closeImages } =
     useSheetHeader(props);
@@ -30,7 +30,10 @@ export function SheetHeader(props: SheetHeaderProps) {
     { label: "Variação", value: identity.alignmentNote || "-" },
   ];
   return (
-    <Panel variant="primary" className="flex flex-col gap-6 p-6 md:flex-row md:items-center">
+    <Panel
+      variant="primary"
+      className="flex flex-col gap-6 p-6 @min-[45rem]:flex-row @min-[45rem]:items-center"
+    >
       <div className="flex flex-col items-center gap-2 self-center">
         <Avatar
           src={toMediaUrl(portraitOf(character))}
@@ -49,7 +52,7 @@ export function SheetHeader(props: SheetHeaderProps) {
               <Text variant="micro">Ficha do jogador</Text>
               <FeatureBadges features={character.features} />
             </div>
-            <Text variant="h1" className="truncate text-4xl md:text-5xl">
+            <Text variant="h1" as={headingAs} className="truncate text-4xl @min-[45rem]:text-5xl">
               {character.name}
             </Text>
           </div>
@@ -99,7 +102,7 @@ export function SheetHeader(props: SheetHeaderProps) {
             )}
           </div>
         </div>
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 @min-[61rem]:grid-cols-4">
           {facts.map((fact) => (
             <div key={fact.label} className="border border-white/10 bg-black/30 px-4 py-3">
               <dt className="font-sans text-xs font-semibold tracking-[0.12em] text-label uppercase">

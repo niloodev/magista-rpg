@@ -75,3 +75,7 @@ export const CHARACTER_IMAGE_FIELDS: {
     shape: "portrait",
   },
 ];
+
+/** Panel frame of the library inside a side bar (no own border, padding or blur). */
+export const LIBRARY_SIDEBAR_FRAME =
+  "border-0 bg-transparent p-0 backdrop-blur-none hover:border-0";

@@ -12,10 +12,11 @@ export function Stepper({
   tone = "ruby",
   label,
   size = "sm",
+  step = 1,
 }: StepperProps) {
   const current = value ?? 0;
   const sizes = STEPPER_SIZES[size];
-  const buttonClass = `flex shrink-0 cursor-pointer items-center justify-center border bg-black/40 transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 ${sizes.button} ${STEPPER_BUTTON_TONES[tone]}`;
+  const buttonClass = `flex shrink-0 cursor-pointer items-center justify-center border bg-black/40 transition-all not-disabled:active:scale-90 disabled:cursor-default disabled:opacity-30 ${sizes.button} ${STEPPER_BUTTON_TONES[tone]}`;
   return (
     <div className="flex items-center justify-center gap-1.5">
       <button
@@ -23,7 +24,7 @@ export function Stepper({
         aria-label={`Diminuir ${label}`}
         className={buttonClass}
         disabled={min !== undefined && current <= min}
-        onClick={() => onValueChange(current - 1)}
+        onClick={() => onValueChange(current - step)}
       >
         <Icon name="minus" size={sizes.icon} />
       </button>
@@ -41,7 +42,7 @@ export function Stepper({
         aria-label={`Aumentar ${label}`}
         className={buttonClass}
         disabled={max !== undefined && current >= max}
-        onClick={() => onValueChange(current + 1)}
+        onClick={() => onValueChange(current + step)}
       >
         <Icon name="plus" size={sizes.icon} />
       </button>

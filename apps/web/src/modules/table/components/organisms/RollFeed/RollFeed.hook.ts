@@ -14,7 +14,12 @@ import type { RollFeedProps } from "./RollFeed.types";
  * once loaded, remembers the current shape (rows and note lengths only) for the next load. Inside a page
  * skeleton (`nested`) the title is not a real heading.
  */
-export function useRollFeed({ rolls, loading = false, nested = false }: RollFeedProps) {
+export function useRollFeed({
+  rolls,
+  pending = [],
+  loading = false,
+  nested = false,
+}: RollFeedProps) {
   const raw = useSkeletonHint(FEED_HINT_KEY);
   const { setHint } = useSkeletonHintActions();
   const shape = useMemo(() => parseFeedHint(raw) ?? DEFAULT_FEED_SHAPE, [raw]);
@@ -27,7 +32,7 @@ export function useRollFeed({ rolls, loading = false, nested = false }: RollFeed
   return {
     shape,
     showSkeleton,
-    showEmpty: !showSkeleton && rolls.length === 0,
+    showEmpty: !showSkeleton && rolls.length === 0 && pending.length === 0,
     countLabel: rolls.length > 0 ? `${rolls.length} recentes` : null,
     countSample: `${shape.count} recentes`,
     TitleTag: nested ? ("p" as const) : ("h2" as const),

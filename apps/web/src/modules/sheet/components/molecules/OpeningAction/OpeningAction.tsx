@@ -18,7 +18,7 @@ export function OpeningAction({
       >
         {cost}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 grow basis-40">
         <p className="font-sans text-[15px] font-semibold text-foreground">{name}</p>
         <p className="font-sans text-[13px] leading-snug text-muted-strong">{effect}</p>
       </div>

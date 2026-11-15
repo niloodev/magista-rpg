@@ -8,7 +8,7 @@ import {
   type IRollKind,
   type IRollResult,
 } from "@magista/shared";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CLIENT_ID } from "@/core/services/http";
 import { fetchCharacter, levelUp, saveSheet } from "@/modules/sheet/services";
@@ -16,29 +16,42 @@ import {
   AUTOSAVE_DEBOUNCE_MS,
   PING_FEEDBACK_MS,
   SHEET_ART_HINT_KEY,
+  SHEET_TABS,
 } from "@/modules/sheet/sheet.constants";
-import type { SheetTab } from "@/modules/sheet/sheet.types";
+import type { SheetMutator, SheetTab } from "@/modules/sheet/sheet.types";
+import { EMPTY_SHEET_ENTRY } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
 import { pingEntry, requestRoll } from "@/modules/table/services";
 
+import { SHEET_TABS_ID } from "./SheetPage.constants";
 import type { SheetPageProps } from "./SheetPage.types";
-import { saveWithReconcile } from "./SheetPage.utils";
+import { saveExclusively, saveWithReconcile } from "./SheetPage.utils";
 
 /**
  * Loads a character, autosaves edits (debounced, one save at a time), applies remote updates and sends rolls.
  * A rejected save is reconciled once: if the server has a newer version, the GM-only fields are merged in and it retries.
  */
-export function useSheetPage({ characterId }: SheetPageProps) {
+export function useSheetPage({ characterId, variant = "page" }: SheetPageProps) {
   const store = useAppStoreApi();
   const socket = useTableSocket();
-  const sheetState = useApp((state) => state.sheet);
+  const libraryArt = useApp((state) =>
+    variant === "panel"
+      ? state.library.characters.find((item) => item.id === characterId)?.artUrl
+      : undefined,
+  );
+  const sheetState = useApp((state) => {
+    const entry = state.sheets[characterId];
+    return entry && entry.accountId === (state.session.data?.account.id ?? null)
+      ? entry
+      : EMPTY_SHEET_ENTRY;
+  });
   const rolls = useApp((state) => state.table.rolls);
   const rollsLoaded = useApp((state) => state.table.rollsLoaded);
   const { setHint } = useSkeletonHintActions();
   const connection = useApp((state) => state.table.connection);
-  const editSheet = useApp((state) => state.editSheet);
+  const latencyMs = useApp((state) => state.table.latencyMs);
   const [rollError, setRollError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SheetTab>("geral");
   const [activeRoll, setActiveRoll] = useState<IRollResult | null>(null);
@@ -47,37 +60,36 @@ export function useSheetPage({ characterId }: SheetPageProps) {
   const [levelUpLoading, setLevelUpLoading] = useState(false);
   const [levelUpError, setLevelUpError] = useState<string | null>(null);
   const isGm = useApp((state) => state.session.data?.account.role === "GM");
-  const inFlight = useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const { startSheetLoad, finishSheetLoad, failSheetLoad } = store.getState();
+    const accountId = store.getState().session.data?.account.id ?? null;
     startSheetLoad(characterId);
-    void fetchCharacter(characterId).then((result) =>
-      isErrorResult(result)
-        ? failSheetLoad(characterId, result.error)
-        : finishSheetLoad(result.payload),
-    );
+    void fetchCharacter(characterId).then((result) => {
+      if ((store.getState().session.data?.account.id ?? null) !== accountId) return;
+      if (isErrorResult(result)) failSheetLoad(characterId, result.error);
+      else finishSheetLoad(result.payload);
+    });
   }, [characterId, store]);
 
-  const flush = useCallback(async (): Promise<void> => {
-    while (inFlight.current) await inFlight.current.catch(() => undefined);
-    const task = saveWithReconcile({
-      read: () => store.getState().sheet,
-      save: saveSheet,
-      fetchLatest: fetchCharacter,
-      markSaving: () => store.getState().markSheetSaving(),
-      markSaved: (id, revision, updatedAt) =>
-        store.getState().markSheetSaved(id, revision, updatedAt),
-      markFailed: (id, error) => store.getState().markSheetSaveFailed(id, error),
-      applyRemote: (latest) => store.getState().applyRemoteCharacter(latest),
-    });
-    inFlight.current = task;
-    try {
-      await task;
-    } finally {
-      if (inFlight.current === task) inFlight.current = null;
-    }
-  }, [store]);
+  useEffect(() => load(), [load]);
+
+  const flush = useCallback(
+    (): Promise<void> =>
+      saveExclusively(characterId, () =>
+        saveWithReconcile({
+          read: () => store.getState().sheets[characterId] ?? EMPTY_SHEET_ENTRY,
+          save: saveSheet,
+          fetchLatest: fetchCharacter,
+          markSaving: () => store.getState().markSheetSaving(characterId),
+          markSaved: (id, revision, updatedAt) =>
+            store.getState().markSheetSaved(id, revision, updatedAt),
+          markFailed: (id, error) => store.getState().markSheetSaveFailed(id, error),
+          applyRemote: (latest) => store.getState().applyRemoteCharacter(latest),
+        }),
+      ),
+    [store, characterId],
+  );
 
   useEffect(() => {
     if (sheetState.revision === sheetState.savedRevision) return;
@@ -108,17 +120,20 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     };
   }, [socket, store, characterId]);
 
-  const requested = sheetState.requestedId === characterId;
-  const character =
-    requested && sheetState.character?.id === characterId ? sheetState.character : null;
+  const character = sheetState.character?.id === characterId ? sheetState.character : null;
   const hasArt = character ? Boolean(character.artUrl) : null;
 
   useEffect(() => {
-    if (hasArt !== null) setHint(SHEET_ART_HINT_KEY, hasArt ? 1 : 0);
-  }, [hasArt, setHint]);
+    if (hasArt !== null && variant !== "panel") setHint(SHEET_ART_HINT_KEY, hasArt ? 1 : 0);
+  }, [hasArt, setHint, variant]);
   const derived = useMemo(
     () => (character ? deriveSheet(character.sheet, { features: character.features }) : null),
     [character],
+  );
+
+  const onEdit = useCallback(
+    (mutator: SheetMutator) => store.getState().editSheet(characterId, mutator),
+    [store, characterId],
   );
 
   const onRoll = useCallback(
@@ -173,8 +188,14 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     [characterId, flush, store],
   );
 
+  const panel = variant === "panel";
+
   return {
-    status: requested ? sheetState.status : "loading",
+    panel,
+    skeletonArt: libraryArt === undefined ? undefined : Boolean(libraryArt),
+    tabItems: panel ? SHEET_TABS.filter((item) => item.key !== "rolagens") : SHEET_TABS,
+    tabsIdPrefix: panel ? `${SHEET_TABS_ID}-${characterId}` : SHEET_TABS_ID,
+    status: sheetState.status === "idle" ? "loading" : sheetState.status,
     loadError: sheetState.error,
     character,
     derived,
@@ -183,6 +204,7 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     rolls,
     rollsLoading: !rollsLoaded && connection !== "disconnected",
     connection,
+    latencyMs,
     rollError,
     activeTab,
     activeRoll,
@@ -198,11 +220,12 @@ export function useSheetPage({ characterId }: SheetPageProps) {
     onLevelUp: (addToCurrent: boolean) => void onLevelUp(addToCurrent),
     onCloseRoll: () => setActiveRoll(null),
     onTabChange: setActiveTab,
-    onEdit: editSheet,
+    onEdit,
     onRoll: (roll: IRollKind) => void onRoll(roll),
     onPing: (entry: IPingEntry) => void onPing(entry),
     pingedId,
     flush,
     onRetrySave: () => void flush(),
+    onReload: load,
   };
 }

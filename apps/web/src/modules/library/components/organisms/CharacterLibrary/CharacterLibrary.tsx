@@ -1,17 +1,34 @@
 "use client";
 
 import { LibraryRowsSkeleton } from "@/modules/library/components/molecules";
-import { LIBRARY_TITLES } from "@/modules/library/library.constants";
+import { LIBRARY_SIDEBAR_FRAME, LIBRARY_TITLES } from "@/modules/library/library.constants";
 import { Skeleton, Text } from "@/shared/components/atoms";
 import { Panel, SectionHeader } from "@/shared/components/molecules";
 
 import { LibraryDialogs } from "../LibraryDialogs";
-import { EMPTY_PLAYER_TEXT, EMPTY_SEARCH_TEXT } from "./CharacterLibrary.constants";
+import {
+  CHARACTER_TREE_LABELS,
+  EMPTY_PLAYER_TEXT,
+  EMPTY_SEARCH_TEXT,
+} from "./CharacterLibrary.constants";
 import { useCharacterLibrary } from "./CharacterLibrary.hook";
 import type { CharacterLibraryProps } from "./CharacterLibrary.types";
-import { CharacterRowList, LibraryToolbar, LibraryTree } from "./subcomponents";
+import { FolderTree } from "../FolderTree";
+import {
+  CharacterRowList,
+  CharacterTreeLeaf,
+  LibraryEmptyTree,
+  LibraryToolbar,
+} from "./subcomponents";
 
-export function CharacterLibrary({ className }: CharacterLibraryProps) {
+export function CharacterLibrary({
+  className,
+  variant = "page",
+  onOpenCharacter,
+  onPlaceCharacter,
+  onDropCharacter,
+  dropPreview,
+}: CharacterLibraryProps) {
   const {
     isGm,
     status,
@@ -41,23 +58,32 @@ export function CharacterLibrary({ className }: CharacterLibraryProps) {
     notice,
     noticeClassName,
     setNotice,
-    moveItem,
-  } = useCharacterLibrary();
+    onTreeMove,
+    folderSummaryOf,
+    folderMenuOf,
+    portraitUrlOf,
+  } = useCharacterLibrary(onPlaceCharacter);
+  const sidebar = variant === "sidebar";
   return (
-    <Panel variant="inner" className={`@container p-5 md:p-6 ${className ?? ""}`}>
-      <SectionHeader
-        title={isGm ? LIBRARY_TITLES.gm : LIBRARY_TITLES.player}
-        icon="scroll-text"
-        aside={
-          totalLabel === null ? (
-            <span className="font-sans text-xs">
-              <Skeleton shape="glyphs">{totalSample}</Skeleton>
-            </span>
-          ) : (
-            <span className="font-sans text-xs text-muted-strong">{totalLabel}</span>
-          )
-        }
-      />
+    <Panel
+      variant="inner"
+      className={`@container ${sidebar ? LIBRARY_SIDEBAR_FRAME : "p-5 md:p-6"} ${className ?? ""}`}
+    >
+      {!sidebar && (
+        <SectionHeader
+          title={isGm ? LIBRARY_TITLES.gm : LIBRARY_TITLES.player}
+          icon="scroll-text"
+          aside={
+            totalLabel === null ? (
+              <span className="font-sans text-xs">
+                <Skeleton shape="glyphs">{totalSample}</Skeleton>
+              </span>
+            ) : (
+              <span className="font-sans text-xs text-muted-strong">{totalLabel}</span>
+            )
+          }
+        />
+      )}
       <div className="flex flex-col gap-6">
         <LibraryToolbar
           isGm={isGm}
@@ -79,14 +105,32 @@ export function CharacterLibrary({ className }: CharacterLibraryProps) {
         )}
         {loading && <LibraryRowsSkeleton shape={shapeHint} tree={isGm} />}
         {status === "ready" && isGm && !searching && (
-          <LibraryTree
-            data={data}
+          <FolderTree
+            folders={data.folders}
+            leaves={data.characters}
+            leafKind="character"
             expandedFolderIds={expandedFolderIds}
-            accountLogins={accountLogins}
             onToggleFolder={toggleFolder}
             onExpandFolders={expandFolders}
-            onMove={moveItem}
-            onDialog={openDialog}
+            onMove={onTreeMove}
+            folderSummary={folderSummaryOf}
+            folderMenu={folderMenuOf}
+            leafPortrait={portraitUrlOf}
+            labels={CHARACTER_TREE_LABELS}
+            freeAxis={Boolean(onDropCharacter)}
+            onDropOutside={onDropCharacter}
+            outsidePreview={dropPreview}
+            empty={<LibraryEmptyTree onNewFolder={newFolder} onNewCharacter={newCharacter} />}
+            renderLeaf={(character, slots) => (
+              <CharacterTreeLeaf
+                character={character}
+                slots={slots}
+                accountLogins={accountLogins}
+                onDialog={openDialog}
+                onOpen={onOpenCharacter}
+                onPlace={onPlaceCharacter}
+              />
+            )}
           />
         )}
         {status === "ready" && (!isGm || searching) && (
@@ -94,6 +138,7 @@ export function CharacterLibrary({ className }: CharacterLibraryProps) {
             label={searching ? "Resultados da busca" : "Suas fichas"}
             items={gridItems}
             emptyText={searching ? EMPTY_SEARCH_TEXT : EMPTY_PLAYER_TEXT}
+            onOpen={onOpenCharacter}
           />
         )}
       </div>

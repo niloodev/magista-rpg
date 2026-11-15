@@ -1,5 +1,6 @@
 import { isErrorResult, type ControllerResult } from "@magista/shared";
-import type { Response } from "express";
+import type { Request, Response } from "express";
+import multer from "multer";
 
 import type { IViewer } from "@/core/controllers/controllers.types";
 import type { IAuthLocals } from "@/middlewares";
@@ -29,4 +30,34 @@ export function sendResult<T, E extends string>(
   }
   res.status(successStatus).json(result);
   return result.payload;
+}
+
+export type ImageUploadResult = { file: Buffer | undefined } | { error: "tooLarge" | "missing" };
+
+/**
+ * Builds a reader for one multipart image field kept in memory. Oversized or malformed uploads resolve to a
+ * failure kind that each route maps to its own catalog error, so nothing reaches the controller.
+ */
+export function createImageUpload(
+  field: string,
+  maxBytes: number,
+): (req: Request, res: Response) => Promise<ImageUploadResult> {
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: maxBytes, files: 1, fields: 0, parts: 1 },
+  }).single(field);
+  return (req, res) =>
+    new Promise((resolve) => {
+      upload(req, res, (error: unknown) => {
+        if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+          resolve({ error: "tooLarge" });
+          return;
+        }
+        if (error) {
+          resolve({ error: "missing" });
+          return;
+        }
+        resolve({ file: req.file?.buffer });
+      });
+    });
 }

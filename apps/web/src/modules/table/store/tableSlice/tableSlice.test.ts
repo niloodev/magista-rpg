@@ -1,11 +1,22 @@
-import type { IRollResult } from "@magista/shared";
+import type { IRollPending, IRollResult } from "@magista/shared";
 import { describe, expect, it } from "vitest";
 
 import { createAppStore } from "@/modules/shell/store/appSlice/appSlice";
 
 const roll = (id: string) => ({ id }) as IRollResult;
 
+const pending = (id: string) => ({ id, characterName: "Ana" }) as IRollPending;
+
 describe("table slice", () => {
+  it("keeps the latency only while connected", () => {
+    const store = createAppStore();
+    store.getState().setConnection("connected");
+    store.getState().setLatency(42);
+    expect(store.getState().table.latencyMs).toBe(42);
+    store.getState().setConnection("disconnected");
+    expect(store.getState().table.latencyMs).toBeNull();
+  });
+
   it("puts new rolls on top without duplicates and caps the feed", () => {
     const store = createAppStore();
     store.getState().setRolls(Array.from({ length: 60 }, (_, index) => roll(`h${index}`)));
@@ -23,5 +34,21 @@ describe("table slice", () => {
     expect(store.getState().table.rollsLoaded).toBe(false);
     store.getState().setRolls([]);
     expect(store.getState().table.rollsLoaded).toBe(true);
+  });
+
+  it("shows a pending roll until its result arrives, and never after it", () => {
+    const store = createAppStore();
+    store.getState().addPendingRoll(pending("r1"));
+    store.getState().addPendingRoll(pending("r2"));
+    expect(store.getState().table.pendingRolls.map((item) => item.id)).toEqual(["r2", "r1"]);
+    store.getState().pushRoll(roll("r1"));
+    expect(store.getState().table.pendingRolls.map((item) => item.id)).toEqual(["r2"]);
+    store.getState().addPendingRoll(pending("r1"));
+    expect(store.getState().table.pendingRolls.map((item) => item.id)).toEqual(["r2"]);
+    store.getState().addPendingRoll(pending("r3"));
+    store.getState().setRolls([roll("r3")]);
+    expect(store.getState().table.pendingRolls.map((item) => item.id)).toEqual(["r2"]);
+    store.getState().dropPendingRoll("r2");
+    expect(store.getState().table.pendingRolls).toEqual([]);
   });
 });

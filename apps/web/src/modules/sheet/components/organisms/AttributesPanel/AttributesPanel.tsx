@@ -11,7 +11,7 @@ export function AttributesPanel({ sheet, derived, onEdit, onRoll }: SheetSection
       <p className="mb-4 font-sans text-sm text-muted-strong">
         Clique no modificador para rolar o teste.
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 @min-[37rem]:grid-cols-3 @min-[93rem]:grid-cols-6">
         {ATTRIBUTE_KEYS.map((key) => (
           <AttributeCard
             key={key}

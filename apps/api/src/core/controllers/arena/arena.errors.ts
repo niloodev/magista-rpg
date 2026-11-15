@@ -1,0 +1,29 @@
+import { ARENA_SCENE_NOT_FOUND_MESSAGE } from "@magista/shared";
+
+export const arenaErrors = {
+  gmOnly: "Somente o Mestre pode fazer isso.",
+  sceneNotFound: ARENA_SCENE_NOT_FOUND_MESSAGE,
+  tokenNotFound: "Token não encontrado.",
+  characterNotFound: "Personagem não encontrado.",
+  forbidden: "Você não controla este token.",
+  invalidName: "Informe um nome de até 60 caracteres.",
+  invalidToken: "Dados do token inválidos.",
+  invalidMove: "Posição inválida.",
+  invalidScene: "Cena inválida.",
+  npcOnly: "Só tokens sem ficha têm imagem própria.",
+  folderNotFound: "Pasta não encontrada.",
+  invalidFolderMove: "Uma pasta não pode ir para dentro dela mesma.",
+  tokenImageTooBig: "A imagem do token passa de 4096 px de lado. Reduza e envie de novo.",
+  mapTooBig:
+    "O mapa passa de 16384 px de lado ou de 64 megapixels. Reduza a imagem e envie de novo.",
+  characterName: "O nome de um token de ficha vem da própria ficha.",
+  imageMissing: "Escolha uma imagem para enviar.",
+  imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
+  mapTooLarge: "O mapa passa do limite de 25 MB.",
+  imageTooLarge: "A imagem passa do limite de 8 MB.",
+  unexpected: "Não foi possível acessar a Arena agora. Tente novamente.",
+} as const;
+
+type ArenaErrorKey = keyof typeof arenaErrors;
+
+export type ArenaError = (typeof arenaErrors)[ArenaErrorKey];

@@ -3,7 +3,7 @@ import { ActionMenu } from "@/shared/components/molecules";
 
 import type { CharacterRowListProps } from "./CharacterRowList.types";
 
-export function CharacterRowList({ label, items, emptyText }: CharacterRowListProps) {
+export function CharacterRowList({ label, items, emptyText, onOpen }: CharacterRowListProps) {
   if (items.length === 0)
     return <p className="py-10 text-center font-sans text-base text-muted-strong">{emptyText}</p>;
   return (
@@ -15,6 +15,7 @@ export function CharacterRowList({ label, items, emptyText }: CharacterRowListPr
             name={item.name}
             subtitle={item.subtitle}
             href={item.href}
+            onOpen={onOpen && (() => onOpen(item.id))}
             portraitUrl={item.portraitUrl}
             path={item.path}
             accountLabels={item.accountLabels}
