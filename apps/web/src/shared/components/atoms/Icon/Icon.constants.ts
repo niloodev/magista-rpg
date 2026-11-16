@@ -63,6 +63,9 @@ import {
   Swords,
   ZoomIn,
   ZoomOut,
+  WandSparkles,
+  Pause,
+  Play,
 } from "lucide-react";
 
 export const ICONS = {
@@ -130,4 +133,7 @@ export const ICONS = {
   swords: Swords,
   "zoom-in": ZoomIn,
   "zoom-out": ZoomOut,
+  "wand-sparkles": WandSparkles,
+  pause: Pause,
+  play: Play,
 } as const;

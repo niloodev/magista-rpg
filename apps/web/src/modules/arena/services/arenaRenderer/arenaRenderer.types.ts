@@ -1,4 +1,10 @@
-import type { IArenaBounds, IArenaPoint, IMoveArenaTokenInput } from "@magista/shared";
+import type {
+  IArenaBounds,
+  IArenaEffect,
+  IArenaPoint,
+  IArenaTokenStatus,
+  IMoveArenaTokenInput,
+} from "@magista/shared";
 
 import type { ArenaSelectionMode, IArenaSizeUpdate } from "@/modules/arena/arena.types";
 
@@ -33,6 +39,8 @@ export interface IArenaRenderToken {
   hidden: boolean;
   controllable: boolean;
   tone: ArenaTokenTone;
+  /** Health and sanity, when the viewer may see them (bars above the token). */
+  status: IArenaTokenStatus | null;
 }
 
 export interface IArenaRenderScene {
@@ -49,6 +57,8 @@ export interface IArenaRendererCallbacks {
   onResize: (updates: IArenaSizeUpdate[]) => void;
   onSceneReady: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
+  /** Right click without dragging on a token (opens "Aplicar mudança" at that page point). */
+  onTokenMenu: (tokenId: string, client: IArenaPoint) => void;
 }
 
 export interface IArenaRendererOptions {
@@ -78,6 +88,8 @@ export interface IArenaRenderer {
   /** Map point at the center of the visible area (between the panels, below the top bar). */
   visibleCenter: () => IArenaPoint;
   retryMap: () => void;
+  /** Plays damage and healing animations on the tokens they hit. */
+  playEffects: (effects: IArenaEffect[]) => void;
   destroy: () => void;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Checkbox, Icon, Input } from "@/shared/components/atoms";
-import { Modal } from "@/shared/components/molecules";
+import { Button, Icon } from "@/shared/components/atoms";
+import { AccountChecklist, Modal } from "@/shared/components/molecules";
 
 import { useAccessDialog } from "./AccessDialog.hook";
 import type { AccessDialogProps } from "./AccessDialog.types";
@@ -14,18 +14,8 @@ export function AccessDialog({
   onManageAccounts,
   onClose,
 }: AccessDialogProps) {
-  const {
-    formId,
-    players,
-    selected,
-    selectionLabel,
-    filter,
-    setFilter,
-    toggle,
-    error,
-    pending,
-    submit,
-  } = useAccessDialog({ accounts, initialAccountIds, onSubmit });
+  const { formId, players, selected, selectionLabel, toggle, error, pending, submit } =
+    useAccessDialog({ accounts, initialAccountIds, onSubmit });
   return (
     <Modal
       open
@@ -61,35 +51,13 @@ export function AccessDialog({
       }
     >
       <form id={formId} noValidate onSubmit={submit} className="grid gap-4">
-        <Input
-          type="search"
-          aria-label="Filtrar contas"
-          placeholder="Filtrar contas..."
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
+        <AccountChecklist
+          accounts={players}
+          selected={selected}
+          onToggle={toggle}
+          legend="Contas de jogador"
+          emptyLabel="Nenhuma conta de jogador encontrada."
         />
-        <fieldset className="grid gap-1">
-          <legend className="sr-only">Contas de jogador</legend>
-          {players.length === 0 && (
-            <p className="py-3 font-sans text-sm text-muted-strong">
-              Nenhuma conta de jogador encontrada.
-            </p>
-          )}
-          {players.map((account) => (
-            <div
-              key={account.id}
-              className="border border-white/5 bg-black/30 px-3 transition-colors hover:border-teal-500/40"
-            >
-              <Checkbox
-                tone="teal"
-                checked={selected.includes(account.id)}
-                onCheckedChange={(checked) => toggle(account.id, checked)}
-                label={account.login}
-                className="min-h-11 w-full"
-              />
-            </div>
-          ))}
-        </fieldset>
         <p aria-live="polite" className="font-sans text-sm text-muted-strong">
           {selectionLabel}
         </p>

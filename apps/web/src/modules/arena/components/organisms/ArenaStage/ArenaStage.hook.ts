@@ -32,16 +32,17 @@ export function useArenaStage({
   insetLeft,
   onBounds,
   onMapError,
+  onTokenMenu,
 }: ArenaStageHookProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<IArenaRenderer | null>(null);
-  const callbacksRef = useRef({ onSelect, onDrop, onResize, onBounds, onMapError });
+  const callbacksRef = useRef({ onSelect, onDrop, onResize, onBounds, onMapError, onTokenMenu });
   const [renderer, setRenderer] = useState<IArenaRenderer | null>(null);
   const [status, setStatus] = useState<ArenaStageStatus>("loading");
   const lite = usePrefersReducedMotion();
 
   useEffect(() => {
-    callbacksRef.current = { onSelect, onDrop, onResize, onBounds, onMapError };
+    callbacksRef.current = { onSelect, onDrop, onResize, onBounds, onMapError, onTokenMenu };
   });
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export function useArenaStage({
             onSelect: (ids, mode) => callbacksRef.current.onSelect(ids, mode),
             onDrop: (moves) => callbacksRef.current.onDrop(moves),
             onResize: (updates) => callbacksRef.current.onResize(updates),
+            onTokenMenu: (tokenId, client) => callbacksRef.current.onTokenMenu(tokenId, client),
             onMapError: (failed) => {
               if (!disposed) callbacksRef.current.onMapError(failed);
             },
@@ -135,6 +137,7 @@ export function useArenaStage({
       visibleCenter: () => rendererRef.current?.visibleCenter() ?? null,
       zoom: () => rendererRef.current?.zoom() ?? 1,
       retryMap: () => rendererRef.current?.retryMap(),
+      playEffects: (effects) => rendererRef.current?.playEffects(effects),
     }),
     [],
   );

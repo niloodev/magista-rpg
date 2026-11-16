@@ -3,6 +3,8 @@ import {
   ARENA_BOARD_MAX_SIDE,
   ARENA_BOARD_MIN_SIDE,
 } from "../../schemas/arena";
+import type { ArenaChangeKind, ArenaEffectStyle, ArenaResourceKey } from "../../schemas/arena";
+import { SHEET_LIMITS, type ISheetResource } from "../../schemas/character";
 import type {
   IArenaBoardRequest,
   IArenaBoardSource,
@@ -10,6 +12,8 @@ import type {
   IArenaControlledToken,
   IArenaControlViewer,
   IArenaPoint,
+  IArenaStatusViewer,
+  IArenaStatusRules,
 } from "./arena.types";
 
 /**
@@ -22,6 +26,66 @@ export function canControlToken(
 ): boolean {
   if (viewer.role === "GM") return true;
   return token.characterId !== null && controllableCharacterIds.includes(token.characterId);
+}
+
+/**
+ * Who sees a token status: the GM, the accounts with access to the token sheet, and the accounts the token lists
+ * (or every player when the token is public).
+ */
+export function canSeeTokenStatus(
+  viewer: IArenaStatusViewer,
+  token: IArenaControlledToken,
+  rules: IArenaStatusRules,
+): boolean {
+  if (viewer.role === "GM") return true;
+  if (token.characterId !== null && rules.accessibleCharacterIds.includes(token.characterId)) {
+    return true;
+  }
+  return rules.access.public || rules.access.accountIds.includes(viewer.accountId);
+}
+
+/**
+ * Whether a resource can take damage or healing: it needs a current value or a maximum.
+ */
+export function hasResource(resource: ISheetResource): boolean {
+  return resource.current !== null || resource.max !== null;
+}
+
+/**
+ * Applies damage or healing to a resource: damage stops at 0, healing at the maximum (no ceiling without one).
+ * An empty current value starts from the maximum (or 0). Never past the sheet limit (`SHEET_LIMITS.resource`),
+ * so a sheet always stays valid.
+ */
+export function applyResourceChange(
+  resource: ISheetResource,
+  kind: ArenaChangeKind,
+  amount: number,
+): ISheetResource {
+  const start = resource.current ?? resource.max ?? 0;
+  if (kind === "damage") {
+    return { ...resource, current: Math.min(start, Math.max(start - amount, 0)) };
+  }
+  const healed = start + amount;
+  const ceiling = resource.max === null ? healed : Math.max(resource.max, start);
+  return {
+    ...resource,
+    current: Math.max(
+      Math.min(healed, ceiling, SHEET_LIMITS.resource),
+      Math.min(start, SHEET_LIMITS.resource),
+    ),
+  };
+}
+
+/**
+ * The automatic animation of a change: Golpe (damage to health), Fissura (damage to sanity), Brasa viva (healing
+ * health) and Clareza (healing sanity).
+ */
+export function autoEffectStyle(
+  kind: ArenaChangeKind,
+  resource: ArenaResourceKey,
+): ArenaEffectStyle {
+  if (kind === "damage") return resource === "health" ? "strike" : "fissure";
+  return resource === "health" ? "ember" : "clarity";
 }
 
 /**

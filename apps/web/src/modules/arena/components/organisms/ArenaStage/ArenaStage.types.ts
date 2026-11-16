@@ -1,4 +1,4 @@
-import type { IArenaBounds, IMoveArenaTokenInput } from "@magista/shared";
+import type { IArenaBounds, IArenaPoint, IMoveArenaTokenInput } from "@magista/shared";
 import type { KeyboardEvent, RefObject } from "react";
 
 import type {
@@ -21,6 +21,7 @@ export interface ArenaStageHookProps {
   insetLeft: number;
   onBounds: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
+  onTokenMenu: (tokenId: string, client: IArenaPoint) => void;
 }
 
 export interface ArenaStageProps extends ArenaStageHookProps {

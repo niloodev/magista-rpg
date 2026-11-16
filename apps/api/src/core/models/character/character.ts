@@ -3,11 +3,12 @@ import {
   characterPortrait,
   createEmptySheet,
   normalizeFeatures,
+  sheetResourceOf,
 } from "@magista/shared";
 
 import { getDatabase } from "@/core/services/database";
 import { characterImageUrls } from "@/core/services/media";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 
 import { SUMMARY_SELECT } from "./character.constants";
 import type { ICharacterModels } from "./character.types";
@@ -137,6 +138,36 @@ const updateSheet: ICharacterModels["updateSheet"] = async (id, sheet, expectedU
   return count === 1 ? findById(id) : null;
 };
 
+const changeResource: ICharacterModels["changeResource"] = async (ids, resource, change) => {
+  if (ids.length === 0) return [];
+  const changed = await getDatabase().$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ id: string; resources: unknown }[]>`
+      SELECT "id", "sheet" -> 'resources' AS "resources" FROM "characters"
+      WHERE "id" IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
+      ORDER BY "id" FOR UPDATE`;
+    const updates = rows.flatMap((row) => {
+      const next = change(sheetResourceOf(row.resources, resource));
+      return next ? [{ id: row.id, current: next.current }] : [];
+    });
+    if (updates.length === 0) return [];
+    const path = `{resources,${resource},current}`;
+    const values = Prisma.join(
+      updates.map(({ id, current }) => Prisma.sql`(${id}::uuid, ${current}::int)`),
+    );
+    await tx.$executeRaw`
+      UPDATE "characters" c
+      SET "sheet" = jsonb_set(c."sheet", ${path}::text[], COALESCE(to_jsonb(v."current"), 'null'::jsonb)),
+        "updatedAt" = ${new Date()}
+      FROM (VALUES ${values}) AS v("id", "current")
+      WHERE c."id" = v."id"`;
+    const done = updates.map((update) => update.id);
+    return done;
+  });
+  if (changed.length === 0) return [];
+  const rows = await getDatabase().character.findMany({ where: { id: { in: changed } } });
+  return rows.map(toCharacter);
+};
+
 const findImageKeys: ICharacterModels["findImageKeys"] = async (id) =>
   getDatabase().character.findUnique({ where: { id }, select: { avatarKey: true, artKey: true } });
 
@@ -230,6 +261,7 @@ export const characterModels: ICharacterModels = {
   remove,
   setAccess,
   updateSheet,
+  changeResource,
   findImageKeys,
   setImageKey,
   upsertCharacter,

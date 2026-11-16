@@ -11,7 +11,13 @@ import { ProfileDialog } from "@/modules/profile/components";
 import { Button, Icon } from "@/shared/components/atoms";
 import { ConfirmDialog } from "@/shared/components/molecules";
 
-import { ArenaNotice, ArenaSelectionBar, ArenaTokenTray, ArenaZoomControls } from "../../molecules";
+import {
+  ArenaChangeMenu,
+  ArenaNotice,
+  ArenaSelectionBar,
+  ArenaTokenTray,
+  ArenaZoomControls,
+} from "../../molecules";
 import {
   ArenaCharactersTab,
   ArenaDockedSheet,
@@ -22,6 +28,8 @@ import {
   ArenaSkeleton,
   ArenaStage,
   ArenaTopBar,
+  ArenaTokenSettingsDialog,
+  ArenaEffectPickerDialog,
   NpcTokenDialog,
   SceneLibrary,
 } from "../../organisms";
@@ -115,6 +123,12 @@ export function ArenaPage() {
     rolls,
     pendingRolls,
     rollsLoading,
+    onTokenMenu,
+    onConfigure,
+    changeMenu,
+    changeMenuInBar,
+    effectPicker,
+    tokenSettings,
   } = useArenaPage();
   if (!desktop) return <ArenaMobileNotice />;
   const renderDocked = (characterId: string) => (
@@ -164,6 +178,7 @@ export function ArenaPage() {
           insetRight={stageInsetRight}
           insetLeft={stageInsetLeft}
           onMapError={onMapError}
+          onTokenMenu={onTokenMenu}
           onKeyDown={onStageKeyDown}
         />
       )}
@@ -220,6 +235,7 @@ export function ArenaPage() {
         )}
         {scene && selection && (
           <div className={selectionSlotClassName}>
+            {changeMenu && changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
             <ArenaSelectionBar
               className="pointer-events-auto"
               label={selection.label}
@@ -227,6 +243,9 @@ export function ArenaPage() {
               size={selection.size}
               allHidden={selection.allHidden}
               canOpenSheet={selection.canOpenSheet}
+              status={selection.status}
+              canConfigure={selection.canConfigure}
+              onConfigure={onConfigure}
               onSizeChange={onSizeChange}
               onToggleHidden={onToggleHidden}
               onOpenSheet={onOpenSheet}
@@ -288,6 +307,9 @@ export function ArenaPage() {
       <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
       <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
       {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
+      {changeMenu && !changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
+      {effectPicker && <ArenaEffectPickerDialog {...effectPicker} />}
+      {tokenSettings && <ArenaTokenSettingsDialog {...tokenSettings} />}
     </main>
   );
 }

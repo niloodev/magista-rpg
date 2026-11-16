@@ -61,7 +61,7 @@ import {
   setArenaLiveScene,
   updateArenaTokens,
 } from "@/modules/arena/services";
-import { useArenaTokenPlacement } from "@/modules/arena/hooks";
+import { useArenaTokenPlacement, useArenaTokenStatus } from "@/modules/arena/hooks";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
@@ -301,6 +301,12 @@ export function useArenaPage() {
     }, ARENA_SIZE_COMMIT_MS);
   });
 
+  const tokenStatus = useArenaTokenStatus({ isGm, controlsRef, onAnnounce: setAnnouncement });
+  const { openChangeMenu } = tokenStatus;
+  const onTokenMenu = useStableCallback((tokenId: string, client: IArenaPoint) =>
+    openChangeMenu(tokenId, client),
+  );
+
   const summary = selectionSummary(selectedTokens, isGm, view?.controllableCharacterIds ?? []);
   const { allHidden, sheetTarget } = summary;
 
@@ -361,6 +367,12 @@ export function useArenaPage() {
         renderTokens.map((token) => token.id),
         "replace",
       );
+      return;
+    }
+    if (event.key.toLowerCase() === "m" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (selectedTokens.length === 0) return;
+      event.preventDefault();
+      openChangeMenu(null, null);
       return;
     }
     if (
@@ -537,6 +549,52 @@ export function useArenaPage() {
             size: summary.size,
             allHidden,
             canOpenSheet: sheetTarget !== null,
+            status: tokenStatus.selectionStatus,
+            canConfigure: isGm && selectedTokens.length === 1,
+          }
+        : null,
+    onTokenMenu,
+    onConfigure: tokenStatus.openSettings,
+    changeMenu: tokenStatus.changeMenu
+      ? {
+          target: tokenStatus.changeMenu.target,
+          targetImages: tokenStatus.changeMenu.targetImages,
+          anchor: tokenStatus.changeMenu.anchor,
+          preference: tokenStatus.changePreference,
+          onPreferenceChange: tokenStatus.updateChange,
+          effectLabel: tokenStatus.effectLabel,
+          onPickEffect: tokenStatus.openEffectPicker,
+          suspended: tokenStatus.effectPickerOpen,
+          attackers: tokenStatus.attackerOptions,
+          attackerId: tokenStatus.attackerId,
+          onAttackerChange: tokenStatus.setAttackerId,
+          error: tokenStatus.changeError,
+          pending: tokenStatus.changePending,
+          onApply: tokenStatus.applyChange,
+          onClose: tokenStatus.closeChangeMenu,
+        }
+      : null,
+    changeMenuInBar: tokenStatus.changeMenu?.anchor === null,
+    effectPicker:
+      tokenStatus.changeMenu && tokenStatus.effectPickerOpen
+        ? {
+            kind: tokenStatus.changePreference.kind,
+            resource: tokenStatus.changePreference.resource,
+            value: tokenStatus.changePreference.effect,
+            onChoose: tokenStatus.chooseEffect,
+            onClose: tokenStatus.closeEffectPicker,
+          }
+        : null,
+    tokenSettings:
+      isGm && tokenStatus.settings
+        ? {
+            target: tokenStatus.settings,
+            accounts: tokenStatus.accounts,
+            accountsStatus: tokenStatus.accountsStatus,
+            onRetryAccounts: tokenStatus.retryAccounts,
+            onSubmit: tokenStatus.saveSettings,
+            onOpenSheet: openSheet,
+            onClose: tokenStatus.closeSettings,
           }
         : null,
     onSizeChange,

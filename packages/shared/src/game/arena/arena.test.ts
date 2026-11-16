@@ -1,12 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyArenaChangeInputSchema,
   createArenaTokenInputSchema,
+  updateArenaTokensInputSchema,
   moveArenaTokenInputSchema,
   moveArenaTokensInputSchema,
   updateArenaTokenInputSchema,
 } from "../../schemas/arena";
-import { canControlToken, clampToMap, fitBoard, resolveBoard, scaleBoardPoint } from "./arena";
+import {
+  autoEffectStyle,
+  applyResourceChange,
+  canControlToken,
+  canSeeTokenStatus,
+  clampToMap,
+  fitBoard,
+  hasResource,
+  resolveBoard,
+  scaleBoardPoint,
+} from "./arena";
 
 const ID = "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90";
 
@@ -99,5 +111,140 @@ describe("arena schemas", () => {
     expect(moveArenaTokensInputSchema.safeParse({ moves: [move] }).success).toBe(true);
     expect(moveArenaTokensInputSchema.safeParse({ moves: [] }).success).toBe(false);
     expect(moveArenaTokensInputSchema.safeParse({ moves: [move, move] }).success).toBe(false);
+  });
+});
+
+describe("token status", () => {
+  const PLAYER = { role: "PLAYER" as const, accountId: "acc-1" };
+  const closed = { public: false, accountIds: [] };
+
+  it("lets the GM see every status", () => {
+    expect(
+      canSeeTokenStatus(
+        { role: "GM", accountId: "gm" },
+        { characterId: null },
+        {
+          accessibleCharacterIds: [],
+          access: closed,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("lets a player see the status of granted sheets", () => {
+    const rules = { accessibleCharacterIds: [ID], access: closed };
+    expect(canSeeTokenStatus(PLAYER, { characterId: ID }, rules)).toBe(true);
+    expect(canSeeTokenStatus(PLAYER, { characterId: null }, rules)).toBe(false);
+  });
+
+  it("follows the token permissions", () => {
+    const none = { accessibleCharacterIds: [] };
+    expect(canSeeTokenStatus(PLAYER, { characterId: ID }, { ...none, access: closed })).toBe(false);
+    expect(
+      canSeeTokenStatus(
+        PLAYER,
+        { characterId: null },
+        {
+          ...none,
+          access: { public: false, accountIds: ["acc-1"] },
+        },
+      ),
+    ).toBe(true);
+    expect(
+      canSeeTokenStatus(
+        PLAYER,
+        { characterId: null },
+        {
+          ...none,
+          access: { public: true, accountIds: [] },
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("applies damage down to zero and healing up to the maximum", () => {
+    expect(applyResourceChange({ current: 10, max: 20 }, "damage", 4)).toEqual({
+      current: 6,
+      max: 20,
+    });
+    expect(applyResourceChange({ current: 3, max: 20 }, "damage", 9)).toEqual({
+      current: 0,
+      max: 20,
+    });
+    expect(applyResourceChange({ current: 18, max: 20 }, "heal", 9)).toEqual({
+      current: 20,
+      max: 20,
+    });
+    expect(applyResourceChange({ current: 5, max: null }, "heal", 9)).toEqual({
+      current: 14,
+      max: null,
+    });
+  });
+
+  it("starts an empty current value from the maximum and keeps values above it", () => {
+    expect(applyResourceChange({ current: null, max: 12 }, "damage", 2)).toEqual({
+      current: 10,
+      max: 12,
+    });
+    expect(applyResourceChange({ current: 25, max: 20 }, "heal", 3)).toEqual({
+      current: 25,
+      max: 20,
+    });
+  });
+
+  it("never heals past the sheet limit", () => {
+    expect(applyResourceChange({ current: 999_990, max: null }, "heal", 50)).toEqual({
+      current: 999_999,
+      max: null,
+    });
+  });
+
+  it("knows when a resource is undefined", () => {
+    expect(hasResource({ current: null, max: null })).toBe(false);
+    expect(hasResource({ current: 0, max: null })).toBe(true);
+  });
+
+  it("validates token edits and changes", () => {
+    expect(
+      updateArenaTokensInputSchema.safeParse({ updates: [{ id: ID, statusPublic: true }] }).success,
+    ).toBe(true);
+    expect(updateArenaTokensInputSchema.safeParse({ updates: [{ id: ID }] }).success).toBe(false);
+    expect(updateArenaTokenInputSchema.safeParse({ statusViewerIds: [ID, ID] }).success).toBe(
+      false,
+    );
+    expect(
+      applyArenaChangeInputSchema.safeParse({
+        tokenIds: [ID],
+        kind: "damage",
+        resource: "health",
+        amount: 5,
+      }).success,
+    ).toBe(true);
+    expect(
+      applyArenaChangeInputSchema.safeParse({
+        tokenIds: [ID],
+        kind: "heal",
+        resource: "sanity",
+        amount: 0,
+      }).success,
+    ).toBe(false);
+    expect(
+      applyArenaChangeInputSchema.safeParse({
+        tokenIds: [ID],
+        kind: "damage",
+        resource: "health",
+        amount: 2,
+        attackerTokenId: ID,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("effect styles", () => {
+  it("picks the automatic animation of each change", () => {
+    expect(autoEffectStyle("damage", "health")).toBe("strike");
+    expect(autoEffectStyle("damage", "sanity")).toBe("fissure");
+    expect(autoEffectStyle("heal", "health")).toBe("ember");
+    expect(autoEffectStyle("heal", "sanity")).toBe("clarity");
   });
 });

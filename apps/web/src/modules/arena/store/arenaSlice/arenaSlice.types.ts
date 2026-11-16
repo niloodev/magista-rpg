@@ -1,4 +1,6 @@
 import type {
+  IArenaStatusEvent,
+  IArenaTokenStatus,
   IArenaFolder,
   IArenaLibrary,
   IArenaScene,
@@ -50,6 +52,10 @@ export interface ArenaActions {
   removeArenaTokens: (events: IArenaTokenRemovedEvent[]) => void;
   placeArenaTokens: (moves: IMoveArenaTokenInput[]) => void;
   patchArenaTokens: (patches: IArenaTokenPatch[]) => void;
+  /** Applies token statuses sent to this tab (null drops one the viewer can no longer see). */
+  applyArenaStatus: (event: IArenaStatusEvent) => void;
+  /** Applies a character's new status to its tokens whose status this tab already sees. */
+  applyCharacterStatus: (characterId: string, status: IArenaTokenStatus) => void;
   selectArenaTokens: (tokenIds: string[], mode: ArenaSelectionMode) => void;
   setArenaViewScene: (sceneId: string | null) => void;
   startArenaLibraryLoad: () => void;

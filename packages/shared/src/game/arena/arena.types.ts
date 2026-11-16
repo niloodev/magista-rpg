@@ -14,6 +14,17 @@ export interface IArenaControlViewer {
   role: AccountRole;
 }
 
+export interface IArenaStatusViewer {
+  role: AccountRole;
+  accountId: string;
+}
+
+/** What decides who sees a token status besides the GM. */
+export interface IArenaStatusRules {
+  accessibleCharacterIds: readonly string[];
+  access: { public: boolean; accountIds: readonly string[] };
+}
+
 export interface IArenaControlledToken {
   characterId: string | null;
 }

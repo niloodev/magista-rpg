@@ -57,6 +57,7 @@ function buildController(
       .mockImplementation(async ({ name, folderId }) => ({ ...summary, name, folderId })),
     rename: vi.fn().mockImplementation(async (_id, name) => ({ ...summary, name })),
     remove: vi.fn().mockResolvedValue(undefined),
+    changeResource: vi.fn().mockResolvedValue([]),
     setAccess: vi.fn().mockImplementation(async (_id, accountIds) => ({
       character: { ...summary, accountIds },
       previousAccountIds: ["owner"],

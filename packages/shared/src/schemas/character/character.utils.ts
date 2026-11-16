@@ -1,6 +1,6 @@
 import { ATTRIBUTE_KEYS, SKILL_KEYS } from "../../game/catalog/catalog.constants";
-import { CHARACTER_SHEET_VERSION, characterSheetSchema } from "./character.schemas";
-import type { ICharacterImageUrls, ICharacterSheet } from "./character.types";
+import { CHARACTER_SHEET_VERSION, characterSheetSchema, resourceSchema } from "./character.schemas";
+import type { ICharacterImageUrls, ICharacterSheet, ISheetResource } from "./character.types";
 
 /**
  * Builds an empty level 1 sheet with every attribute and skill present.
@@ -39,6 +39,16 @@ export function migrateSheet(raw: unknown, version: number): ICharacterSheet {
 /**
  * True when a current value goes above its maximum (Vida or Sanidade).
  */
+/**
+ * Reads one resource of a stored sheet's `resources` (any JSON), falling back to an empty one when it is missing
+ * or malformed.
+ */
+export function sheetResourceOf(resources: unknown, key: "health" | "sanity"): ISheetResource {
+  if (typeof resources !== "object" || resources === null) return { current: null, max: null };
+  const parsed = resourceSchema.safeParse((resources as Record<string, unknown>)[key]);
+  return parsed.success ? parsed.data : { current: null, max: null };
+}
+
 export function exceedsResourceMax(sheet: ICharacterSheet): boolean {
   return [sheet.resources.health, sheet.resources.sanity].some(
     (resource) =>

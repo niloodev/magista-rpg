@@ -9,6 +9,8 @@ export const EMPTY_SHEET_ENTRY: ISheetEntry = {
   savedRevision: 0,
   saveStatus: "idle",
   saveError: null,
+  baseResources: null,
+  savingResources: null,
 };
 
 export const defaultSheetState: SheetState = { sheets: {} };

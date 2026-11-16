@@ -1,4 +1,6 @@
 import type {
+  ArenaResourceKey,
+  ISheetResource,
   CharacterImageKind,
   FeatureKey,
   ICharacter,
@@ -69,6 +71,15 @@ export interface ICharacterModels {
     id: string,
     features: FeatureKey[],
   ) => Promise<{ features: FeatureKey[]; previous: FeatureKey[]; accountIds: string[] }>;
+  /**
+   * Changes one resource of several sheets under a row lock (damage or healing from the Arena) and returns the
+   * characters that changed; `updatedAt` moves, so no autosave from an older draft overwrites it.
+   */
+  changeResource: (
+    ids: string[],
+    resource: ArenaResourceKey,
+    change: (resource: ISheetResource) => ISheetResource | null,
+  ) => Promise<ICharacter[]>;
   /** Characters carrying a feature tag, ordered by name, with the portrait used by the table. */
   listByFeature: (feature: FeatureKey) => Promise<ICharacterPortrait[]>;
 }

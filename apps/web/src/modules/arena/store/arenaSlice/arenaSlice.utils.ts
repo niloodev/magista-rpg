@@ -1,4 +1,10 @@
-import type { IArenaToken } from "@magista/shared";
+import type {
+  IArenaStatusEntry,
+  IArenaToken,
+  IArenaTokenStatus,
+  IArenaTokenStatusAccess,
+  IArenaView,
+} from "@magista/shared";
 
 import { ARENA_SHEET_WINDOWS_MAX } from "@/modules/arena/arena.constants";
 import type { ArenaDockSide, ArenaSelectionMode } from "@/modules/arena/arena.types";
@@ -107,4 +113,54 @@ export function clearDockTab(
     left: dockTab.left === characterId ? null : dockTab.left,
     right: dockTab.right === characterId ? null : dockTab.right,
   };
+}
+
+/**
+ * Statuses and permissions after an `arena:status` event: null drops the status, an entry with permissions
+ * (GM copy) replaces them too.
+ */
+export function withStatusEntries(
+  view: Pick<IArenaView, "statuses" | "statusAccess">,
+  entries: IArenaStatusEntry[],
+): Pick<IArenaView, "statuses" | "statusAccess"> {
+  const statuses: Record<string, IArenaTokenStatus> = { ...view.statuses };
+  const withAccess = entries.some((entry) => entry.access);
+  const statusAccess: Record<string, IArenaTokenStatusAccess> | undefined = withAccess
+    ? { ...view.statusAccess }
+    : view.statusAccess;
+  for (const { tokenId, status, access } of entries) {
+    if (status) statuses[tokenId] = status;
+    else delete statuses[tokenId];
+    if (access && statusAccess) statusAccess[tokenId] = access;
+  }
+  return { statuses, ...(statusAccess ? { statusAccess } : {}) };
+}
+
+const sameResource = (a: IArenaTokenStatus["health"], b: IArenaTokenStatus["health"]) =>
+  a.current === b.current && a.max === b.max;
+
+/**
+ * Whether two statuses carry the same values.
+ */
+export function sameStatus(a: IArenaTokenStatus, b: IArenaTokenStatus): boolean {
+  return sameResource(a.health, b.health) && sameResource(a.sanity, b.sanity);
+}
+
+/**
+ * Statuses after a character changed: every token of that character whose status is already shown takes the
+ * new values. Returns the same object when nothing changed.
+ */
+export function withCharacterStatus(
+  view: Pick<IArenaView, "statuses" | "tokens">,
+  characterId: string,
+  status: IArenaTokenStatus,
+): Record<string, IArenaTokenStatus> {
+  let next = view.statuses;
+  for (const token of view.tokens) {
+    const current = view.statuses[token.id];
+    if (token.characterId !== characterId || !current || sameStatus(current, status)) continue;
+    if (next === view.statuses) next = { ...view.statuses };
+    next[token.id] = status;
+  }
+  return next;
 }

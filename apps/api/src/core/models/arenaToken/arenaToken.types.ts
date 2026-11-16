@@ -1,4 +1,10 @@
-import type { IArenaToken } from "@magista/shared";
+import type {
+  ArenaResourceKey,
+  IArenaToken,
+  IArenaTokenStatus,
+  IArenaTokenStatusAccess,
+  ISheetResource,
+} from "@magista/shared";
 
 export interface ICreateArenaTokenRow {
   characterId: string | null;
@@ -13,7 +19,33 @@ export interface IUpdateArenaTokenRow {
   name?: string;
   size?: number;
   hidden?: boolean;
+  healthCurrent?: number | null;
+  healthMax?: number | null;
+  sanityCurrent?: number | null;
+  sanityMax?: number | null;
+  statusPublic?: boolean;
+  /** Replaces the player accounts allowed to see the status. */
+  statusViewerIds?: string[];
 }
+
+/** Status of a token (from its sheet or its own columns) plus who may see it. */
+export interface IArenaTokenStatusRow {
+  id: string;
+  sceneId: string;
+  characterId: string | null;
+  hidden: boolean;
+  status: IArenaTokenStatus;
+  access: IArenaTokenStatusAccess;
+}
+
+/** Which tokens to read the status of. */
+export type ArenaStatusQuery =
+  | { sceneId: string; includeHidden: boolean }
+  | { ids: string[] }
+  | { characterIds: string[]; sceneId: string };
+
+/** Computes the new value of a resource, or null to leave it as it is. */
+export type ResourceChange = (resource: ISheetResource) => ISheetResource | null;
 
 export interface IRemovedArenaToken {
   id: string;
@@ -52,4 +84,12 @@ export interface IArenaTokenModels {
     id: string,
     key: string | null,
   ) => Promise<{ token: IArenaToken; previousKey: string | null } | null>;
+  /** Status and status permissions of tokens (a character token reads only the resources of its sheet). */
+  listStatuses: (query: ArenaStatusQuery) => Promise<IArenaTokenStatusRow[]>;
+  /** Changes one resource of NPC tokens under a row lock and returns the ids that changed. */
+  changeNpcResource: (
+    ids: string[],
+    resource: ArenaResourceKey,
+    change: ResourceChange,
+  ) => Promise<string[]>;
 }

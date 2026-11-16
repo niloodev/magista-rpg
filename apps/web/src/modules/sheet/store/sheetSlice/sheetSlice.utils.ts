@@ -1,4 +1,4 @@
-import { mergeGmOnlyFields, type ICharacter } from "@magista/shared";
+import { mergeGmOnlyFields, type ICharacter, type ICharacterSheet } from "@magista/shared";
 
 import type { ISheetEntry, SheetState } from "./sheetSlice.types";
 
@@ -18,9 +18,33 @@ export function updateEntry(
 }
 
 /**
+ * Takes the current health and sanity of the server when the draft did not touch them since the last server
+ * version (damage or healing applied from the Arena), keeping the local edit otherwise.
+ */
+export function mergeRemoteResources(
+  local: ICharacterSheet,
+  remote: ICharacterSheet,
+  base: ICharacterSheet["resources"] | null,
+): ICharacterSheet {
+  if (!base) return local;
+  let merged = local;
+  for (const key of ["health", "sanity"] as const) {
+    const current = remote.resources[key].current;
+    if (
+      local.resources[key].current !== base[key].current ||
+      local.resources[key].current === current
+    )
+      continue;
+    if (merged === local) merged = structuredClone(local);
+    merged.resources[key].current = current;
+  }
+  return merged;
+}
+
+/**
  * A server version of an open sheet: ignored when older than the one already here (a late answer), taken whole
  * when nothing is pending, otherwise only the GM-only fields, tags and base version are merged into the local
- * draft (the GM keeps the whole draft).
+ * draft (the GM keeps the whole draft), plus the current health and sanity the draft did not touch.
  */
 export function withRemoteCharacter(
   entry: ISheetEntry,
@@ -29,15 +53,18 @@ export function withRemoteCharacter(
 ): ISheetEntry {
   const current = entry.character;
   if (current && character.updatedAt < current.updatedAt) return entry;
+  const baseResources = character.sheet.resources;
   if (!current || entry.revision === entry.savedRevision)
-    return { ...entry, status: "ready", error: null, character };
+    return { ...entry, status: "ready", error: null, character, baseResources };
+  const sheet = viewerIsGm ? current.sheet : mergeGmOnlyFields(current.sheet, character.sheet);
   return {
     ...entry,
     status: "ready",
     error: null,
+    baseResources,
     character: {
       ...current,
-      sheet: viewerIsGm ? current.sheet : mergeGmOnlyFields(current.sheet, character.sheet),
+      sheet: mergeRemoteResources(sheet, character.sheet, entry.baseResources),
       features: character.features,
       updatedAt: character.updatedAt,
     },

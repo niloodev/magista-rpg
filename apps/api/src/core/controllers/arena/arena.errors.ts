@@ -18,6 +18,12 @@ export const arenaErrors = {
   mapTooBig:
     "O mapa passa de 16384 px de lado ou de 64 megapixels. Reduza a imagem e envie de novo.",
   characterName: "O nome de um token de ficha vem da própria ficha.",
+  characterStatus: "A vida e a sanidade de um token de ficha vêm da própria ficha.",
+  invalidViewers: "Escolha apenas contas de jogador.",
+  invalidChange: "Informe um valor entre 1 e 999.",
+  noHealth: "Este token não tem vida definida.",
+  noSanity: "Este token não tem sanidade definida.",
+  invalidAttacker: "Escolha como atacante um token seu que esteja nesta cena.",
   imageMissing: "Escolha uma imagem para enviar.",
   imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
   mapTooLarge: "O mapa passa do limite de 60 MB.",

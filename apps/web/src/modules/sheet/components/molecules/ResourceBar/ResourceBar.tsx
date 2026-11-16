@@ -11,10 +11,13 @@ export function ResourceBar({
   resource,
   onChange,
   maxLocked = false,
+  readOnly = false,
 }: ResourceBarProps) {
   const styles = RESOURCE_TONES[tone];
   return (
-    <div className="group space-y-2">
+    <div
+      className={`group space-y-2 ${readOnly ? "[&_input]:bg-black/20 [&_input]:opacity-70" : ""}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={`flex items-center gap-2 ${styles.label}`}>
           <Icon name={styles.icon} size={18} />
@@ -25,6 +28,7 @@ export function ResourceBar({
             compact
             aria-label={`${label} atual`}
             min={0}
+            disabled={readOnly}
             max={resource.max ?? undefined}
             value={resource.current}
             onValueChange={(current) => onChange({ ...resource, current })}
@@ -36,8 +40,12 @@ export function ResourceBar({
           <NumberField
             compact
             aria-label={`${label} máxima`}
-            disabled={maxLocked}
-            title={maxLocked ? "Somente o Mestre altera o máximo (Subir de nível)" : undefined}
+            disabled={maxLocked || readOnly}
+            title={
+              maxLocked && !readOnly
+                ? "Somente o Mestre altera o máximo (Subir de nível)"
+                : undefined
+            }
             value={resource.max}
             onValueChange={(max) => onChange({ ...resource, max })}
             className={`h-10 w-16 bg-black/50 px-1 text-base ${styles.input}`}
