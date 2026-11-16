@@ -81,7 +81,14 @@ export function ArenaChangeMenu({
         <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
         <span className="flex shrink-0 -space-x-3">
           {targetImages.map((image, index) => (
-            <Avatar key={index} src={image} name={target} size="sm" shape="circle" decorative />
+            <Avatar
+              key={index}
+              src={image.url}
+              name={target}
+              size="sm"
+              shape={image.style === "figure" ? "figure" : "circle"}
+              decorative
+            />
           ))}
         </span>
         <div className="min-w-0 flex-1">
@@ -178,7 +185,7 @@ export function ArenaChangeMenu({
                       src={attacker.imageUrl}
                       name={attacker.name}
                       size="sm"
-                      shape="circle"
+                      shape={attacker.style === "figure" ? "figure" : "circle"}
                       decorative
                     />
                   </span>

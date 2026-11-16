@@ -21,10 +21,15 @@ export function useNameDialog({
   const [folderValue, setFolderValue] = useState(initialFolderId ?? ROOT_OPTION_VALUE);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [images, setImages] = useState<INameDialogImages>({ avatar: null, art: null });
+  const [images, setImages] = useState<INameDialogImages>({
+    avatar: null,
+    art: null,
+    figure: null,
+  });
   const [imageErrors, setImageErrors] = useState<Record<CharacterImageKind, string | null>>({
     avatar: null,
     art: null,
+    figure: null,
   });
 
   const onImageChange = (kind: CharacterImageKind, file: File | null) => {
@@ -45,7 +50,7 @@ export function useNameDialog({
       setError(NAME_REQUIRED);
       return;
     }
-    if (imageErrors.avatar || imageErrors.art) return;
+    if (imageErrors.avatar || imageErrors.art || imageErrors.figure) return;
     setPending(true);
     const failure = await onSubmit({
       name: trimmed,

@@ -4,6 +4,7 @@ import type {
   ArenaResourceKey,
   IArenaEffect,
   IArenaPoint,
+  TokenStyle,
 } from "@magista/shared";
 import type { ReactNode } from "react";
 
@@ -34,6 +35,8 @@ export interface IArenaStageControls {
   zoom: () => number;
   /** Map point at the center of the visible area (null before the map loads). */
   visibleCenter: () => IArenaPoint | null;
+  /** Map point under the mouse while it is over the visible map area, or null. */
+  pointerWorld: () => IArenaPoint | null;
   retryMap: () => void;
   playEffects: (effects: IArenaEffect[]) => void;
 }
@@ -74,15 +77,25 @@ export interface IArenaChangeMenuState {
   tokenIds: string[];
   target: string;
   /** Portraits of the first targets (up to three), for the header. */
-  targetImages: (string | null)[];
+  targetImages: IArenaTokenImage[];
   anchor: IArenaPoint | null;
 }
 
 /** A token that may deal a change, as the menu shows it. */
+/** What saving the token settings does to the NPC image. */
+export type ArenaTokenImageChange = { action: "upload"; file: File } | { action: "remove" } | null;
+
+/** A token portrait outside the map: its image and whether it is an isometric figure. */
+export interface IArenaTokenImage {
+  url: string | null;
+  style: TokenStyle;
+}
+
 export interface IArenaAttackerOption {
   id: string;
   name: string;
   imageUrl: string | null;
+  style: TokenStyle;
 }
 
 export interface IArenaHint {

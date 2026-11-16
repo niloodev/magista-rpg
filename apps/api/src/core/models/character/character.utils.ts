@@ -6,7 +6,7 @@ import {
   type ICharacterSummary,
 } from "@magista/shared";
 
-import { characterImageUrls } from "@/core/services/media";
+import { characterTokenFields, characterImageUrls } from "@/core/services/media";
 import type { Character } from "@/generated/prisma/client";
 
 /**
@@ -17,6 +17,7 @@ export function toCharacter(row: Character): ICharacter {
     id: row.id,
     name: row.name,
     ...characterImageUrls(row.avatarKey, row.artKey),
+    ...characterTokenFields(row.figureKey, row.tokenStyle, row.showTokenName),
     sheet: migrateSheet(row.sheet, row.sheetVersion),
     sheetVersion: Math.max(row.sheetVersion, 1),
     features: normalizeFeatures(row.features),
@@ -30,6 +31,9 @@ type SummaryRow = Pick<
   | "name"
   | "avatarKey"
   | "artKey"
+  | "figureKey"
+  | "tokenStyle"
+  | "showTokenName"
   | "folderId"
   | "position"
   | "sheet"
@@ -57,6 +61,7 @@ export function toCharacterSummary(row: SummaryRow): ICharacterSummary {
     id: row.id,
     name: row.name,
     ...characterImageUrls(row.avatarKey, row.artKey),
+    ...characterTokenFields(row.figureKey, row.tokenStyle, row.showTokenName),
     classKey: identity.class,
     level: identity.level,
     folderId: row.folderId,

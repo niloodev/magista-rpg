@@ -36,6 +36,9 @@ model Character {
   access       CharacterAccess[]
   avatarKey    String?
   artKey       String?
+  figureKey    String?
+  tokenStyle   String            @default("portrait")
+  showTokenName Boolean          @default(false)
   features     String[]          @default([])
   markedShare  MarkedShare?
   arenaTokens  ArenaToken[]
@@ -130,6 +133,8 @@ model ArenaToken {
   character     Character?               @relation(fields: [characterId], references: [id], onDelete: Cascade)
   name          String?
   imageKey      String?
+  tokenStyle    String                   @default("portrait")
+  showName      Boolean                  @default(true)
   x             Float                    @default(0)
   y             Float                    @default(0)
   size          Int                      @default(140)

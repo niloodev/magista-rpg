@@ -110,6 +110,14 @@ export const characterSheetSchema = z.object({
 
 export const CHARACTER_NAME_MAX_LENGTH = 80;
 
+/**
+ * How a token is drawn on the Arena: a round portrait (avatar) or an isometric figure, a transparent image of
+ * any aspect ratio drawn whole, without the circle.
+ */
+export const TOKEN_STYLES = ["portrait", "figure"] as const;
+
+export const tokenStyleSchema = z.enum(TOKEN_STYLES);
+
 export const characterSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -118,6 +126,13 @@ export const characterSummarySchema = z.object({
   /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
   avatarThumbUrl: z.string().nullable(),
   artThumbUrl: z.string().nullable(),
+  /** Isometric token image (transparent, any aspect ratio) and its thumbnail. */
+  figureUrl: z.string().nullable(),
+  figureThumbUrl: z.string().nullable(),
+  /** Token style chosen for the Arena (a figure without its image falls back to the portrait). */
+  tokenStyle: tokenStyleSchema,
+  /** Whether the tokens of this sheet show the name on the map (new sheets start hidden, for mobs). */
+  showTokenName: z.boolean(),
   classKey: classKeySchema,
   level: z.number().int(),
   folderId: z.string().nullable(),
@@ -134,6 +149,13 @@ export const characterSchema = z.object({
   /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
   avatarThumbUrl: z.string().nullable(),
   artThumbUrl: z.string().nullable(),
+  /** Isometric token image (transparent, any aspect ratio) and its thumbnail. */
+  figureUrl: z.string().nullable(),
+  figureThumbUrl: z.string().nullable(),
+  /** Token style chosen for the Arena (a figure without its image falls back to the portrait). */
+  tokenStyle: tokenStyleSchema,
+  /** Whether the tokens of this sheet show the name on the map (new sheets start hidden, for mobs). */
+  showTokenName: z.boolean(),
   sheet: characterSheetSchema,
   sheetVersion: z.number().int().nonnegative(),
   features: characterFeaturesSchema,
@@ -142,7 +164,7 @@ export const characterSchema = z.object({
 
 export const characterIdSchema = z.uuid();
 
-export const CHARACTER_IMAGE_KINDS = ["avatar", "art"] as const;
+export const CHARACTER_IMAGE_KINDS = ["avatar", "art", "figure"] as const;
 
 export const CHARACTER_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -167,6 +189,13 @@ export const characterImagesSchema = z.object({
   /** Small versions (256 px WebP) for portraits; null for images stored before thumbnails existed. */
   avatarThumbUrl: z.string().nullable(),
   artThumbUrl: z.string().nullable(),
+  /** Isometric token image (transparent, any aspect ratio) and its thumbnail. */
+  figureUrl: z.string().nullable(),
+  figureThumbUrl: z.string().nullable(),
+  /** Token style chosen for the Arena (a figure without its image falls back to the portrait). */
+  tokenStyle: tokenStyleSchema,
+  /** Whether the tokens of this sheet show the name on the map (new sheets start hidden, for mobs). */
+  showTokenName: z.boolean(),
 });
 
 export const updateSheetInputSchema = z.object({
@@ -180,6 +209,11 @@ export const createCharacterInputSchema = z.object({
   name: characterNameSchema,
   folderId: z.uuid().nullable().default(null),
 });
+
+/** Token defaults of a sheet: its style and whether the name shows on the map (applied to its tokens too). */
+export const setTokenSettingsInputSchema = z
+  .object({ style: tokenStyleSchema.optional(), showName: z.boolean().optional() })
+  .refine((input) => input.style !== undefined || input.showName !== undefined);
 
 export const renameCharacterInputSchema = z.object({ name: characterNameSchema });
 

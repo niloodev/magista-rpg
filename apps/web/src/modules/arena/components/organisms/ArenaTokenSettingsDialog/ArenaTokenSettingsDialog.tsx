@@ -1,9 +1,21 @@
 "use client";
 
-import { ARENA_CHANGE_TEXTS, ARENA_STATUS_TEXTS } from "@/modules/arena/arena.constants";
+import { ARENA_NAME_MAX_LENGTH } from "@magista/shared";
+
+import {
+  ARENA_CHANGE_TEXTS,
+  ARENA_PLACEMENT_TEXTS,
+  ARENA_STATUS_TEXTS,
+} from "@/modules/arena/arena.constants";
 import { ResourceBar } from "@/modules/sheet/components/molecules";
-import { Button, Checkbox, Icon } from "@/shared/components/atoms";
-import { AccountChecklist, Modal } from "@/shared/components/molecules";
+import { Button, Checkbox, Icon, Input } from "@/shared/components/atoms";
+import {
+  AccountChecklist,
+  FormField,
+  ImageField,
+  Modal,
+  TokenStyleChoice,
+} from "@/shared/components/molecules";
 
 import {
   SECTION_CLASS,
@@ -14,7 +26,7 @@ import { useArenaTokenSettingsDialog } from "./ArenaTokenSettingsDialog.hook";
 import type { ArenaTokenSettingsDialogProps } from "./ArenaTokenSettingsDialog.types";
 
 /**
- * Settings of one token (GM): its health and sanity (own values for an NPC, the sheet ones for a character
+ * Settings of one token (GM): name, image and style (NPC), whether the name shows on the map, its health and sanity (own values for an NPC, the sheet ones for a character
  * token) and who may see them (every player or chosen accounts; the accounts with access to the sheet always do).
  */
 export function ArenaTokenSettingsDialog({
@@ -30,6 +42,22 @@ export function ArenaTokenSettingsDialog({
     formId,
     openSheet,
     npc,
+    canPickStyle,
+    style,
+    setStyle,
+    name,
+    nameError,
+    onNameChange,
+    showName,
+    setShowName,
+    file,
+    imageRemoved,
+    imageError,
+    currentImageUrl,
+    styleImageUrl,
+    onFileChange,
+    onRemoveImage,
+    onUndoRemoveImage,
     health,
     setHealth,
     sanity,
@@ -67,7 +95,70 @@ export function ArenaTokenSettingsDialog({
         </>
       }
     >
-      <form id={formId} noValidate onSubmit={submit} className="grid gap-4">
+      <form
+        id={formId}
+        noValidate
+        onSubmit={submit}
+        className="grid grid-cols-[minmax(0,1fr)] gap-4"
+      >
+        <section aria-labelledby={`${formId}-token`} className={SECTION_CLASS}>
+          <h3 id={`${formId}-token`} className={SECTION_TITLE_CLASS}>
+            {ARENA_STATUS_TEXTS.tokenSection}
+          </h3>
+          {npc && (
+            <>
+              <FormField
+                id={`${formId}-name`}
+                label={ARENA_STATUS_TEXTS.name}
+                error={nameError ?? undefined}
+              >
+                <Input
+                  id={`${formId}-name`}
+                  value={name}
+                  maxLength={ARENA_NAME_MAX_LENGTH}
+                  autoComplete="off"
+                  invalid={Boolean(nameError)}
+                  onChange={(event) => onNameChange(event.target.value)}
+                />
+              </FormField>
+              <ImageField
+                id={`${formId}-image`}
+                label={ARENA_STATUS_TEXTS.image}
+                hint={
+                  style === "figure"
+                    ? ARENA_PLACEMENT_TEXTS.figureImageHint
+                    : ARENA_PLACEMENT_TEXTS.npcImageHint
+                }
+                shape={style === "figure" ? "figure" : "circle"}
+                file={file}
+                currentUrl={currentImageUrl}
+                removed={imageRemoved}
+                error={imageError}
+                onFileChange={onFileChange}
+                onRemoveCurrent={onRemoveImage}
+                onUndoRemove={onUndoRemoveImage}
+              />
+              <TokenStyleChoice
+                id={`${formId}-style`}
+                legend={ARENA_PLACEMENT_TEXTS.styleLegend}
+                value={style}
+                onChange={setStyle}
+                portraitUrl={styleImageUrl}
+                figureUrl={styleImageUrl}
+                figureDisabledReason={canPickStyle ? null : ARENA_PLACEMENT_TEXTS.styleNeedsImage}
+              />
+            </>
+          )}
+          <div className="grid gap-1">
+            <Checkbox
+              checked={showName}
+              onCheckedChange={setShowName}
+              label={ARENA_STATUS_TEXTS.showName}
+              className="min-h-11"
+            />
+            <p className="font-sans text-sm text-muted-strong">{ARENA_STATUS_TEXTS.showNameHint}</p>
+          </div>
+        </section>
         <section aria-labelledby={`${formId}-status`} className={SECTION_CLASS}>
           <h3 id={`${formId}-status`} className={SECTION_TITLE_CLASS}>
             {ARENA_STATUS_TEXTS.statusSection}

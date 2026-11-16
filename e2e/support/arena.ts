@@ -71,3 +71,14 @@ export async function openArena(page: Page): Promise<void> {
   await expect(page.getByText("Mesa conectada")).toBeVisible();
   await expect(page.locator("[data-skeleton-region]")).toHaveCount(0, { timeout: 20_000 });
 }
+
+/**
+ * Opens the right-click menu of the current selection from the keyboard (Shift+F10 on the map).
+ */
+export async function openTokenMenu(page: Page) {
+  await page.getByRole("application", { name: /Mapa da cena/ }).focus();
+  await page.keyboard.press("Shift+F10");
+  const menu = page.getByRole("menu", { name: /^Ações de/ });
+  await expect(menu).toBeVisible();
+  return menu;
+}

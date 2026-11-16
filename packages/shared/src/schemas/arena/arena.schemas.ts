@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { resourceSchema } from "../character/character.schemas";
+import { resourceSchema, tokenStyleSchema } from "../character/character.schemas";
 
 export const ARENA_NAME_MAX_LENGTH = 60;
 
@@ -90,6 +90,10 @@ export const arenaTokenSchema = z.object({
   imageUrl: z.string().nullable(),
   /** Small version of the token portrait (256 px WebP), or null. */
   imageThumbUrl: z.string().nullable(),
+  /** Effective style: a character token follows its sheet (a figure without its image is a portrait). */
+  style: tokenStyleSchema,
+  /** Whether the name shows under the token on the map (the GM still sees a hidden one, faded). */
+  showName: z.boolean(),
   x: z.number(),
   y: z.number(),
   size: z.number().int(),
@@ -171,6 +175,8 @@ export const createArenaTokenInputSchema = z
     y: arenaCoordSchema.default(0),
     size: arenaTokenSizeSchema.default(ARENA_TOKEN_SIZE_DEFAULT),
     hidden: z.boolean().default(false),
+    /** Style of an NPC token (a character token follows its sheet). */
+    style: tokenStyleSchema.default("portrait"),
   })
   .refine((input) => input.characterId !== null || input.name !== undefined);
 
@@ -187,6 +193,9 @@ const tokenEditFields = {
   name: arenaNameSchema.optional(),
   size: arenaTokenSizeSchema.optional(),
   hidden: z.boolean().optional(),
+  /** Own style (NPC tokens only). */
+  style: tokenStyleSchema.optional(),
+  showName: z.boolean().optional(),
   /** Own health and sanity (NPC tokens only; a character token follows its sheet). */
   status: tokenStatusPatchSchema.optional(),
   statusPublic: z.boolean().optional(),
@@ -214,6 +223,14 @@ export const deleteArenaTokensInputSchema = z.object({
     .min(1)
     .max(ARENA_EDIT_BATCH_MAX)
     .refine((ids) => new Set(ids).size === ids.length),
+});
+
+/** Pasted copies of tokens (from any scene) into a scene, each at its own point. */
+export const copyArenaTokensInputSchema = z.object({
+  tokens: z
+    .array(z.object({ sourceId: arenaIdSchema, x: arenaCoordSchema, y: arenaCoordSchema }))
+    .min(1)
+    .max(ARENA_EDIT_BATCH_MAX),
 });
 
 export const moveArenaTokenInputSchema = z.object({

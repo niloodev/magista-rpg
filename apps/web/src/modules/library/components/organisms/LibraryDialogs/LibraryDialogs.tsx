@@ -89,6 +89,9 @@ export function LibraryDialogs(props: LibraryDialogsProps) {
           characterName={dialog.character.name}
           avatarUrl={dialog.character.avatarUrl}
           artUrl={dialog.character.artUrl}
+          figureUrl={dialog.character.figureUrl}
+          tokenStyle={dialog.character.tokenStyle}
+          showTokenName={dialog.character.showTokenName}
           initialError={dialog.error}
           onSaved={onNotice}
           onClose={onClose}

@@ -137,3 +137,15 @@ characterRoutes.delete("/:id/images/:kind", async (req, res: AuthedResponse) => 
   broadcastCharacterImages(changed.images);
   broadcastArenaRefresh();
 });
+
+characterRoutes.put("/:id/token", async (req, res: AuthedResponse) => {
+  const result = await characterController.setTokenSettings(
+    viewerOf(res),
+    req.params.id ?? "",
+    req.body,
+  );
+  const changed = sendResult(res, result, CHARACTER_ERROR_STATUS);
+  if (!changed) return;
+  broadcastCharacterImages(changed.images);
+  broadcastArenaRefresh();
+});

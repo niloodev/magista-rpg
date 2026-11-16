@@ -7,6 +7,7 @@ import type {
   ICharacterImages,
   ICharacterSheet,
   ICharacterSummary,
+  TokenStyle,
 } from "@magista/shared";
 
 export interface IUpsertCharacterInput {
@@ -22,6 +23,7 @@ export interface IUpsertCharacterInput {
 export interface ICharacterImageKeys {
   avatarKey: string | null;
   artKey: string | null;
+  figureKey: string | null;
 }
 
 export interface ICreateCharacterRow {
@@ -65,6 +67,14 @@ export interface ICharacterModels {
     kind: CharacterImageKind,
     key: string | null,
   ) => Promise<{ images: ICharacterImages; previousKey: string | null }>;
+  /**
+   * Token defaults of a sheet (style, name on the map; the name is applied to its tokens on the board too),
+   * without touching `updatedAt`; returns the new images.
+   */
+  setTokenSettings: (
+    id: string,
+    settings: { style?: TokenStyle; showName?: boolean },
+  ) => Promise<ICharacterImages>;
   upsertCharacter: (input: IUpsertCharacterInput) => Promise<ICharacter>;
   /** Replaces the special feature tags without touching `updatedAt` (no autosave conflict). */
   setFeatures: (

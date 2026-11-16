@@ -10,6 +10,7 @@ import {
   parseStoredCamera,
   scaleTokenSize,
   screenToWorld,
+  tokenExtents,
   tokensInRect,
   zoomAt,
   isInVisibleArea,
@@ -130,5 +131,17 @@ describe("labelScale", () => {
     expect(labelScale(20, 0.75)).toBe(1);
     expect(labelScale(20, 3)).toBeCloseTo(0.3);
     expect(labelScale(20, 0)).toBe(1);
+  });
+});
+
+describe("tokenExtents", () => {
+  it("keeps a portrait round and a figure in the proportion of its image", () => {
+    expect(tokenExtents(100, "portrait", 2)).toEqual({ halfWidth: 50, halfHeight: 50 });
+    expect(tokenExtents(100, "figure", 2)).toEqual({ halfWidth: 50, halfHeight: 25 });
+    expect(tokenExtents(100, "figure", 0.5)).toEqual({ halfWidth: 25, halfHeight: 50 });
+  });
+
+  it("is square while the figure image is not loaded", () => {
+    expect(tokenExtents(80, "figure", null)).toEqual({ halfWidth: 40, halfHeight: 40 });
   });
 });

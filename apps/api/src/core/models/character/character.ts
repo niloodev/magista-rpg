@@ -7,7 +7,7 @@ import {
 } from "@magista/shared";
 
 import { getDatabase } from "@/core/services/database";
-import { characterImageUrls } from "@/core/services/media";
+import { characterTokenFields, characterImageUrls } from "@/core/services/media";
 import { Prisma } from "@/generated/prisma/client";
 
 import { SUMMARY_SELECT } from "./character.constants";
@@ -169,24 +169,61 @@ const changeResource: ICharacterModels["changeResource"] = async (ids, resource,
 };
 
 const findImageKeys: ICharacterModels["findImageKeys"] = async (id) =>
-  getDatabase().character.findUnique({ where: { id }, select: { avatarKey: true, artKey: true } });
+  getDatabase().character.findUnique({
+    where: { id },
+    select: { avatarKey: true, artKey: true, figureKey: true },
+  });
+
+interface LockedImageRow {
+  avatarKey: string | null;
+  artKey: string | null;
+  figureKey: string | null;
+  tokenStyle: string;
+  showTokenName: boolean;
+}
+
+const lockImages = async (tx: Prisma.TransactionClient, id: string): Promise<LockedImageRow> => {
+  const [locked] = await tx.$queryRaw<LockedImageRow[]>`
+    SELECT "avatarKey", "artKey", "figureKey", "tokenStyle", "showTokenName" FROM "characters"
+    WHERE "id" = ${id}::uuid FOR UPDATE`;
+  if (!locked) throw new Error(`Personagem ${id} não encontrado`);
+  return locked;
+};
+
+const imagesOf = (id: string, row: LockedImageRow) => ({
+  id,
+  ...characterImageUrls(row.avatarKey, row.artKey),
+  ...characterTokenFields(row.figureKey, row.tokenStyle, row.showTokenName),
+});
 
 const setImageKey: ICharacterModels["setImageKey"] = async (id, kind, key) =>
   getDatabase().$transaction(async (tx) => {
-    const [locked] = await tx.$queryRaw<{ avatarKey: string | null; artKey: string | null }[]>`
-      SELECT "avatarKey", "artKey" FROM "characters" WHERE "id" = ${id}::uuid FOR UPDATE`;
-    if (!locked) throw new Error(`Personagem ${id} não encontrado`);
+    const locked = await lockImages(tx, id);
     if (kind === "avatar") {
       await tx.$executeRaw`UPDATE "characters" SET "avatarKey" = ${key} WHERE "id" = ${id}::uuid`;
-    } else {
+    } else if (kind === "art") {
       await tx.$executeRaw`UPDATE "characters" SET "artKey" = ${key} WHERE "id" = ${id}::uuid`;
+    } else {
+      await tx.$executeRaw`UPDATE "characters" SET "figureKey" = ${key} WHERE "id" = ${id}::uuid`;
     }
-    const avatarKey = kind === "avatar" ? key : locked.avatarKey;
-    const artKey = kind === "art" ? key : locked.artKey;
+    const column = `${kind}Key` as const;
     return {
-      images: { id, ...characterImageUrls(avatarKey, artKey) },
-      previousKey: kind === "avatar" ? locked.avatarKey : locked.artKey,
+      images: imagesOf(id, { ...locked, [column]: key }),
+      previousKey: locked[column],
     };
+  });
+
+const setTokenSettings: ICharacterModels["setTokenSettings"] = async (id, { style, showName }) =>
+  getDatabase().$transaction(async (tx) => {
+    const locked = await lockImages(tx, id);
+    const tokenStyle = style ?? locked.tokenStyle;
+    const showTokenName = showName ?? locked.showTokenName;
+    await tx.$executeRaw`
+      UPDATE "characters" SET "tokenStyle" = ${tokenStyle}, "showTokenName" = ${showTokenName}
+      WHERE "id" = ${id}::uuid`;
+    if (showName !== undefined)
+      await tx.arenaToken.updateMany({ where: { characterId: id }, data: { showName } });
+    return imagesOf(id, { ...locked, tokenStyle, showTokenName });
   });
 
 const upsertCharacter: ICharacterModels["upsertCharacter"] = async (input) => {
@@ -247,6 +284,7 @@ const listByFeature: ICharacterModels["listByFeature"] = async (feature) => {
 };
 
 export const characterModels: ICharacterModels = {
+  setTokenSettings,
   findById,
   exists,
   hasAccess,

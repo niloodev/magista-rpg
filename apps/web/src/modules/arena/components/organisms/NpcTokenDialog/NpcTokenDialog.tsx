@@ -4,7 +4,7 @@ import { ARENA_NAME_MAX_LENGTH } from "@magista/shared";
 
 import { ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
 import { Button, Icon, Input } from "@/shared/components/atoms";
-import { FormField, ImageField, Modal } from "@/shared/components/molecules";
+import { FormField, ImageField, Modal, TokenStyleChoice } from "@/shared/components/molecules";
 
 import { useNpcTokenDialog } from "./NpcTokenDialog.hook";
 import type { NpcTokenDialogProps } from "./NpcTokenDialog.types";
@@ -18,6 +18,9 @@ export function NpcTokenDialog({ onSubmit, onClose }: NpcTokenDialogProps) {
     formId,
     name,
     file,
+    style,
+    preview,
+    onStyleChange,
     nameError,
     imageError,
     formError,
@@ -50,7 +53,12 @@ export function NpcTokenDialog({ onSubmit, onClose }: NpcTokenDialogProps) {
         </>
       }
     >
-      <form id={formId} noValidate onSubmit={submit} className="grid gap-5">
+      <form
+        id={formId}
+        noValidate
+        onSubmit={submit}
+        className="grid grid-cols-[minmax(0,1fr)] gap-5"
+      >
         <p className="font-sans text-[15px] text-muted-strong">{ARENA_PLACEMENT_TEXTS.npcHelp}</p>
         <FormField
           id={`${formId}-name`}
@@ -69,13 +77,26 @@ export function NpcTokenDialog({ onSubmit, onClose }: NpcTokenDialogProps) {
         <ImageField
           id={`${formId}-image`}
           label={ARENA_PLACEMENT_TEXTS.npcImage}
-          hint={ARENA_PLACEMENT_TEXTS.npcImageHint}
-          shape="circle"
+          hint={
+            style === "figure"
+              ? ARENA_PLACEMENT_TEXTS.figureImageHint
+              : ARENA_PLACEMENT_TEXTS.npcImageHint
+          }
+          shape={style === "figure" ? "figure" : "circle"}
           file={file}
           currentUrl={null}
           error={imageError}
           onFileChange={onFileChange}
           onRemoveCurrent={() => onFileChange(null)}
+        />
+        <TokenStyleChoice
+          id={`${formId}-style`}
+          legend={ARENA_PLACEMENT_TEXTS.styleLegend}
+          value={style}
+          onChange={onStyleChange}
+          portraitUrl={preview}
+          figureUrl={preview}
+          figureDisabledReason={file ? null : ARENA_PLACEMENT_TEXTS.styleNeedsImage}
         />
         {formError && (
           <p

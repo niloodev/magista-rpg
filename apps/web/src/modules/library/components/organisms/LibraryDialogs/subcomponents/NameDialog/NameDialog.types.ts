@@ -3,6 +3,7 @@ import type { SelectOption } from "@/shared/components/atoms";
 export interface INameDialogImages {
   avatar: File | null;
   art: File | null;
+  figure: File | null;
 }
 
 export interface INameDialogValues {
@@ -19,7 +20,7 @@ export interface NameDialogProps {
   maxLength: number;
   folderOptions?: SelectOption[];
   initialFolderId?: string | null;
-  /** Shows the optional AVATAR and ART fields (creating a character). */
+  /** Shows the optional AVATAR, ART and isometric FIGURE fields (creating a character). */
   withImages?: boolean;
   onSubmit: (values: INameDialogValues) => Promise<string | null>;
   onClose: () => void;

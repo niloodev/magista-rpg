@@ -70,7 +70,7 @@ export function ImageField({
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            className={`flex min-h-11 cursor-pointer items-center gap-2 border border-dashed px-3 py-2 font-sans text-[15px] text-foreground transition-[border-color,background-color] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ruby-400 ${
+            className={`flex min-h-11 min-w-0 cursor-pointer items-center gap-2 border border-dashed px-3 py-2 font-sans text-[15px] text-foreground transition-[border-color,background-color] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ruby-400 ${
               dragging
                 ? "border-teal-400 bg-teal-900/30"
                 : "border-primary/40 bg-black/40 hover:border-primary/70"

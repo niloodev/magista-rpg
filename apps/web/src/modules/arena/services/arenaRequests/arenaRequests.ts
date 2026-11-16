@@ -3,6 +3,7 @@ import {
   isErrorResult,
   type ControllerResult,
   type IArenaToken,
+  type ICopyArenaTokensInput,
   type ICreateArenaTokenInput,
   type IArenaMoveResult,
   type IArenaTokenPatch,
@@ -43,6 +44,19 @@ export function createArenaToken(
 }
 
 /**
+ * Pastes copies of tokens (from any scene) into a scene (GM); the copies come back in the order asked.
+ */
+export function copyArenaTokens(
+  sceneId: string,
+  input: ICopyArenaTokensInput,
+): Promise<ControllerResult<{ token: IArenaToken }[]>> {
+  return apiRequest<{ token: IArenaToken }[]>(`/arena/scenes/${sceneId}/tokens/copy`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/**
  * Sends the image of an NPC token (GM).
  */
 export function uploadArenaTokenImage(
@@ -52,6 +66,13 @@ export function uploadArenaTokenImage(
   const formData = new FormData();
   formData.append(ARENA_IMAGE_FIELD, file);
   return apiRequest(`/arena/tokens/${tokenId}/image`, { method: "PUT", formData });
+}
+
+/**
+ * Takes the own image off an NPC token (GM).
+ */
+export function removeArenaTokenImage(tokenId: string): Promise<ControllerResult<unknown>> {
+  return apiRequest(`/arena/tokens/${tokenId}/image`, { method: "DELETE" });
 }
 
 /**

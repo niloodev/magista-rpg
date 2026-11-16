@@ -4,6 +4,7 @@ import type {
   IArenaPoint,
   IArenaTokenStatus,
   IMoveArenaTokenInput,
+  TokenStyle,
 } from "@magista/shared";
 
 import type { ArenaSelectionMode, IArenaSizeUpdate } from "@/modules/arena/arena.types";
@@ -28,15 +29,21 @@ export interface IArenaInsets {
 
 export type ArenaTokenTone = "own" | "other";
 
+export type ArenaTokenLabel = "shown" | "faint" | "hidden";
+
 /** A token as the renderer draws it (positions in pixels of the original map). */
 export interface IArenaRenderToken {
   id: string;
   name: string;
   imageUrl: string | null;
+  /** Round portrait or isometric figure (drawn whole in the proportion of its image). */
+  style: TokenStyle;
   x: number;
   y: number;
   size: number;
   hidden: boolean;
+  /** Name under the token: shown, faded (hidden from the players, seen by the GM) or not drawn. */
+  label: ArenaTokenLabel;
   controllable: boolean;
   tone: ArenaTokenTone;
   /** Health and sanity, when the viewer may see them (bars above the token). */
@@ -57,8 +64,8 @@ export interface IArenaRendererCallbacks {
   onResize: (updates: IArenaSizeUpdate[]) => void;
   onSceneReady: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
-  /** Right click without dragging on a token (opens "Aplicar mudança" at that page point). */
-  onTokenMenu: (tokenId: string, client: IArenaPoint) => void;
+  /** Right click without dragging, on a token or on the empty map (null), at that page point. */
+  onTokenMenu: (tokenId: string | null, client: IArenaPoint) => void;
 }
 
 export interface IArenaRendererOptions {
@@ -88,6 +95,8 @@ export interface IArenaRenderer {
   /** Map point at the center of the visible area (between the panels, below the top bar). */
   visibleCenter: () => IArenaPoint;
   retryMap: () => void;
+  /** Map point under the mouse while it is over the visible map area, or null. */
+  pointerWorld: () => IArenaPoint | null;
   /** Plays damage and healing animations on the tokens they hit. */
   playEffects: (effects: IArenaEffect[]) => void;
   destroy: () => void;

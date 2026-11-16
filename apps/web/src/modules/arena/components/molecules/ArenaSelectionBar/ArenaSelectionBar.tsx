@@ -3,30 +3,22 @@ import { memo } from "react";
 import { ARENA_TOKEN_SIZE_MAX, ARENA_TOKEN_SIZE_MIN } from "@magista/shared";
 
 import { ARENA_SELECTION_TEXTS, ARENA_SIZE_STEP } from "@/modules/arena/arena.constants";
-import { Button, Icon } from "@/shared/components/atoms";
 import { Stepper } from "@/shared/components/molecules";
 
 import { ArenaStatusReadout } from "../ArenaStatusReadout";
 import type { ArenaSelectionBarProps } from "./ArenaSelectionBar.types";
 
 /**
- * Actions for the selected tokens: the status readout of a single token, size
- * (applied to all of them, the keyboard way to resize), hide or show, the settings of a single token, open the
- * sheet of a single character token and remove. Players get the readout and "Abrir ficha"; "Aplicar mudança" opens with the right click or the M key.
+ * The selection at a glance: how many tokens, the status readout of a single token and, for the GM, the size
+ * (applied to all of them, the keyboard way to resize). The token actions live in the right-click menu (or
+ * Shift+F10), and "Aplicar mudança" also opens with the M key.
  */
 export const ArenaSelectionBar = memo(function ArenaSelectionBar({
   label,
   isGm,
   size,
-  allHidden,
-  canOpenSheet,
   status,
-  canConfigure,
-  onConfigure,
   onSizeChange,
-  onToggleHidden,
-  onOpenSheet,
-  onRemove,
   className,
 }: ArenaSelectionBarProps) {
   return (
@@ -52,45 +44,7 @@ export const ArenaSelectionBar = memo(function ArenaSelectionBar({
             max={ARENA_TOKEN_SIZE_MAX}
             step={ARENA_SIZE_STEP}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleHidden}
-            icon={<Icon name={allHidden ? "eye" : "eye-off"} size={14} />}
-          >
-            {allHidden ? ARENA_SELECTION_TEXTS.show : ARENA_SELECTION_TEXTS.hide}
-          </Button>
         </>
-      )}
-      {canConfigure && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onConfigure}
-          icon={<Icon name="settings" size={14} />}
-        >
-          {ARENA_SELECTION_TEXTS.configure}
-        </Button>
-      )}
-      {canOpenSheet && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onOpenSheet}
-          icon={<Icon name="scroll-text" size={14} />}
-        >
-          {ARENA_SELECTION_TEXTS.openSheet}
-        </Button>
-      )}
-      {isGm && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRemove}
-          icon={<Icon name="trash-2" size={14} />}
-        >
-          {ARENA_SELECTION_TEXTS.remove}
-        </Button>
       )}
     </section>
   );

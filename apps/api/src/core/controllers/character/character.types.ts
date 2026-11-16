@@ -64,4 +64,6 @@ export interface ICharacterController {
   setImage: (viewer: IViewer, id: string, upload: IImageUpload) => Result<IImageChange>;
   removeImage: (viewer: IViewer, id: string, kind: string) => Result<IImageChange>;
   setFeatures: (viewer: IViewer, id: string, input: unknown) => Result<IFeaturesChange>;
+  /** Chooses whether the character's tokens use the round avatar or the isometric figure (GM only). */
+  setTokenSettings: (viewer: IViewer, id: string, input: unknown) => Result<IImageChange>;
 }

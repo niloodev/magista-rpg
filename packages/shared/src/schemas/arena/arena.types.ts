@@ -12,6 +12,7 @@ import type {
   arenaViewSchema,
   createArenaSceneInputSchema,
   createArenaTokenInputSchema,
+  copyArenaTokensInputSchema,
   moveArenaTokenInputSchema,
   moveArenaTokensInputSchema,
   updateArenaTokensInputSchema,
@@ -50,6 +51,8 @@ export type IRenameArenaSceneInput = z.infer<typeof renameArenaSceneInputSchema>
 export type ISetActiveSceneInput = z.infer<typeof setActiveSceneInputSchema>;
 
 export type ICreateArenaTokenInput = z.input<typeof createArenaTokenInputSchema>;
+
+export type ICopyArenaTokensInput = z.infer<typeof copyArenaTokensInputSchema>;
 
 export type IUpdateArenaTokenInput = z.infer<typeof updateArenaTokenInputSchema>;
 

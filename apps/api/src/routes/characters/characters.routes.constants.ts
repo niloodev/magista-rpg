@@ -19,6 +19,7 @@ export const CHARACTER_ERROR_STATUS: Record<CharacterError, number> = {
   [characterErrors.aboveMaximum]: 400,
   [characterErrors.conflict]: 409,
   [characterErrors.invalidImageKind]: 404,
+  [characterErrors.invalidTokenSettings]: 400,
   [characterErrors.imageMissing]: 400,
   [characterErrors.imageInvalid]: 415,
   [characterErrors.imageTooLarge]: 413,

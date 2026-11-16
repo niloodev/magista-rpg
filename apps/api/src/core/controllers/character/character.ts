@@ -8,6 +8,7 @@ import {
   renameCharacterInputSchema,
   setCharacterAccessInputSchema,
   setFeaturesInputSchema,
+  setTokenSettingsInputSchema,
   updateSheetInputSchema,
   CHARACTER_IMAGE_MAX_SIDE,
 } from "@magista/shared";
@@ -137,9 +138,9 @@ export function createCharacterController({
       const previousAccountIds = await characters.listAccountIds(id);
       const keys = await characters.findImageKeys(id);
       await characters.remove(id);
-      const cleanup = [...new Set([keys?.avatarKey ?? null, keys?.artKey ?? null])].map((key) =>
-        assets.release(key),
-      );
+      const cleanup = [
+        ...new Set([keys?.avatarKey ?? null, keys?.artKey ?? null, keys?.figureKey ?? null]),
+      ].map((key) => assets.release(key));
       await Promise.all([images.removeAll(id), ...cleanup]).catch((error: unknown) => {
         console.error("deleteCharacter images cleanup failed:", error);
       });
@@ -215,6 +216,20 @@ export function createCharacterController({
     }
   };
 
+  const setTokenSettings: ICharacterController["setTokenSettings"] = async (viewer, id, input) => {
+    if (viewer.role !== "GM") return { error: characterErrors.gmOnly };
+    if (!characterIdSchema.safeParse(id).success) return { error: characterErrors.notFound };
+    const parsed = setTokenSettingsInputSchema.safeParse(input);
+    if (!parsed.success) return { error: characterErrors.invalidTokenSettings };
+    try {
+      if (!(await characters.exists(id))) return { error: characterErrors.notFound };
+      const changed = await characters.setTokenSettings(id, parsed.data);
+      return { message: "Token atualizado", payload: { images: changed } };
+    } catch (error) {
+      return failed("setTokenSettings", error);
+    }
+  };
+
   const setFeatures: ICharacterController["setFeatures"] = async (viewer, id, input) => {
     if (viewer.role !== "GM") return { error: characterErrors.gmOnly };
     if (!characterIdSchema.safeParse(id).success) return { error: characterErrors.notFound };
@@ -240,6 +255,7 @@ export function createCharacterController({
 
   return {
     setFeatures,
+    setTokenSettings,
     setImage,
     removeImage,
     listCharacters,

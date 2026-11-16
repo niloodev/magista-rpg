@@ -12,6 +12,10 @@ const character: ICharacter = {
   artUrl: null,
   avatarThumbUrl: null,
   artThumbUrl: null,
+  figureUrl: null,
+  figureThumbUrl: null,
+  tokenStyle: "portrait",
+  showTokenName: true,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   features: [],
@@ -65,6 +69,10 @@ describe("sheet slice", () => {
       artUrl: "/media/art.png",
       avatarThumbUrl: null,
       artThumbUrl: null,
+      figureUrl: null,
+      figureThumbUrl: null,
+      tokenStyle: "portrait",
+      showTokenName: true,
     });
     store.getState().applySheetImages({
       id: "other",
@@ -72,6 +80,10 @@ describe("sheet slice", () => {
       artUrl: null,
       avatarThumbUrl: null,
       artThumbUrl: null,
+      figureUrl: null,
+      figureThumbUrl: null,
+      tokenStyle: "portrait",
+      showTokenName: true,
     });
     expect(entry(store)).toMatchObject({
       revision: 1,

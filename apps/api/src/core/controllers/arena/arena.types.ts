@@ -138,8 +138,12 @@ export interface IArenaController {
   updateToken: (viewer: IViewer, id: string, input: unknown) => Result<IArenaTokenChange>;
   deleteToken: (viewer: IViewer, id: string) => Result<IArenaTokenRemoval>;
   setTokenImage: (viewer: IViewer, id: string, upload: IArenaUpload) => Result<IArenaTokenChange>;
+  /** Takes the own image off an NPC token (it shows its initial again, as a round token). */
+  removeTokenImage: (viewer: IViewer, id: string) => Result<IArenaTokenChange>;
   move: (viewer: IViewer, input: unknown) => Result<IArenaMoveChanges>;
   updateTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenChange[]>;
+  /** Pastes copies of tokens (from any scene) into a scene (GM only). */
+  copyTokens: (viewer: IViewer, sceneId: string, input: unknown) => Result<IArenaTokenChange[]>;
   deleteTokens: (viewer: IViewer, input: unknown) => Result<IArenaTokenRemoval[]>;
   /** Damage or healing from anyone who sees the tokens ("Aplicar mudança"). */
   applyChange: (viewer: IViewer, input: unknown) => Result<IArenaChangeOutcome>;

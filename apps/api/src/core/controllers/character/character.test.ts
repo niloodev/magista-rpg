@@ -17,6 +17,10 @@ const character: ICharacter = {
   artUrl: null,
   avatarThumbUrl: null,
   artThumbUrl: null,
+  figureUrl: null,
+  figureThumbUrl: null,
+  tokenStyle: "portrait" as const,
+  showTokenName: true,
   sheet: createEmptySheet(),
   sheetVersion: 1,
   features: [],
@@ -30,6 +34,10 @@ const summary: ICharacterSummary = {
   artUrl: null,
   avatarThumbUrl: null,
   artThumbUrl: null,
+  figureUrl: null,
+  figureThumbUrl: null,
+  tokenStyle: "portrait" as const,
+  showTokenName: true,
   classKey: "sem-classe",
   level: 1,
   folderId: null,
@@ -63,7 +71,20 @@ function buildController(
       previousAccountIds: ["owner"],
     })),
     updateSheet: vi.fn().mockImplementation(async (_id, sheet) => ({ ...character, sheet })),
-    findImageKeys: vi.fn().mockResolvedValue({ avatarKey: "old-avatar", artKey: null }),
+    findImageKeys: vi
+      .fn()
+      .mockResolvedValue({ avatarKey: "old-avatar", artKey: null, figureKey: null }),
+    setTokenSettings: vi.fn().mockImplementation(async (id, { style, showName }) => ({
+      id,
+      avatarUrl: null,
+      artUrl: null,
+      avatarThumbUrl: null,
+      artThumbUrl: null,
+      figureUrl: null,
+      figureThumbUrl: null,
+      tokenStyle: style ?? "portrait",
+      showTokenName: showName ?? true,
+    })),
     setImageKey: vi.fn().mockImplementation(async (id, kind, key) => ({
       images: {
         id,
@@ -438,6 +459,36 @@ describe("character controller", () => {
           accountIds: ["owner"],
         },
       });
+    });
+  });
+
+  describe("setTokenSettings", () => {
+    it("lets only the GM choose a valid style", async () => {
+      const { controller, characters } = buildController();
+      expect(
+        await controller.setTokenSettings({ accountId: "owner", role: "PLAYER" }, CHARACTER_ID, {
+          style: "figure",
+        }),
+      ).toEqual({ error: characterErrors.gmOnly });
+      expect(
+        await controller.setTokenSettings({ accountId: "gm", role: "GM" }, CHARACTER_ID, {
+          style: "cube",
+        }),
+      ).toEqual({ error: characterErrors.invalidTokenSettings });
+      expect(
+        await controller.setTokenSettings({ accountId: "gm", role: "GM" }, CHARACTER_ID, {
+          style: "figure",
+        }),
+      ).toMatchObject({ payload: { images: { id: CHARACTER_ID, tokenStyle: "figure" } } });
+      expect(characters.setTokenSettings).toHaveBeenCalledWith(CHARACTER_ID, { style: "figure" });
+      expect(
+        await controller.setTokenSettings({ accountId: "gm", role: "GM" }, CHARACTER_ID, {}),
+      ).toEqual({ error: characterErrors.invalidTokenSettings });
+      expect(
+        await controller.setTokenSettings({ accountId: "gm", role: "GM" }, CHARACTER_ID, {
+          showName: false,
+        }),
+      ).toMatchObject({ payload: { images: { showTokenName: false } } });
     });
   });
 });

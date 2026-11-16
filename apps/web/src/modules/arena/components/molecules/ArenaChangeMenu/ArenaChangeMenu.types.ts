@@ -1,12 +1,16 @@
 import type { IArenaPoint } from "@magista/shared";
 
-import type { IArenaAttackerOption, IArenaChangePreference } from "@/modules/arena/arena.types";
+import type {
+  IArenaAttackerOption,
+  IArenaChangePreference,
+  IArenaTokenImage,
+} from "@/modules/arena/arena.types";
 
 export interface ArenaChangeMenuProps {
   /** Who takes the change ("Goblin" or "3 tokens"). */
   target: string;
   /** Portraits of the first targets, for the header. */
-  targetImages: (string | null)[];
+  targetImages: IArenaTokenImage[];
   /** Page point where it opens; null opens it above the selection bar. */
   anchor: IArenaPoint | null;
   /** Action, attribute and animation set, plus the last amount. */

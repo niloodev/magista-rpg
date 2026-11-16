@@ -12,6 +12,7 @@ export const characterErrors = {
   aboveMaximum: "Vida e Sanidade atuais não podem passar do máximo.",
   conflict: "A ficha foi alterada em outro lugar. Recarregando a versão mais nova.",
   invalidImageKind: "Tipo de imagem inválido.",
+  invalidTokenSettings: "Configuração de token inválida.",
   imageMissing: "Escolha uma imagem para enviar.",
   imageInvalid: "Envie uma imagem PNG, JPG, WEBP ou GIF.",
   imageTooLarge: "A imagem passa do limite de 8 MB.",

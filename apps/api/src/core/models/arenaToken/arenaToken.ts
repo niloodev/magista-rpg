@@ -1,4 +1,7 @@
+import { randomUUID } from "node:crypto";
+
 import { getDatabase } from "@/core/services/database";
+import { assetIdOf } from "@/core/services/media";
 import { Prisma } from "@/generated/prisma/client";
 
 import { TOKEN_INCLUDE, TOKEN_ORDER } from "./arenaToken.constants";
@@ -51,12 +54,74 @@ const moveMany: IArenaTokenModels["moveMany"] = async (moves, guard) => {
 const create: IArenaTokenModels["create"] = async (sceneId, input) => {
   const row = await getDatabase().$transaction(async (tx) => {
     const last = await tx.arenaToken.aggregate({ where: { sceneId }, _max: { position: true } });
+    const character = input.characterId
+      ? await tx.character.findUnique({
+          where: { id: input.characterId },
+          select: { showTokenName: true },
+        })
+      : null;
     return tx.arenaToken.create({
-      data: { sceneId, ...input, position: (last._max.position ?? -1) + 1 },
+      data: {
+        sceneId,
+        ...input,
+        showName: character?.showTokenName ?? true,
+        position: (last._max.position ?? -1) + 1,
+      },
       include: TOKEN_INCLUDE,
     });
   });
   return toArenaToken(row);
+};
+
+/**
+ * Pastes copies of tokens; a copy shares the image only when it is a shared asset (an old per-token image key is
+ * deleted with its token, so the copy starts without it).
+ */
+const copyMany: IArenaTokenModels["copyMany"] = async (sceneId, copies) => {
+  if (copies.length === 0) return [];
+  const created = await getDatabase().$transaction(async (tx) => {
+    const sources = await tx.arenaToken.findMany({
+      where: { id: { in: [...new Set(copies.map((copy) => copy.sourceId))] } },
+      include: { statusViewers: { select: { accountId: true } } },
+    });
+    const byId = new Map(sources.map((source) => [source.id, source]));
+    const last = await tx.arenaToken.aggregate({ where: { sceneId }, _max: { position: true } });
+    const first = (last._max.position ?? -1) + 1;
+    const rows = copies.flatMap((copy) => {
+      const source = byId.get(copy.sourceId);
+      return source ? [{ id: randomUUID(), source, copy }] : [];
+    });
+    if (rows.length === 0) return [];
+    await tx.arenaToken.createMany({
+      data: rows.map(({ id, source, copy }, index) => ({
+        id,
+        sceneId,
+        characterId: source.characterId,
+        name: source.name,
+        imageKey: assetIdOf(source.imageKey) ? source.imageKey : null,
+        tokenStyle: source.tokenStyle,
+        showName: source.showName,
+        x: copy.x,
+        y: copy.y,
+        size: source.size,
+        hidden: source.hidden,
+        position: first + index,
+        healthCurrent: source.healthCurrent,
+        healthMax: source.healthMax,
+        sanityCurrent: source.sanityCurrent,
+        sanityMax: source.sanityMax,
+        statusPublic: source.statusPublic,
+      })),
+    });
+    const viewers = rows.flatMap(({ id, source }) =>
+      source.statusViewers.map(({ accountId }) => ({ tokenId: id, accountId })),
+    );
+    if (viewers.length > 0) await tx.arenaTokenStatusViewer.createMany({ data: viewers });
+    return rows.map(({ id }) => id);
+  });
+  const tokens = await findManyByIds(created);
+  const order = new Map<string, number>(created.map((id, index) => [id, index]));
+  return tokens.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 };
 
 /**
@@ -211,6 +276,7 @@ export const arenaTokenModels: IArenaTokenModels = {
   findManyByIds,
   moveMany,
   create,
+  copyMany,
   update,
   remove,
   updateMany,

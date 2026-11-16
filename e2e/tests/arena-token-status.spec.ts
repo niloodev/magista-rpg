@@ -1,7 +1,13 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 import { apiAs, payloadOf } from "../support/api";
-import { createArenaScene, openArena, readArena, setLiveScene } from "../support/arena";
+import {
+  createArenaScene,
+  openArena,
+  openTokenMenu,
+  readArena,
+  setLiveScene,
+} from "../support/arena";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs } from "../support/session";
@@ -55,7 +61,7 @@ test.describe("arena: vida, sanidade e Aplicar mudança", () => {
     await loginAs(page, GM);
     await openArena(page);
     await selectAll(page);
-    await page.getByRole("button", { name: "Configurar" }).click();
+    await (await openTokenMenu(page)).getByRole("menuitem", { name: "Configurar" }).click();
     const dialog = page.getByRole("dialog", { name: "Configurações do token" });
     await dialog.getByLabel("Vida atual").fill("8");
     await dialog.getByLabel("Vida máxima").fill("20");
@@ -98,7 +104,9 @@ test.describe("arena: vida, sanidade e Aplicar mudança", () => {
     await expect(page.getByRole("img", { name: /^Vida / })).toHaveCount(0);
   });
 
-  test("o jogador aplica dano na própria ficha pelo botão direito no token", async ({ page }) => {
+  test("o jogador aplica dano na própria ficha pelo menu do botão direito no token", async ({
+    page,
+  }) => {
     const { playerCharacterId } = e2eState();
     const own = await payloadOf<{ token: { id: string } }>(
       await gm.post(`/arena/scenes/${npcScene}/tokens`, {
@@ -122,6 +130,10 @@ test.describe("arena: vida, sanidade e Aplicar mudança", () => {
         y: 56 + (viewport.height - 56) / 2,
       };
       await page.mouse.click(center.x, center.y, { button: "right" });
+      await page
+        .getByRole("menu", { name: /^Ações de/ })
+        .getByRole("menuitem", { name: "Aplicar mudança" })
+        .click();
       const menu = page.getByRole("dialog", { name: "Aplicar mudança" });
       await expect(menu).toBeVisible();
       await menu.getByText("Causar dano", { exact: true }).click();

@@ -2,6 +2,11 @@ import type { IArenaToken, IArenaView } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  tokenDisplayName,
+  dropPlacements,
+  hasTransparentEdges,
+  pastePlacements,
+  tokenNameFromFile,
   arenaHint,
   arrowDelta,
   dockedIdOf,
@@ -33,6 +38,8 @@ function token(id: string, characterId: string | null): IArenaToken {
     name: id,
     imageUrl: characterId ? `/media/${id}.png` : null,
     imageThumbUrl: null,
+    style: "portrait",
+    showName: true,
     x: 10,
     y: 20,
     size: 140,
@@ -295,5 +302,82 @@ describe("arena utils: change preference", () => {
     window.localStorage.setItem("magista-arena-change", "{oops");
     expect(readChangePreference().kind).toBe("damage");
     vi.unstubAllGlobals();
+  });
+});
+
+describe("pastePlacements", () => {
+  const bounds = { width: 1000, height: 800 };
+  const copied = [
+    { id: "a", x: 100, y: 100 },
+    { id: "b", x: 200, y: 140 },
+  ];
+
+  it("centers the group on the pointer keeping its layout", () => {
+    expect(pastePlacements(copied, { x: 500, y: 400 }, bounds)).toEqual([
+      { sourceId: "a", x: 450, y: 380 },
+      { sourceId: "b", x: 550, y: 420 },
+    ]);
+  });
+
+  it("shifts one board unit without a pointer and stays on the board", () => {
+    expect(pastePlacements(copied, null, bounds)).toEqual([
+      { sourceId: "a", x: 170, y: 170 },
+      { sourceId: "b", x: 270, y: 210 },
+    ]);
+    expect(pastePlacements(copied, { x: 990, y: 790 }, bounds).map((copy) => copy.x)).toEqual([
+      940, 1000,
+    ]);
+  });
+});
+
+describe("tokenNameFromFile", () => {
+  it("drops the extension and turns separators into spaces", () => {
+    expect(tokenNameFromFile("goblin_arqueiro-2.png")).toBe("goblin arqueiro 2");
+    expect(tokenNameFromFile(".png")).toBe("Token");
+    expect(tokenNameFromFile(`${"a".repeat(90)}.webp`)).toHaveLength(60);
+  });
+});
+
+describe("dropPlacements", () => {
+  it("lines the tokens up around the drop point, inside the board", () => {
+    expect(dropPlacements({ x: 500, y: 300 }, 1, { width: 1000, height: 800 })).toEqual([
+      { x: 500, y: 300 },
+    ]);
+    expect(dropPlacements({ x: 20, y: 300 }, 2, { width: 1000, height: 800 })).toEqual([
+      { x: 0, y: 300 },
+      { x: 107.5, y: 300 },
+    ]);
+  });
+});
+
+describe("hasTransparentEdges", () => {
+  const pixels = (width: number, height: number, alphaAt: (x: number, y: number) => number) => {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y += 1)
+      for (let x = 0; x < width; x += 1) data[(y * width + x) * 4 + 3] = alphaAt(x, y);
+    return data;
+  };
+
+  it("spots a cut-out figure by its transparent border", () => {
+    const figure = pixels(8, 8, (x, y) => (x > 1 && x < 6 && y > 1 && y < 6 ? 255 : 0));
+    expect(hasTransparentEdges(figure, 8, 8)).toBe(true);
+  });
+
+  it("treats an opaque picture as a portrait", () => {
+    expect(
+      hasTransparentEdges(
+        pixels(8, 8, () => 255),
+        8,
+        8,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("tokenDisplayName", () => {
+  it("hides a hidden name from players only", () => {
+    expect(tokenDisplayName({ name: "Ogro", showName: false }, false)).toBe("Token");
+    expect(tokenDisplayName({ name: "Ogro", showName: false }, true)).toBe("Ogro");
+    expect(tokenDisplayName({ name: "Ogro", showName: true }, false)).toBe("Ogro");
   });
 });

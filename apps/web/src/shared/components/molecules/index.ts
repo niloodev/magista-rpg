@@ -17,3 +17,4 @@ export * from "./SkeletonRegion";
 export * from "./Stepper";
 export * from "./StepperSkeleton";
 export * from "./Tabs";
+export * from "./TokenStyleChoice";

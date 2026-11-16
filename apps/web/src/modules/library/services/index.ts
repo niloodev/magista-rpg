@@ -11,3 +11,4 @@ export * from "./setCharacterAccess";
 export * from "./removeCharacterImage";
 export * from "./uploadCharacterImage";
 export * from "./setCharacterFeatures";
+export * from "./setCharacterTokenSettings";

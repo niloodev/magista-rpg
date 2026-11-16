@@ -1,4 +1,15 @@
 @layer components {
+  .magista-checker {
+    background-color: var(--magista-void-800, #12040a);
+    background-image: conic-gradient(
+      rgba(255, 255, 255, 0.06) 25%,
+      transparent 0 50%,
+      rgba(255, 255, 255, 0.06) 0 75%,
+      transparent 0
+    );
+    background-size: 16px 16px;
+  }
+
   .magista-input {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(222, 30, 92, 0.15);

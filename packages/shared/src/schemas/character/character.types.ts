@@ -12,6 +12,8 @@ import type {
   renameCharacterInputSchema,
   resourceSchema,
   setCharacterAccessInputSchema,
+  setTokenSettingsInputSchema,
+  tokenStyleSchema,
   traitSchema,
   updateSheetInputSchema,
 } from "./character.schemas";
@@ -41,6 +43,10 @@ export type ISetCharacterAccessInput = z.infer<typeof setCharacterAccessInputSch
 export type CharacterImageKind = z.infer<typeof characterImageKindSchema>;
 
 export type ICharacterImages = z.infer<typeof characterImagesSchema>;
+
+export type TokenStyle = z.infer<typeof tokenStyleSchema>;
+
+export type ISetTokenSettingsInput = z.infer<typeof setTokenSettingsInputSchema>;
 
 /** The image URLs of a character (full images and their thumbnails). */
 export interface ICharacterImageUrls {

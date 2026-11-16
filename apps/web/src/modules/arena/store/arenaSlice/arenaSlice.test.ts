@@ -11,6 +11,8 @@ function token(id: string, extra: Partial<IArenaToken> = {}): IArenaToken {
     name: id,
     imageUrl: null,
     imageThumbUrl: null,
+    style: "portrait",
+    showName: true,
     x: 0,
     y: 0,
     size: 140,
@@ -269,5 +271,13 @@ describe("arena slice: token status", () => {
     const healed = { ...status, health: { current: 9, max: 10 } };
     store.getState().applyCharacterStatus("c1", healed);
     expect(store.getState().arena.view?.statuses.b).toEqual(healed);
+  });
+
+  it("keeps the copied tokens when leaving the Arena", () => {
+    const store = loaded();
+    store.getState().copyArenaTokens([token("a")]);
+    store.getState().resetArena();
+    expect(store.getState().arena.view).toBeNull();
+    expect(store.getState().arena.tokenClipboard.map((copied) => copied.id)).toEqual(["a"]);
   });
 });

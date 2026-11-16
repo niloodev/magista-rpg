@@ -11,4 +11,5 @@ export const AVATAR_SIZES: Record<AvatarSize, { box: string; pixels: number; tex
 export const AVATAR_SHAPES: Record<AvatarShape, string> = {
   square: "border border-primary/40 bg-void-800",
   circle: "rounded-full ring-2 ring-primary/50 ring-offset-2 ring-offset-void-900 bg-void-700",
+  figure: "",
 };

@@ -89,6 +89,23 @@ export function characterImageUrls(avatarKey: string | null, artKey: string | nu
 }
 
 /**
+ * Token fields of a character: the isometric image URLs, the chosen style (`figure` without the image falls
+ * back to `portrait`) and whether its tokens show the name.
+ */
+export function characterTokenFields(
+  figureKey: string | null,
+  tokenStyle: string | null,
+  showTokenName: boolean,
+) {
+  return {
+    showTokenName,
+    figureUrl: mediaUrlOf(figureKey),
+    figureThumbUrl: thumbUrlOf(figureKey),
+    tokenStyle: figureKey && tokenStyle === "figure" ? ("figure" as const) : ("portrait" as const),
+  };
+}
+
+/**
  * Content hash of an uploaded image (the same bytes always give the same asset).
  */
 export function hashImage(body: Buffer): string {
