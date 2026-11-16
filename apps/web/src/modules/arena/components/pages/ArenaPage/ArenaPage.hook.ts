@@ -458,7 +458,7 @@ export function useArenaPage() {
   const scene = view?.scene ?? null;
   const placement = useArenaTokenPlacement({
     sceneId: scene?.id ?? null,
-    enabled: isGm && status === "ready",
+    enabled: status === "ready",
     controlsRef,
     boundsRef,
     onError: setActionError,
@@ -467,6 +467,12 @@ export function useArenaPage() {
   const onDropCharacter = useStableCallback(placement.dropCharacter);
   const onNewNpc = useStableCallback(placement.openNpcDialog);
   const onDropFiles = useStableCallback(placement.dropImages);
+  const onDropCharacterId = useStableCallback(
+    (characterId: string, point: { x: number; y: number }) => {
+      const character = libraryCharacters.find((entry) => entry.id === characterId);
+      if (character) placement.dropCharacter(character, point);
+    },
+  );
   const stageScene = useMemo(
     () =>
       scene
@@ -484,6 +490,13 @@ export function useArenaPage() {
     if (sheetTarget) openSheet(sheetTarget);
   });
 
+  const controllableIds = useMemo(
+    () => new Set(renderTokens.filter((token) => token.controllable).map((token) => token.id)),
+    [renderTokens],
+  );
+  const canRemove =
+    selectedTokens.length > 0 &&
+    (isGm || selectedTokens.every((token) => controllableIds.has(token.id)));
   const onApplyChangeAt = useStableCallback((point: IArenaPoint) => openChangeMenu(null, point));
   const tokenActions = useArenaTokenActions({
     isGm,
@@ -494,6 +507,7 @@ export function useArenaPage() {
     boundsRef,
     allHidden,
     canOpenSheet: sheetTarget !== null,
+    canRemove,
     onApplyChange: onApplyChangeAt,
     onConfigure: tokenStatus.openSettings,
     onToggleHidden,
@@ -546,11 +560,7 @@ export function useArenaPage() {
       openChangeMenu(null, null);
       return;
     }
-    if (
-      (event.key === "Delete" || event.key === "Backspace") &&
-      isGm &&
-      selectedTokens.length > 0
-    ) {
+    if ((event.key === "Delete" || event.key === "Backspace") && canRemove) {
       event.preventDefault();
       setConfirmRemove(true);
       return;
@@ -654,6 +664,7 @@ export function useArenaPage() {
     onSizeChange,
     confirmRemove,
     confirmRemoveTitle: ARENA_SELECTION_TEXTS.confirmTitle(selectedTokens.length),
+    confirmRemoveMessage: ARENA_SELECTION_TEXTS.confirmMessage(selectedTokens.length),
     onConfirmRemove: () => void onConfirmRemove(),
     onCancelRemove: () => setConfirmRemove(false),
     onBounds,
@@ -700,6 +711,7 @@ export function useArenaPage() {
     }`,
     onSubmitNpc: placement.submitNpc,
     onDropFiles: isGm && scene && status === "ready" ? onDropFiles : undefined,
+    onDropCharacterId: !isGm && scene && status === "ready" ? onDropCharacterId : undefined,
     imageDrop: placement.imageDropFiles
       ? {
           files: placement.imageDropFiles,

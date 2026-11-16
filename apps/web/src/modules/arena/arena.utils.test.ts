@@ -2,6 +2,7 @@ import type { IArenaToken, IArenaView } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  pickAttacker,
   tokenDisplayName,
   dropPlacements,
   hasTransparentEdges,
@@ -379,5 +380,21 @@ describe("tokenDisplayName", () => {
     expect(tokenDisplayName({ name: "Ogro", showName: false }, false)).toBe("Token");
     expect(tokenDisplayName({ name: "Ogro", showName: false }, true)).toBe("Ogro");
     expect(tokenDisplayName({ name: "Ogro", showName: true }, false)).toBe("Ogro");
+  });
+});
+
+describe("pickAttacker", () => {
+  const options = [{ id: "ana" }, { id: "bruno" }];
+
+  it("starts a player with their own token and the GM with nobody", () => {
+    expect(pickAttacker(options, null, false)).toBe("ana");
+    expect(pickAttacker([], null, false)).toBe("");
+    expect(pickAttacker(options, null, true)).toBe("");
+  });
+
+  it("keeps the choice, nobody included, and drops one no longer listed", () => {
+    expect(pickAttacker(options, "", false)).toBe("");
+    expect(pickAttacker(options, "bruno", false)).toBe("bruno");
+    expect(pickAttacker(options, "gone", false)).toBe("");
   });
 });

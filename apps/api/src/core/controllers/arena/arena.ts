@@ -170,13 +170,7 @@ export function createArenaController({
         : [];
       const accessible =
         viewer.role === "GM" ? [] : await characters.listAccessibleIds(viewer.accountId);
-      const controllableCharacterIds = [
-        ...new Set(
-          list
-            .map((token) => token.characterId)
-            .filter((id): id is string => id !== null && accessible.includes(id)),
-        ),
-      ];
+      const controllableCharacterIds = accessible;
       const shownScene = scene && viewer.role !== "GM" ? { ...scene, folderId: null } : scene;
       const statusRows = scene
         ? await tokens.listStatuses({ sceneId: scene.id, includeHidden: viewer.role === "GM" })
@@ -408,16 +402,24 @@ export function createArenaController({
   };
 
   const createToken: IArenaController["createToken"] = async (viewer, sceneId, input) => {
-    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     if (!isId(sceneId)) return { error: arenaErrors.sceneNotFound };
     const parsed = createArenaTokenInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidToken };
+    const gm = viewer.role === "GM";
     const { characterId, name, style, ...placement } = parsed.data;
+    if (!gm && !characterId) return { error: arenaErrors.gmOnly };
     try {
+      const liveSceneId = await scenes.findActiveSceneId();
+      if (!gm && sceneId !== liveSceneId) return { error: arenaErrors.sceneNotFound };
       const scene = await scenes.findById(sceneId);
       if (!scene) return { error: arenaErrors.sceneNotFound };
-      if (characterId && !(await characters.exists(characterId)))
+      if (!gm) {
+        const accessible = await characters.listAccessibleIds(viewer.accountId);
+        if (!characterId || !accessible.includes(characterId))
+          return { error: arenaErrors.ownSheetsOnly };
+      } else if (characterId && !(await characters.exists(characterId)))
         return { error: arenaErrors.characterNotFound };
+      if (!gm) placement.hidden = false;
       const token = await tokens.create(sceneId, {
         characterId,
         name: characterId ? null : (name ?? null),
@@ -425,7 +427,7 @@ export function createArenaController({
         ...placement,
         ...clampToMap(placement, scene),
       });
-      const activeSceneId = await scenes.findActiveSceneId();
+      const activeSceneId = liveSceneId;
       const audience = tokenAudience(token, activeSceneId);
       const [row] = await tokens.listStatuses({ ids: [token.id] });
       return {
@@ -520,10 +522,15 @@ export function createArenaController({
   };
 
   const deleteTokens: IArenaController["deleteTokens"] = async (viewer, input) => {
-    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     const parsed = deleteArenaTokensInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidToken };
     try {
+      if (viewer.role !== "GM") {
+        const auth = await authorizeMany(viewer, parsed.data.ids);
+        if (auth.forbidden) return { error: arenaErrors.forbidden };
+        if (auth.allowed.length !== parsed.data.ids.length)
+          return { error: arenaErrors.tokenNotFound };
+      }
       const removed = await tokens.removeMany(parsed.data.ids);
       if (removed.length === 0) return { error: arenaErrors.tokenNotFound };
       for (const { id } of removed) await cleanup(images.removeToken(id));
@@ -541,9 +548,13 @@ export function createArenaController({
   };
 
   const deleteToken: IArenaController["deleteToken"] = async (viewer, id) => {
-    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
     if (!isId(id)) return { error: arenaErrors.tokenNotFound };
     try {
+      if (viewer.role !== "GM") {
+        const auth = await authorizeMany(viewer, [id]);
+        if (auth.forbidden) return { error: arenaErrors.forbidden };
+        if (auth.allowed.length === 0) return { error: arenaErrors.tokenNotFound };
+      }
       const removed = await tokens.remove(id);
       if (!removed) return { error: arenaErrors.tokenNotFound };
       await cleanup(images.removeToken(id));

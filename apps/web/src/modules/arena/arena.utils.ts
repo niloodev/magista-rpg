@@ -528,3 +528,16 @@ export function tokenDisplayName(
 ): string {
   return token.showName || isGm ? token.name : ARENA_HIDDEN_NAME;
 }
+
+/**
+ * Attacker of "Aplicar mudança": the one chosen while the menu is open ("" is nobody), else, for a player, their
+ * first token on the scene (the GM starts with nobody); a choice no longer on the list falls back to nobody.
+ */
+export function pickAttacker(
+  options: { id: string }[],
+  chosen: string | null,
+  isGm: boolean,
+): string {
+  if (chosen === null) return isGm ? "" : (options[0]?.id ?? "");
+  return options.some((option) => option.id === chosen) ? chosen : "";
+}

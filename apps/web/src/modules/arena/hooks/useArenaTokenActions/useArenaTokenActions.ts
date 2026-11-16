@@ -29,6 +29,7 @@ export function useArenaTokenActions({
   boundsRef,
   allHidden,
   canOpenSheet,
+  canRemove,
   onApplyChange,
   onConfigure,
   onToggleHidden,
@@ -136,7 +137,7 @@ export function useArenaTokenActions({
         separated: items.length > 0 && items.at(-1)?.id !== "copy",
         onSelect: () => void paste(world),
       });
-    if (isGm && tokens.length > 0)
+    if (canRemove && tokens.length > 0)
       items.push({
         id: "remove",
         label: ARENA_TOKEN_MENU_TEXTS.remove,
@@ -160,6 +161,7 @@ export function useArenaTokenActions({
     selectedTokens,
     isGm,
     canOpenSheet,
+    canRemove,
     allHidden,
     clipboardSize,
     onApplyChange,

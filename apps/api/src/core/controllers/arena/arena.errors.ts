@@ -6,6 +6,7 @@ export const arenaErrors = {
   tokenNotFound: "Token não encontrado.",
   characterNotFound: "Personagem não encontrado.",
   forbidden: "Você não controla este token.",
+  ownSheetsOnly: "Você só pode colocar no mapa os tokens das suas fichas.",
   invalidName: "Informe um nome de até 60 caracteres.",
   invalidToken: "Dados do token inválidos.",
   invalidMove: "Posição inválida.",

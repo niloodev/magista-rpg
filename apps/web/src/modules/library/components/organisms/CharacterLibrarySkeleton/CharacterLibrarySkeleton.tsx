@@ -14,7 +14,7 @@ import type { CharacterLibrarySkeletonProps } from "./CharacterLibrarySkeleton.t
  * inert. Rows follow the last library loaded here.
  */
 export function CharacterLibrarySkeleton(props: CharacterLibrarySkeletonProps) {
-  const { gm = false, variant = "page" } = props;
+  const { gm = false, variant = "page", rowActions = false } = props;
   const sidebar = variant === "sidebar";
   const { shape, title, titleSample, countSample } = useCharacterLibrarySkeleton(props);
   return (
@@ -69,7 +69,7 @@ export function CharacterLibrarySkeleton(props: CharacterLibrarySkeletonProps) {
             </div>
           )}
         </div>
-        <LibraryRowsSkeleton shape={shape} tree={gm} announce={false} />
+        <LibraryRowsSkeleton shape={shape} tree={gm} announce={false} rowActions={rowActions} />
       </div>
     </Panel>
   );

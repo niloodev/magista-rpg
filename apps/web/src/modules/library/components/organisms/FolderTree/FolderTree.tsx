@@ -3,13 +3,14 @@
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
 
+import { DragPreview } from "@/modules/library/components/molecules";
 import type { ITreeLeaf } from "@/modules/library/library.types";
 
 import { FREE_AXIS, VERTICAL_AXIS } from "./FolderTree.constants";
 import { TreeRowsProvider } from "./FolderTree.context";
 import { useFolderTree } from "./FolderTree.hook";
 import type { FolderTreeProps } from "./FolderTree.types";
-import { DragPreview, RootDropZone, TreeFolder, TreeLeaf } from "./subcomponents";
+import { RootDropZone, TreeFolder, TreeLeaf } from "./subcomponents";
 
 export function FolderTree<L extends ITreeLeaf>(props: FolderTreeProps<L>) {
   const { labels, empty, freeAxis = false, leafIcon } = props;

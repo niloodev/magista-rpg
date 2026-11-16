@@ -22,6 +22,7 @@ import {
 import type { IArenaChangeMenuState, IArenaChangePreference } from "@/modules/arena/arena.types";
 import {
   changeTargets,
+  pickAttacker,
   readChangePreference,
   saveChangePreference,
   statusReadout,
@@ -68,7 +69,7 @@ export function useArenaTokenStatus({
   const [changeError, setChangeError] = useState<string | null>(null);
   const [changePending, setChangePending] = useState(false);
   const [settingsTokenId, setSettingsTokenId] = useState<string | null>(null);
-  const [chosenAttacker, setAttackerId] = useState("");
+  const [chosenAttacker, setAttackerId] = useState<string | null>(null);
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
   const [fetchedAccounts, setFetchedAccounts] = useState<IAccount[] | null>(null);
   const [accountsFailed, setAccountsFailed] = useState(false);
@@ -124,6 +125,7 @@ export function useArenaTokenStatus({
       const first = tokenIds[0];
       if (!first) return;
       setChangeError(null);
+      setAttackerId(null);
       setChangeMenu({
         tokenIds,
         target: ARENA_CHANGE_TEXTS.target(tokenName(first), tokenIds.length),
@@ -157,9 +159,7 @@ export function useArenaTokenStatus({
       }));
   }, [changeMenu, view, isGm]);
 
-  const attackerId = attackerOptions.some((option) => option.id === chosenAttacker)
-    ? chosenAttacker
-    : "";
+  const attackerId = pickAttacker(attackerOptions, chosenAttacker, isGm);
 
   const updateChange: IArenaTokenStatusControls["updateChange"] = useCallback((patch) => {
     setChangePreference((current) => {

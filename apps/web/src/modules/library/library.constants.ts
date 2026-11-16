@@ -6,6 +6,9 @@ import type { ILibraryShape } from "./library.types";
 
 export const ROOT_FOLDER_LABEL = "Todas as fichas";
 
+/** Data type of a sheet dragged out of a flat list (a player placing a token): the value is the sheet id. */
+export const CHARACTER_DRAG_TYPE = "application/x-magista-character";
+
 export const DRAG_ID_SEPARATOR = ":";
 
 export const ROOT_DROP_KIND = "root";

@@ -97,8 +97,10 @@ export const ARENA_SELECTION_TEXTS = {
   remove: "Remover",
   count: (count: number) => (count === 1 ? "1 token selecionado" : `${count} tokens selecionados`),
   confirmTitle: (count: number) => (count === 1 ? "Remover token?" : `Remover ${count} tokens?`),
-  confirmMessage:
-    "Os tokens saem da cena para todos. As fichas continuam na biblioteca e podem voltar ao mapa depois.",
+  confirmMessage: (count: number) =>
+    count === 1
+      ? "O token sai da cena para todos. A ficha continua na biblioteca e pode voltar ao mapa depois."
+      : "Os tokens saem da cena para todos. As fichas continuam na biblioteca e podem voltar ao mapa depois.",
 } as const;
 
 /** What players read instead of the name of a token whose name the GM hid. */
@@ -260,6 +262,8 @@ export const ARENA_PLACEMENT_TEXTS = {
       : "Os tokens entram lado a lado onde as imagens foram soltas, com o nome de cada arquivo.",
   dropSubmit: (count: number) => (count === 1 ? "Criar token" : `Criar ${count} tokens`),
   dropOverlay: "Solte para criar um token",
+  playerDragHint:
+    "Arraste uma ficha para o mapa, ou use Colocar no mapa no menu dela, para pôr o seu token.",
   dropInvalid: "Nenhuma imagem PNG, JPG, WEBP ou GIF de até 8 MB foi solta.",
   dragHint: "Arraste uma ficha para o mapa para criar o token ali.",
 } as const;
