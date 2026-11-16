@@ -6,20 +6,60 @@ const ASSET = "media/6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90/full.webp";
 const THUMB = "/media/media/6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90/thumb.webp";
 
 describe("tokenImageUrls", () => {
+  const images = (extra: object = {}) => ({
+    avatarKey: null,
+    artKey: null,
+    figureKey: null,
+    tokenStyle: "portrait",
+    showTokenName: true,
+    ...extra,
+  });
+
   it("uses the NPC image, then the avatar, then the art, each with its thumbnail", () => {
-    expect(tokenImageUrls(ASSET, null)).toEqual({
+    expect(tokenImageUrls(ASSET, "portrait", null)).toEqual({
       imageUrl: `/media/${ASSET}`,
       imageThumbUrl: THUMB,
+      style: "portrait",
     });
-    expect(tokenImageUrls(null, { avatarKey: ASSET, artKey: "legacy/avatars/x.png" })).toEqual({
-      imageUrl: `/media/${ASSET}`,
-      imageThumbUrl: THUMB,
-    });
-    expect(tokenImageUrls(null, { avatarKey: null, artKey: "legacy/avatars/x.png" })).toEqual({
+    expect(
+      tokenImageUrls(
+        null,
+        "portrait",
+        images({ avatarKey: ASSET, artKey: "legacy/avatars/x.png" }),
+      ),
+    ).toEqual({ imageUrl: `/media/${ASSET}`, imageThumbUrl: THUMB, style: "portrait" });
+    expect(tokenImageUrls(null, "portrait", images({ artKey: "legacy/avatars/x.png" }))).toEqual({
       imageUrl: "/media/legacy/avatars/x.png",
       imageThumbUrl: null,
+      style: "portrait",
     });
-    expect(tokenImageUrls(null, null)).toEqual({ imageUrl: null, imageThumbUrl: null });
+    expect(tokenImageUrls(null, "portrait", null)).toEqual({
+      imageUrl: null,
+      imageThumbUrl: null,
+      style: "portrait",
+    });
+  });
+
+  it("draws an NPC as a figure only with its own image", () => {
+    expect(tokenImageUrls(ASSET, "figure", null).style).toBe("figure");
+    expect(tokenImageUrls(null, "figure", null).style).toBe("portrait");
+  });
+
+  it("follows the sheet's choice, falling back to the portrait without the isometric image", () => {
+    const figure = "media/7a2d1c3f-9b54-4d5f-8c9e-3a4b2d6e8f01/full.webp";
+    expect(
+      tokenImageUrls(
+        null,
+        "portrait",
+        images({ avatarKey: ASSET, figureKey: figure, tokenStyle: "figure" }),
+      ),
+    ).toMatchObject({ imageUrl: `/media/${figure}`, style: "figure" });
+    expect(
+      tokenImageUrls(null, "portrait", images({ avatarKey: ASSET, tokenStyle: "figure" })),
+    ).toMatchObject({ imageUrl: `/media/${ASSET}`, style: "portrait" });
+    expect(
+      tokenImageUrls(null, "portrait", images({ avatarKey: ASSET, figureKey: figure })),
+    ).toMatchObject({ imageUrl: `/media/${ASSET}`, style: "portrait" });
   });
 });
 

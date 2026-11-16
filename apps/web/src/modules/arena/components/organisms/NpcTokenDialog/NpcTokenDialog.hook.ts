@@ -1,10 +1,11 @@
 "use client";
 
-import { ARENA_TOKEN_IMAGE_MAX_BYTES } from "@magista/shared";
+import { ARENA_TOKEN_IMAGE_MAX_BYTES, type TokenStyle } from "@magista/shared";
 import { useId, useState, type FormEvent } from "react";
 
 import { ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
 import { imageFileError } from "@/shared/components/molecules";
+import { useFilePreview } from "@/shared/hooks";
 
 import type { NpcTokenDialogProps } from "./NpcTokenDialog.types";
 
@@ -16,6 +17,8 @@ export function useNpcTokenDialog({ onSubmit }: Pick<NpcTokenDialogProps, "onSub
   const formId = useId();
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [style, setStyle] = useState<TokenStyle>("portrait");
+  const preview = useFilePreview(file);
   const [nameError, setNameError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -50,7 +53,7 @@ export function useNpcTokenDialog({ onSubmit }: Pick<NpcTokenDialogProps, "onSub
     }
     setFormError(null);
     setPending(true);
-    const failure = await onSubmit(trimmed, file);
+    const failure = await onSubmit(trimmed, file, file ? style : "portrait");
     setPending(false);
     if (failure) {
       setFormError(failure);
@@ -62,6 +65,9 @@ export function useNpcTokenDialog({ onSubmit }: Pick<NpcTokenDialogProps, "onSub
     formId,
     name,
     file,
+    style: file ? style : ("portrait" as const),
+    preview,
+    onStyleChange: setStyle,
     nameError,
     imageError,
     formError,

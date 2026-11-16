@@ -1,4 +1,4 @@
-import type { CharacterImageKind } from "@magista/shared";
+import type { CharacterImageKind, TokenStyle } from "@magista/shared";
 
 export interface CharacterImagesDialogProps {
   characterId: string;
@@ -6,6 +6,9 @@ export interface CharacterImagesDialogProps {
   /** Saved image paths ("/media/..."), as they come in the character DTO. */
   avatarUrl: string | null;
   artUrl: string | null;
+  figureUrl: string | null;
+  tokenStyle: TokenStyle;
+  showTokenName: boolean;
   /** Error to show when the dialog opens (e.g. an upload that failed right after creating the sheet). */
   initialError?: string | null;
   onClose: () => void;

@@ -26,7 +26,7 @@ export function Avatar({
           loading="lazy"
           decoding="async"
           draggable={false}
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${shape === "figure" ? "object-contain" : "object-cover"}`}
         />
       ) : (
         <span

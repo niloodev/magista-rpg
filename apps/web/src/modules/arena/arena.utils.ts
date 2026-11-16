@@ -15,10 +15,16 @@ import {
   type IArenaToken,
   type IArenaTokenStatus,
   type IArenaView,
+  type ICopyArenaTokensInput,
+  ARENA_UNIT_PX,
+  ARENA_TOKEN_SIZE_DEFAULT,
 } from "@magista/shared";
 
 import {
   ARENA_CHANGE_STORAGE_KEY,
+  ARENA_HIDDEN_NAME,
+  ARENA_TRANSPARENT_ALPHA,
+  ARENA_TRANSPARENT_EDGE_SHARE,
   ARENA_STATUS_TEXTS,
   ARENA_DOCK_TAB_PREFIX,
   ARENA_DOCK_TEXTS,
@@ -62,11 +68,15 @@ export function toRenderTokens(
     return {
       id: token.id,
       name: token.name,
-      imageUrl: mediaUrl(token.imageThumbUrl ?? token.imageUrl),
+      imageUrl: mediaUrl(
+        token.style === "figure" ? token.imageUrl : (token.imageThumbUrl ?? token.imageUrl),
+      ),
+      style: token.style,
       x: token.x,
       y: token.y,
       size: token.size,
       hidden: token.hidden,
+      label: token.showName ? "shown" : isGm ? "faint" : "hidden",
       controllable,
       tone: own ? "own" : "other",
       status: view.statuses[token.id] ?? null,
@@ -435,4 +445,86 @@ export function filterEffects(
         : entry.tags.includes(filter));
     return tagged && (matchesSearch(entry.name, query) || matchesSearch(entry.description, query));
   });
+}
+
+/**
+ * Where pasted copies go: the group keeps its layout, centered on `anchor` (the pointer over the map) or, without
+ * it, one board unit down and to the right of the originals; every copy stays inside the board.
+ */
+export function pastePlacements(
+  tokens: Pick<IArenaToken, "id" | "x" | "y">[],
+  anchor: IArenaPoint | null,
+  bounds: IArenaBounds,
+): ICopyArenaTokensInput["tokens"] {
+  if (tokens.length === 0) return [];
+  const centerX = tokens.reduce((sum, token) => sum + token.x, 0) / tokens.length;
+  const centerY = tokens.reduce((sum, token) => sum + token.y, 0) / tokens.length;
+  const offset = anchor
+    ? { x: anchor.x - centerX, y: anchor.y - centerY }
+    : { x: ARENA_UNIT_PX, y: ARENA_UNIT_PX };
+  return tokens.map((token) => {
+    const point = clampToMap({ x: token.x + offset.x, y: token.y + offset.y }, bounds);
+    return { sourceId: token.id, x: Math.round(point.x), y: Math.round(point.y) };
+  });
+}
+
+/**
+ * Token name from an image file name: without the extension, with dashes and underscores as spaces, cut to the
+ * name limit.
+ */
+export function tokenNameFromFile(fileName: string): string {
+  const base = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (base || "Token").slice(0, ARENA_NAME_MAX_LENGTH);
+}
+
+/**
+ * Points for tokens dropped together: side by side in a row centered on the drop point, one default token
+ * apart, kept on the board.
+ */
+export function dropPlacements(
+  point: IArenaPoint,
+  count: number,
+  bounds: IArenaBounds,
+): IArenaPoint[] {
+  const step = ARENA_TOKEN_SIZE_DEFAULT + ARENA_UNIT_PX / 2;
+  const first = point.x - ((count - 1) * step) / 2;
+  return Array.from({ length: count }, (_, index) =>
+    clampToMap({ x: first + index * step, y: point.y }, bounds),
+  );
+}
+
+/**
+ * Whether an image looks like a cut-out (isometric figure): a good part of its border pixels is transparent.
+ * `data` is RGBA, as read from a canvas.
+ */
+export function hasTransparentEdges(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): boolean {
+  if (width === 0 || height === 0) return false;
+  let edge = 0;
+  let clear = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (x !== 0 && y !== 0 && x !== width - 1 && y !== height - 1) continue;
+      edge += 1;
+      if ((data[(y * width + x) * 4 + 3] ?? 255) < ARENA_TRANSPARENT_ALPHA) clear += 1;
+    }
+  }
+  return clear / edge >= ARENA_TRANSPARENT_EDGE_SHARE;
+}
+
+/**
+ * Name of a token as the viewer reads it outside the map: players get a neutral word when the GM hid the name.
+ */
+export function tokenDisplayName(
+  token: Pick<IArenaToken, "name" | "showName">,
+  isGm: boolean,
+): string {
+  return token.showName || isGm ? token.name : ARENA_HIDDEN_NAME;
 }

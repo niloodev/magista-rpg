@@ -1,5 +1,5 @@
 import { sheetResourceOf } from "@magista/shared";
-import type { IArenaToken, IArenaTokenStatus } from "@magista/shared";
+import type { IArenaToken, IArenaTokenStatus, TokenStyle } from "@magista/shared";
 
 import { characterImageUrls, mediaUrlOf, thumbUrlOf } from "@/core/services/media";
 
@@ -9,27 +9,58 @@ interface ArenaTokenRow {
   characterId: string | null;
   name: string | null;
   imageKey: string | null;
+  tokenStyle: string;
+  showName: boolean;
   x: number;
   y: number;
   size: number;
   hidden: boolean;
   position: number;
-  character: { name: string; avatarKey: string | null; artKey: string | null } | null;
+  character: (ITokenCharacterImages & { name: string }) | null;
+}
+
+/** The stored images of a character that decide how its tokens are drawn. */
+export interface ITokenCharacterImages {
+  avatarKey: string | null;
+  artKey: string | null;
+  figureKey: string | null;
+  tokenStyle: string;
 }
 
 /**
- * Full and thumbnail images of a token: its own image (NPC), else the character's avatar, else the art.
+ * Images and effective style of a token. An NPC uses its own image and style; a character token uses the
+ * isometric figure when the sheet chose it and has one, else the avatar, else the art (as a round portrait).
  */
 export function tokenImageUrls(
   imageKey: string | null,
-  character: { avatarKey: string | null; artKey: string | null } | null,
-): { imageUrl: string | null; imageThumbUrl: string | null } {
-  if (imageKey) return { imageUrl: mediaUrlOf(imageKey), imageThumbUrl: thumbUrlOf(imageKey) };
-  if (!character) return { imageUrl: null, imageThumbUrl: null };
+  ownStyle: string,
+  character: ITokenCharacterImages | null,
+): { imageUrl: string | null; imageThumbUrl: string | null; style: TokenStyle } {
+  if (!character) {
+    return {
+      imageUrl: mediaUrlOf(imageKey),
+      imageThumbUrl: thumbUrlOf(imageKey),
+      style: imageKey && ownStyle === "figure" ? "figure" : "portrait",
+    };
+  }
+  if (imageKey) {
+    return {
+      imageUrl: mediaUrlOf(imageKey),
+      imageThumbUrl: thumbUrlOf(imageKey),
+      style: "portrait",
+    };
+  }
+  if (character.tokenStyle === "figure" && character.figureKey) {
+    return {
+      imageUrl: mediaUrlOf(character.figureKey),
+      imageThumbUrl: thumbUrlOf(character.figureKey),
+      style: "figure",
+    };
+  }
   const urls = characterImageUrls(character.avatarKey, character.artKey);
   return urls.avatarUrl
-    ? { imageUrl: urls.avatarUrl, imageThumbUrl: urls.avatarThumbUrl }
-    : { imageUrl: urls.artUrl, imageThumbUrl: urls.artThumbUrl };
+    ? { imageUrl: urls.avatarUrl, imageThumbUrl: urls.avatarThumbUrl, style: "portrait" }
+    : { imageUrl: urls.artUrl, imageThumbUrl: urls.artThumbUrl, style: "portrait" };
 }
 
 /**
@@ -43,7 +74,8 @@ export function toArenaToken(row: ArenaTokenRow): IArenaToken {
     sceneId: row.sceneId,
     characterId: row.characterId,
     name: row.name ?? character?.name ?? "",
-    ...tokenImageUrls(row.imageKey, character),
+    ...tokenImageUrls(row.imageKey, row.tokenStyle, character),
+    showName: row.showName,
     x: row.x,
     y: row.y,
     size: row.size,

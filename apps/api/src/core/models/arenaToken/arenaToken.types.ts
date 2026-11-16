@@ -4,6 +4,7 @@ import type {
   IArenaTokenStatus,
   IArenaTokenStatusAccess,
   ISheetResource,
+  TokenStyle,
 } from "@magista/shared";
 
 export interface ICreateArenaTokenRow {
@@ -13,10 +14,20 @@ export interface ICreateArenaTokenRow {
   y: number;
   size: number;
   hidden: boolean;
+  tokenStyle: TokenStyle;
+}
+
+/** A pasted copy: the token it copies (from any scene) and where the copy goes. */
+export interface ICopyArenaTokenRow {
+  sourceId: string;
+  x: number;
+  y: number;
 }
 
 export interface IUpdateArenaTokenRow {
   name?: string;
+  tokenStyle?: TokenStyle;
+  showName?: boolean;
   size?: number;
   hidden?: boolean;
   healthCurrent?: number | null;
@@ -69,8 +80,13 @@ export interface IArenaTokenModels {
   listByScene: (sceneId: string, options: { includeHidden: boolean }) => Promise<IArenaToken[]>;
   findById: (id: string) => Promise<IArenaToken | null>;
   findManyByIds: (ids: string[]) => Promise<IArenaToken[]>;
-  /** Appends a token on top of the scene's others. */
+  /** Appends a token on top of the scene's others (a character token shows its name as its sheet chose). */
   create: (sceneId: string, input: ICreateArenaTokenRow) => Promise<IArenaToken>;
+  /**
+   * Copies tokens into a scene in one transaction (image, size, visibility, style, own status and who sees it)
+   * and returns the copies in the order asked; sources that no longer exist are skipped.
+   */
+  copyMany: (sceneId: string, copies: ICopyArenaTokenRow[]) => Promise<IArenaToken[]>;
   update: (id: string, input: IUpdateArenaTokenRow) => Promise<IArenaToken | null>;
   /** Moves several tokens in one statement; with a guard, only those still visible on that scene. */
   moveMany: (moves: IArenaTokenMove[], guard?: IArenaMoveGuard) => Promise<IArenaToken[]>;

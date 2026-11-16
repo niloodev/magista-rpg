@@ -105,6 +105,12 @@ arenaRoutes.post("/scenes/:id/tokens", async (req, res: AuthedResponse) => {
   if (created) broadcastArenaToken(created);
 });
 
+arenaRoutes.post("/scenes/:id/tokens/copy", async (req, res: AuthedResponse) => {
+  const result = await arenaController.copyTokens(viewerOf(res), req.params.id ?? "", req.body);
+  const changes = sendResult(res, result, ARENA_ERROR_STATUS, 201);
+  if (changes) broadcastArenaTokens(changes);
+});
+
 arenaRoutes.patch("/tokens", async (req, res: AuthedResponse) => {
   const result = await arenaController.updateTokens(viewerOf(res), req.body);
   const changes = sendResult(res, result, ARENA_ERROR_STATUS);
@@ -127,6 +133,12 @@ arenaRoutes.delete("/tokens/:id", async (req, res: AuthedResponse) => {
   const result = await arenaController.deleteToken(viewerOf(res), req.params.id ?? "");
   const removed = sendResult(res, result, ARENA_ERROR_STATUS);
   if (removed) broadcastArenaTokenRemoved(removed);
+});
+
+arenaRoutes.delete("/tokens/:id/image", async (req, res: AuthedResponse) => {
+  const result = await arenaController.removeTokenImage(viewerOf(res), req.params.id ?? "");
+  const changed = sendResult(res, result, ARENA_ERROR_STATUS);
+  if (changed) broadcastArenaToken(changed);
 });
 
 arenaRoutes.put("/tokens/:id/image", async (req, res: AuthedResponse) => {

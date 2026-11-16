@@ -1,19 +1,23 @@
 "use client";
 
 import {
+  ARENA_TOKEN_IMAGE_MAX_BYTES,
   isErrorResult,
+  type TokenStyle,
   type IArenaPoint,
   type ICharacterSummary,
   type ICreateArenaTokenInput,
 } from "@magista/shared";
 import { useCallback, useMemo, useState } from "react";
 
-import { ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
-import { placementPoint } from "@/modules/arena/arena.utils";
+import { ARENA_IMAGE_DROP_MAX, ARENA_PLACEMENT_TEXTS } from "@/modules/arena/arena.constants";
+import { dropPlacements, placementPoint, tokenNameFromFile } from "@/modules/arena/arena.utils";
 import { createArenaToken, uploadArenaTokenImage } from "@/modules/arena/services";
 import { useAppStoreApi } from "@/modules/shell/store";
+import { imageFileError } from "@/shared/components/molecules";
 
 import type {
+  IArenaImageDrop,
   ArenaPlacementResult,
   IArenaTokenPlacement,
   UseArenaTokenPlacementProps,
@@ -21,7 +25,8 @@ import type {
 
 /**
  * GM token creation in the Arena: a sheet dropped on the map (at the drop point), "Colocar no mapa" and NPC
- * tokens (at the center of the view). The new token shows at once, selected, and the table gets it by event.
+ * tokens (at the center of the view) and images dropped from the computer (where they fall, after asking the
+ * style). The new token shows at once, selected, and the table gets it by event.
  */
 export function useArenaTokenPlacement({
   sceneId,
@@ -32,6 +37,7 @@ export function useArenaTokenPlacement({
 }: UseArenaTokenPlacementProps): IArenaTokenPlacement {
   const store = useAppStoreApi();
   const [npcDialogOpen, setNpcDialogOpen] = useState(false);
+  const [imageDrop, setImageDrop] = useState<IArenaImageDrop | null>(null);
 
   const create = useCallback(
     async (
@@ -72,8 +78,8 @@ export function useArenaTokenPlacement({
   );
 
   const submitNpc = useCallback(
-    async (name: string, file: File | null) => {
-      const outcome = await create({ name }, null);
+    async (name: string, file: File | null, style: TokenStyle) => {
+      const outcome = await create({ name, style }, null);
       if (!outcome.ok) return outcome.error;
       setNpcDialogOpen(false);
       if (file) {
@@ -85,6 +91,55 @@ export function useArenaTokenPlacement({
     },
     [create, onError],
   );
+
+  const dropImages = useCallback(
+    (files: File[], point: { x: number; y: number }) => {
+      if (!enabled || !sceneId) return;
+      const world = controlsRef.current?.clientToWorld(point.x, point.y) ?? null;
+      if (!world) return;
+      const images = files.filter(
+        (file) =>
+          imageFileError(file, ARENA_TOKEN_IMAGE_MAX_BYTES, ARENA_PLACEMENT_TEXTS.imageTooLarge) ===
+          null,
+      );
+      if (images.length === 0) {
+        onError(ARENA_PLACEMENT_TEXTS.dropInvalid);
+        return;
+      }
+      setImageDrop({ files: images.slice(0, ARENA_IMAGE_DROP_MAX), point: world });
+    },
+    [enabled, sceneId, controlsRef, onError],
+  );
+
+  const submitImageDrop = useCallback(
+    async (names: string[], style: TokenStyle) => {
+      if (!imageDrop) return null;
+      const points = dropPlacements(imageDrop.point, imageDrop.files.length, boundsRef.current);
+      const created: string[] = [];
+      const failures: string[] = [];
+      for (const [index, file] of imageDrop.files.entries()) {
+        const name = names[index]?.trim() || tokenNameFromFile(file.name);
+        const outcome = await create({ name, style }, points[index] ?? imageDrop.point);
+        if (!outcome.ok) {
+          if (created.length === 0) return outcome.error;
+          failures.push(outcome.error);
+          continue;
+        }
+        created.push(outcome.tokenId);
+        const uploaded = await uploadArenaTokenImage(outcome.tokenId, file);
+        if (isErrorResult(uploaded)) failures.push(`${name}: ${uploaded.error}`);
+      }
+      setImageDrop(null);
+      if (created.length > 1 && store.getState().arena.view?.scene?.id === sceneId)
+        store.getState().selectArenaTokens(created, "replace");
+      if (failures.length > 0)
+        onError(`${ARENA_PLACEMENT_TEXTS.imageNotSent} ${failures.join(" ")}`);
+      return null;
+    },
+    [imageDrop, boundsRef, create, store, sceneId, onError],
+  );
+
+  const closeImageDrop = useCallback(() => setImageDrop(null), []);
 
   const placeCharacter = useCallback(
     (character: ICharacterSummary) => void placeSheet(character, null),
@@ -101,7 +156,22 @@ export function useArenaTokenPlacement({
       openNpcDialog,
       closeNpcDialog,
       submitNpc,
+      imageDropFiles: imageDrop?.files ?? null,
+      dropImages,
+      submitImageDrop,
+      closeImageDrop,
     }),
-    [placeCharacter, dropCharacter, npcDialogOpen, openNpcDialog, closeNpcDialog, submitNpc],
+    [
+      placeCharacter,
+      dropCharacter,
+      npcDialogOpen,
+      openNpcDialog,
+      closeNpcDialog,
+      submitNpc,
+      imageDrop,
+      dropImages,
+      submitImageDrop,
+      closeImageDrop,
+    ],
   );
 }

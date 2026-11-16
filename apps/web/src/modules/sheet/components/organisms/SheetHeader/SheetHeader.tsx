@@ -136,6 +136,9 @@ export function SheetHeader(props: SheetHeaderProps) {
           characterName={character.name}
           avatarUrl={character.avatarUrl}
           artUrl={character.artUrl}
+          figureUrl={character.figureUrl}
+          tokenStyle={character.tokenStyle}
+          showTokenName={character.showTokenName}
           onClose={closeImages}
         />
       )}

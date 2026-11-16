@@ -31,6 +31,9 @@ export const ARENA_LITE_FRAME_MS = 33;
 
 export const ARENA_TOKEN_TEXTURE_SIZE = 256;
 
+/** Isometric figures are drawn whole and larger than a round face, so they keep more detail. */
+export const ARENA_FIGURE_TEXTURE_SIZE = 512;
+
 /** Largest side of the map texture on the GPU (a 16384 px texture would take about 1 GB of video memory). */
 export const ARENA_MAP_TEXTURE_MAX = 8192;
 
@@ -57,3 +60,9 @@ export const RESIZE_CORNERS = [
   { x: 0, y: 1, cursor: "nesw-resize" },
   { x: 1, y: 1, cursor: "nwse-resize" },
 ] as const;
+
+/** Length of the selection brackets of an isometric figure, as a fraction of its shorter half side. */
+export const FIGURE_BRACKET_RATIO = 0.35;
+
+/** Opacity of a name hidden from the players, as the GM sees it. */
+export const ARENA_LABEL_FAINT_ALPHA = 0.4;

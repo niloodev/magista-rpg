@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/shared/components/molecules";
 
 import {
   ArenaChangeMenu,
+  ArenaTokenMenu,
   ArenaNotice,
   ArenaSelectionBar,
   ArenaTokenTray,
@@ -31,6 +32,7 @@ import {
   ArenaTokenSettingsDialog,
   ArenaEffectPickerDialog,
   NpcTokenDialog,
+  ArenaImageTokenDialog,
   SceneLibrary,
 } from "../../organisms";
 import { useArenaPage } from "./ArenaPage.hook";
@@ -68,9 +70,6 @@ export function ArenaPage() {
     onResize,
     selection,
     onSizeChange,
-    onToggleHidden,
-    onOpenSheet,
-    onRequestRemove,
     confirmRemove,
     confirmRemoveTitle,
     onConfirmRemove,
@@ -116,6 +115,8 @@ export function ArenaPage() {
     onCloseNpc,
     selectionSlotClassName,
     onSubmitNpc,
+    onDropFiles,
+    imageDrop,
     liveSceneId,
     viewingSceneId,
     onPreviewScene,
@@ -124,7 +125,7 @@ export function ArenaPage() {
     pendingRolls,
     rollsLoading,
     onTokenMenu,
-    onConfigure,
+    tokenMenu,
     changeMenu,
     changeMenuInBar,
     effectPicker,
@@ -179,6 +180,7 @@ export function ArenaPage() {
           insetLeft={stageInsetLeft}
           onMapError={onMapError}
           onTokenMenu={onTokenMenu}
+          onDropFiles={onDropFiles}
           onKeyDown={onStageKeyDown}
         />
       )}
@@ -241,15 +243,8 @@ export function ArenaPage() {
               label={selection.label}
               isGm={isGm}
               size={selection.size}
-              allHidden={selection.allHidden}
-              canOpenSheet={selection.canOpenSheet}
               status={selection.status}
-              canConfigure={selection.canConfigure}
-              onConfigure={onConfigure}
               onSizeChange={onSizeChange}
-              onToggleHidden={onToggleHidden}
-              onOpenSheet={onOpenSheet}
-              onRemove={onRequestRemove}
             />
           </div>
         )}
@@ -307,7 +302,9 @@ export function ArenaPage() {
       <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
       <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
       {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
+      {isGm && imageDrop && <ArenaImageTokenDialog {...imageDrop} />}
       {changeMenu && !changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
+      {tokenMenu && <ArenaTokenMenu {...tokenMenu} />}
       {effectPicker && <ArenaEffectPickerDialog {...effectPicker} />}
       {tokenSettings && <ArenaTokenSettingsDialog {...tokenSettings} />}
     </main>

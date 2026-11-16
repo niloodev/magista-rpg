@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  ClipboardPaste,
   ChevronsUp,
   Crown,
   Lock,
@@ -104,6 +105,7 @@ export const ICONS = {
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,
+  "clipboard-paste": ClipboardPaste,
   "file-plus": FilePlus,
   folder: Folder,
   "folder-input": FolderInput,

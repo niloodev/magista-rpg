@@ -49,6 +49,7 @@ export class ArenaStatusBars {
   private status: IArenaTokenStatus | null = null;
   private floats: IStatusFloat[] = [];
   private size = 0;
+  private halfHeight = 0;
   private scale = 1;
   private expanded = false;
 
@@ -100,9 +101,10 @@ export class ArenaStatusBars {
   }
 
   /** Follows the token size and the camera zoom. */
-  layout(size: number, cameraScale: number, now: number): void {
-    if (size === this.size && cameraScale === this.scale) return;
+  layout(size: number, cameraScale: number, now: number, halfHeight = size / 2): void {
+    if (size === this.size && cameraScale === this.scale && halfHeight === this.halfHeight) return;
     this.size = size;
+    this.halfHeight = halfHeight;
     this.scale = cameraScale;
     this.draw(now);
   }
@@ -198,7 +200,7 @@ export class ArenaStatusBars {
     const graphics = this.graphics.clear();
     const { width, thickness, gap, lift } = barLayout(this.size, this.scale, this.expanded);
     const total = this.bars.length * (thickness + gap) - gap;
-    const top = -this.size / 2 - lift - total;
+    const top = -this.halfHeight - lift - total;
     const left = -width / 2;
     const border = 1 / (this.scale || 1);
     this.bars.forEach((bar, index) => {

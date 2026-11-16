@@ -3,6 +3,7 @@ import {
   ARENA_TOKEN_SIZE_MIN,
   type IArenaBounds,
   type IArenaPoint,
+  type TokenStyle,
 } from "@magista/shared";
 
 import {
@@ -195,4 +196,21 @@ export function labelScale(fontSize: number, cameraScale: number): number {
   if (onScreen <= 0) return 1;
   const target = Math.min(Math.max(onScreen, ARENA_LABEL_MIN_SCREEN_PX), ARENA_LABEL_MAX_SCREEN_PX);
   return target / onScreen;
+}
+
+/**
+ * Half width and half height of a token on the map: a round portrait is a circle of diameter `size`; an
+ * isometric figure keeps the aspect ratio of its image (width / height) with `size` as its longest side.
+ */
+export function tokenExtents(
+  size: number,
+  style: TokenStyle,
+  aspect: number | null,
+): { halfWidth: number; halfHeight: number } {
+  const half = size / 2;
+  if (style !== "figure" || !aspect || !Number.isFinite(aspect) || aspect <= 0)
+    return { halfWidth: half, halfHeight: half };
+  return aspect >= 1
+    ? { halfWidth: half, halfHeight: half / aspect }
+    : { halfWidth: half * aspect, halfHeight: half };
 }

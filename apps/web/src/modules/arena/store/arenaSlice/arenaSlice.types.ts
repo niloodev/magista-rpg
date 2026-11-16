@@ -37,6 +37,8 @@ export interface ArenaState {
     /** Sheets docked as tabs in a side panel, and the docked tab shown on each side (null: the panel's own tab). */
     docked: Record<ArenaDockSide, string[]>;
     dockTab: Record<ArenaDockSide, string | null>;
+    /** Tokens copied with Ctrl+C (GM), kept for this tab even when changing scenes or leaving the Arena. */
+    tokenClipboard: IArenaToken[];
   };
 }
 
@@ -76,6 +78,9 @@ export interface ArenaActions {
   undockArenaSheet: (characterId: string) => void;
   closeDockedSheet: (characterId: string) => void;
   showDockTab: (side: ArenaDockSide, characterId: string | null) => void;
+  /** Copies tokens to this tab's clipboard (the GM pastes them with Ctrl+V). */
+  copyArenaTokens: (tokens: IArenaToken[]) => void;
+  /** Leaves the Arena: drops everything but the token clipboard. */
   resetArena: () => void;
 }
 

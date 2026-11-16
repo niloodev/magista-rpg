@@ -48,6 +48,8 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
     name: "Lobo",
     imageUrl: null,
     imageThumbUrl: null,
+    style: "portrait",
+    showName: true,
     x: 10,
     y: 10,
     size: 140,
@@ -270,6 +272,15 @@ function build(
       tokenList
         .filter((entry) => ids.includes(entry.id))
         .map(({ id, sceneId, hidden }) => ({ id, sceneId, hidden, imageKey: null })),
+    ),
+    copyMany: vi.fn(async (sceneId: string, copies: { sourceId: string; x: number; y: number }[]) =>
+      copies.flatMap(({ sourceId, x, y }, index) => {
+        const source = tokenList.find((entry) => entry.id === sourceId);
+        if (!source) return [];
+        const copy = { ...source, id: `${sourceId}-copy-${index}`, sceneId, x, y };
+        tokenList.push(copy);
+        return [copy];
+      }),
     ),
     setImageKey: vi.fn(async (id, key) => {
       const found = tokenList.find((entry) => entry.id === id);
@@ -544,6 +555,73 @@ describe("arena controller: GM tools", () => {
     expect(tokens.create).toHaveBeenLastCalledWith(LIVE, expect.objectContaining({ name: null }));
     const npc = await controller.createToken(gm, PREP, { name: "Lobo", hidden: true });
     expect(npc).toMatchObject({ payload: { audience: "gm" } });
+  });
+
+  it("removes the own image only from NPC tokens", async () => {
+    const { controller, tokens } = build();
+    expect(await controller.removeTokenImage(alice, T_WOLF)).toEqual({ error: arenaErrors.gmOnly });
+    expect(await controller.removeTokenImage(gm, T_ANA)).toEqual({ error: arenaErrors.npcOnly });
+    expect(await controller.removeTokenImage(gm, T_WOLF)).toMatchObject({
+      payload: { token: { id: T_WOLF } },
+    });
+    expect(tokens.setImageKey).toHaveBeenLastCalledWith(T_WOLF, null);
+  });
+
+  it("hides the name of any token on the map", async () => {
+    const { controller, tokens } = build();
+    await controller.updateToken(gm, T_ANA, { showName: false });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([{ id: T_ANA, patch: { showName: false } }]);
+  });
+
+  it("keeps the figure style only on NPC tokens", async () => {
+    const { controller, tokens } = build();
+    await controller.createToken(gm, LIVE, { characterId: ANA, style: "figure" });
+    expect(tokens.create).toHaveBeenLastCalledWith(
+      LIVE,
+      expect.objectContaining({ tokenStyle: "portrait" }),
+    );
+    await controller.createToken(gm, LIVE, { name: "Ogro", style: "figure" });
+    expect(tokens.create).toHaveBeenLastCalledWith(
+      LIVE,
+      expect.objectContaining({ tokenStyle: "figure" }),
+    );
+    await controller.updateToken(gm, T_WOLF, { style: "figure" });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([
+      { id: T_WOLF, patch: { tokenStyle: "figure" } },
+    ]);
+    expect(await controller.updateToken(gm, T_ANA, { style: "figure" })).toMatchObject({
+      error: expect.any(String),
+    });
+  });
+
+  it("pastes copies of tokens from any scene, kept inside the board", async () => {
+    const { controller, tokens } = build();
+    expect(
+      await controller.copyTokens(alice, LIVE, { tokens: [{ sourceId: T_WOLF, x: 1, y: 1 }] }),
+    ).toEqual({ error: arenaErrors.gmOnly });
+    expect(await controller.copyTokens(gm, LIVE, { tokens: [] })).toEqual({
+      error: arenaErrors.invalidToken,
+    });
+    expect(
+      await controller.copyTokens(gm, MISSING, { tokens: [{ sourceId: T_WOLF, x: 1, y: 1 }] }),
+    ).toEqual({ error: arenaErrors.sceneNotFound });
+    expect(
+      await controller.copyTokens(gm, LIVE, { tokens: [{ sourceId: MISSING, x: 1, y: 1 }] }),
+    ).toEqual({ error: arenaErrors.tokenNotFound });
+    const pasted = await controller.copyTokens(gm, PREP, {
+      tokens: [
+        { sourceId: T_WOLF, x: 50, y: 60 },
+        { sourceId: T_ANA, x: 19_000, y: 70 },
+      ],
+    });
+    const copies = vi.mocked(tokens.copyMany).mock.lastCall?.[1] ?? [];
+    expect(copies[1]?.x).toBeLessThan(19_000);
+    expect(pasted).toMatchObject({
+      payload: [
+        { token: { sceneId: PREP, x: 50, y: 60 }, audience: "gm" },
+        { token: { sceneId: PREP }, audience: "gm" },
+      ],
+    });
   });
 
   it("reports the previous audience when a token is hidden", async () => {

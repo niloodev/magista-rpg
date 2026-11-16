@@ -74,6 +74,14 @@ export function useArenaChangeMenu({
     if (point) setPosition(placeMenu(point, size, screen));
   }, [anchor]);
 
+  const placed = position !== null;
+
+  useEffect(() => {
+    if (!placed) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [placed]);
+
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusAmount = () => {

@@ -47,7 +47,7 @@ export const ARENA_UNSUPPORTED_TEXTS = {
 export const ARENA_LOAD_RETRY_LABEL = "Tentar de novo";
 
 export const ARENA_STAGE_HINT =
-  "Clique num token para selecionar; Shift+clique soma à seleção e arrastar no vazio seleciona em grupo. Arraste os tokens selecionados para mover. Botão direito num token abre Aplicar mudança (dano e cura); arrastar com o botão direito, do meio ou Espaço move a câmera. Setas movem a seleção (Shift move mais), M aplica dano ou cura na seleção, Ctrl+A seleciona todos, + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção.";
+  "Clique num token para selecionar; Shift+clique ou Ctrl+clique soma à seleção e arrastar no vazio seleciona em grupo. Arraste os tokens selecionados para mover. Botão direito num token (ou Shift+F10 na seleção) abre o menu do token: Aplicar mudança, Configurar, Ocultar, Abrir ficha, Copiar e Remover; arrastar com o botão direito, do meio ou Espaço move a câmera. Setas movem a seleção (Shift move mais), M aplica dano ou cura na seleção, Ctrl+A seleciona todos, Ctrl+C copia e Ctrl+V cola os tokens, + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção. O Mestre pode soltar imagens do computador no mapa para criar tokens.";
 
 export const ARENA_MY_TRAY_LABEL = "Meus tokens";
 
@@ -99,6 +99,26 @@ export const ARENA_SELECTION_TEXTS = {
   confirmTitle: (count: number) => (count === 1 ? "Remover token?" : `Remover ${count} tokens?`),
   confirmMessage:
     "Os tokens saem da cena para todos. As fichas continuam na biblioteca e podem voltar ao mapa depois.",
+} as const;
+
+/** What players read instead of the name of a token whose name the GM hid. */
+export const ARENA_HIDDEN_NAME = "Token";
+
+/** Right-click menu of a token (and of the empty map, to paste). */
+export const ARENA_TOKEN_MENU_TEXTS = {
+  label: (target: string) => `Ações de ${target}`,
+  selectionCount: (count: number) => `${count} tokens`,
+  mapLabel: "Ações do mapa",
+  apply: "Aplicar mudança",
+  configure: "Configurar",
+  hide: "Ocultar",
+  show: "Mostrar",
+  openSheet: "Abrir ficha",
+  copy: "Copiar",
+  paste: "Colar aqui",
+  remove: "Remover",
+  copied: (count: number) => (count === 1 ? "1 token copiado." : `${count} tokens copiados.`),
+  pasted: (count: number) => (count === 1 ? "1 token colado." : `${count} tokens colados.`),
 } as const;
 
 export const ARENA_BOTTOM_INSET = 72;
@@ -230,8 +250,31 @@ export const ARENA_PLACEMENT_TEXTS = {
   imageTooLarge: "A imagem passa de 8 MB.",
   imageNotSent: "O token foi criado, mas a imagem não foi enviada.",
   noScene: "Abra uma cena para colocar tokens.",
+  styleLegend: "Formato do token",
+  styleNeedsImage: "Escolha uma imagem para usar o formato isométrico.",
+  figureImageHint: "PNG ou WEBP com fundo transparente, até 8 MB, em qualquer proporção.",
+  dropTitle: (count: number) => (count === 1 ? "Token da imagem" : `Tokens de ${count} imagens`),
+  dropHelp: (count: number) =>
+    count === 1
+      ? "O token entra onde a imagem foi solta, selecionado."
+      : "Os tokens entram lado a lado onde as imagens foram soltas, com o nome de cada arquivo.",
+  dropSubmit: (count: number) => (count === 1 ? "Criar token" : `Criar ${count} tokens`),
+  dropOverlay: "Solte para criar um token",
+  dropInvalid: "Nenhuma imagem PNG, JPG, WEBP ou GIF de até 8 MB foi solta.",
   dragHint: "Arraste uma ficha para o mapa para criar o token ali.",
 } as const;
+
+/** Alpha below which a pixel counts as transparent when guessing the style of a dropped image. */
+export const ARENA_TRANSPARENT_ALPHA = 16;
+
+/** Share of transparent border pixels that makes a dropped image an isometric figure. */
+export const ARENA_TRANSPARENT_EDGE_SHARE = 0.3;
+
+/** Side of the small canvas the dropped image is read on to guess its style. */
+export const ARENA_TRANSPARENCY_PROBE_PX = 64;
+
+/** Most images turned into tokens by one drop. */
+export const ARENA_IMAGE_DROP_MAX = 12;
 
 export const ARENA_CHARACTERS_HINT_ID = "arena-characters-hint";
 
@@ -433,4 +476,10 @@ export const ARENA_STATUS_TEXTS = {
   save: "Salvar",
   cancel: "Cancelar",
   saved: "Configurações do token salvas.",
+  tokenSection: "Token",
+  name: "Nome",
+  image: "Imagem",
+  showName: "Mostrar nome no mapa",
+  showNameHint: "Desmarcado, os jogadores não veem o nome; o Mestre o vê apagado.",
+  imageFailed: "As configurações foram salvas, mas a imagem não.",
 } as const;

@@ -13,5 +13,6 @@ export const defaultArenaState: ArenaState = {
     sheetSlots: {},
     docked: { left: [], right: [] },
     dockTab: { left: null, right: null },
+    tokenClipboard: [],
   },
 };

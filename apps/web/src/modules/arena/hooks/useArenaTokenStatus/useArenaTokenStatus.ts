@@ -25,8 +25,15 @@ import {
   readChangePreference,
   saveChangePreference,
   statusReadout,
+  tokenDisplayName,
 } from "@/modules/arena/arena.utils";
-import { applyArenaChange, fetchArenaAccounts, updateArenaToken } from "@/modules/arena/services";
+import {
+  applyArenaChange,
+  fetchArenaAccounts,
+  removeArenaTokenImage,
+  updateArenaToken,
+  uploadArenaTokenImage,
+} from "@/modules/arena/services";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
 import { useTableSocket } from "@/modules/table/providers";
 import type { LoadStatus } from "@/shared/types";
@@ -93,14 +100,20 @@ export function useArenaTokenStatus({
   }, [socket, store, controlsRef]);
 
   const tokenName = useCallback(
-    (tokenId: string) => view?.tokens.find((token) => token.id === tokenId)?.name ?? "",
-    [view],
+    (tokenId: string) => {
+      const token = view?.tokens.find((entry) => entry.id === tokenId);
+      return token ? tokenDisplayName(token, isGm) : "";
+    },
+    [view, isGm],
   );
 
   const tokenImage = useCallback(
     (tokenId: string) => {
       const token = view?.tokens.find((entry) => entry.id === tokenId);
-      return token ? toMediaUrl(token.imageThumbUrl ?? token.imageUrl) : null;
+      return {
+        url: token ? toMediaUrl(token.imageThumbUrl ?? token.imageUrl) : null,
+        style: token?.style ?? ("portrait" as const),
+      };
     },
     [view],
   );
@@ -138,8 +151,9 @@ export function useArenaTokenStatus({
       )
       .map((token) => ({
         id: token.id,
-        name: token.name,
+        name: tokenDisplayName(token, isGm),
         imageUrl: toMediaUrl(token.imageThumbUrl ?? token.imageUrl),
+        style: token.style,
       }));
   }, [changeMenu, view, isGm]);
 
@@ -259,10 +273,17 @@ export function useArenaTokenStatus({
 
   const closeSettings = useCallback(() => setSettingsTokenId(null), []);
 
-  const saveSettings: IArenaTokenStatusControls["saveSettings"] = async (input) => {
+  const saveSettings: IArenaTokenStatusControls["saveSettings"] = async (input, image) => {
     if (!settingsTokenId) return null;
     const result = await updateArenaToken(settingsTokenId, input);
     if (isErrorResult(result)) return result.error;
+    if (image) {
+      const changed =
+        image.action === "upload"
+          ? await uploadArenaTokenImage(settingsTokenId, image.file)
+          : await removeArenaTokenImage(settingsTokenId);
+      if (isErrorResult(changed)) return `${ARENA_STATUS_TEXTS.imageFailed} ${changed.error}`;
+    }
     onAnnounce(ARENA_STATUS_TEXTS.saved);
     setSettingsTokenId(null);
     return null;

@@ -7,12 +7,14 @@ export const PREVIEW_CLASSES: Record<ImageFieldShape, string> = {
     "m-1 h-24 w-24 rounded-full ring-2 ring-primary/50 ring-offset-2 ring-offset-void-900 bg-void-700",
   portrait: "h-36 w-24 border border-primary/40 bg-void-800",
   landscape: "h-24 w-36 border border-primary/40 bg-void-800",
+  figure: "h-36 w-28 border border-primary/40 magista-checker",
 };
 
 export const IMAGE_FIT: Record<ImageFieldShape, string> = {
   circle: "object-cover",
   portrait: "object-contain",
   landscape: "object-cover",
+  figure: "object-contain",
 };
 
 export const PICK_LABELS = {
@@ -23,6 +25,8 @@ export const PICK_LABELS = {
 export const REMOVE_LABEL = "Remover";
 
 export const IMAGE_HINT = "PNG, JPG, WEBP ou GIF, até 8\u00a0MB.";
+
+export const FIGURE_HINT = "PNG ou WEBP com fundo transparente, até 8\u00a0MB.";
 
 export const REMOVED_NOTE = "Será removida ao salvar.";
 

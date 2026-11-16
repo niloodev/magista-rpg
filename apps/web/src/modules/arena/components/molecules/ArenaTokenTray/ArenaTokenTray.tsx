@@ -41,6 +41,7 @@ export const ArenaTokenTray = memo(function ArenaTokenTray({
                   src={token.imageUrl}
                   name={token.name}
                   size="xs"
+                  shape={token.style === "figure" ? "figure" : "circle"}
                   decorative
                   className={`!h-9 !w-9 ${ARENA_TRAY_TONE_CLASSES[token.tone]}`}
                 />

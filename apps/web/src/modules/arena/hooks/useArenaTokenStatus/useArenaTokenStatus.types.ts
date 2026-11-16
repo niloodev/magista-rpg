@@ -9,6 +9,7 @@ import type {
 import type { RefObject } from "react";
 
 import type {
+  ArenaTokenImageChange,
   IArenaAttackerOption,
   IArenaChangeMenuState,
   IArenaChangePreference,
@@ -63,5 +64,9 @@ export interface IArenaTokenStatusControls {
   accounts: IAccount[];
   accountsStatus: LoadStatus;
   retryAccounts: () => void;
-  saveSettings: (input: IUpdateArenaTokenInput) => Promise<string | null>;
+  /** Saves the settings, then swaps or removes the NPC image; resolves to an error message or null. */
+  saveSettings: (
+    input: IUpdateArenaTokenInput,
+    image: ArenaTokenImageChange,
+  ) => Promise<string | null>;
 }

@@ -18,6 +18,7 @@ import {
   moveArenaLibraryItemInputSchema,
   renameArenaFolderInputSchema,
   createArenaTokenInputSchema,
+  copyArenaTokensInputSchema,
   deleteArenaTokensInputSchema,
   moveArenaTokensInputSchema,
   renameArenaSceneInputSchema,
@@ -411,7 +412,7 @@ export function createArenaController({
     if (!isId(sceneId)) return { error: arenaErrors.sceneNotFound };
     const parsed = createArenaTokenInputSchema.safeParse(input);
     if (!parsed.success) return { error: arenaErrors.invalidToken };
-    const { characterId, name, ...placement } = parsed.data;
+    const { characterId, name, style, ...placement } = parsed.data;
     try {
       const scene = await scenes.findById(sceneId);
       if (!scene) return { error: arenaErrors.sceneNotFound };
@@ -420,6 +421,7 @@ export function createArenaController({
       const token = await tokens.create(sceneId, {
         characterId,
         name: characterId ? null : (name ?? null),
+        tokenStyle: characterId ? "portrait" : style,
         ...placement,
         ...clampToMap(placement, scene),
       });
@@ -486,6 +488,34 @@ export function createArenaController({
       return { message: "Tokens atualizados", payload: changes };
     } catch (error) {
       return failed("updateTokens", error);
+    }
+  };
+
+  const copyTokens: IArenaController["copyTokens"] = async (viewer, sceneId, input) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    if (!isId(sceneId)) return { error: arenaErrors.sceneNotFound };
+    const parsed = copyArenaTokensInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidToken };
+    try {
+      const scene = await scenes.findById(sceneId);
+      if (!scene) return { error: arenaErrors.sceneNotFound };
+      const copies = parsed.data.tokens.map(({ sourceId, ...point }) => ({
+        sourceId,
+        ...clampToMap(point, scene),
+      }));
+      const created = await tokens.copyMany(sceneId, copies);
+      if (created.length === 0) return { error: arenaErrors.tokenNotFound };
+      const activeSceneId = await scenes.findActiveSceneId();
+      const rows = await tokens.listStatuses({ ids: created.map((token) => token.id) });
+      const deliveries = new Map(rows.map((row) => [row.id, statusDelivery(row, activeSceneId)]));
+      const changes = created.map((token) => {
+        const audience = tokenAudience(token, activeSceneId);
+        const status = deliveries.get(token.id);
+        return { token, audience, previousAudience: audience, ...(status ? { status } : {}) };
+      });
+      return { message: "Tokens colados", payload: changes };
+    } catch (error) {
+      return failed("copyTokens", error);
     }
   };
 
@@ -562,6 +592,26 @@ export function createArenaController({
       };
     } catch (error) {
       return failed("setTokenImage", error);
+    }
+  };
+
+  const removeTokenImage: IArenaController["removeTokenImage"] = async (viewer, id) => {
+    if (viewer.role !== "GM") return { error: arenaErrors.gmOnly };
+    if (!isId(id)) return { error: arenaErrors.tokenNotFound };
+    try {
+      const existing = await tokens.findById(id);
+      if (!existing) return { error: arenaErrors.tokenNotFound };
+      if (existing.characterId) return { error: arenaErrors.npcOnly };
+      const change = await tokens.setImageKey(id, null);
+      if (!change) return { error: arenaErrors.tokenNotFound };
+      await cleanup(assets.release(change.previousKey));
+      const audience = tokenAudience(change.token, await scenes.findActiveSceneId());
+      return {
+        message: "Imagem removida",
+        payload: { token: change.token, audience, previousAudience: audience },
+      };
+    } catch (error) {
+      return failed("removeTokenImage", error);
     }
   };
 
@@ -703,6 +753,8 @@ export function createArenaController({
   };
 
   return {
+    copyTokens,
+    removeTokenImage,
     applyChange,
     characterStatusDeliveries,
     getView,

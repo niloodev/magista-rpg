@@ -53,6 +53,7 @@ import {
   fitPanels,
   dockedTabsOf,
   sheetNameOf,
+  tokenDisplayName,
 } from "@/modules/arena/arena.utils";
 import {
   deleteArenaTokens,
@@ -61,7 +62,11 @@ import {
   setArenaLiveScene,
   updateArenaTokens,
 } from "@/modules/arena/services";
-import { useArenaTokenPlacement, useArenaTokenStatus } from "@/modules/arena/hooks";
+import {
+  useArenaTokenActions,
+  useArenaTokenPlacement,
+  useArenaTokenStatus,
+} from "@/modules/arena/hooks";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
 import { useApp, useAppStoreApi } from "@/modules/shell/store";
@@ -208,8 +213,18 @@ export function useArenaPage() {
     () =>
       renderTokens
         .filter((token) => !isGm && token.controllable)
-        .map(({ id, name, imageUrl, tone, hidden }) => ({ id, name, imageUrl, tone, hidden })),
-    [renderTokens, isGm],
+        .map(({ id, name, imageUrl, style, tone, hidden }) => {
+          const token = view?.tokens.find((entry) => entry.id === id);
+          return {
+            id,
+            name,
+            imageUrl: token?.imageThumbUrl ? toMediaUrl(token.imageThumbUrl) : imageUrl,
+            style,
+            tone,
+            hidden,
+          };
+        }),
+    [renderTokens, isGm, view],
   );
 
   const sceneName = view?.scene?.name ?? null;
@@ -240,9 +255,10 @@ export function useArenaPage() {
       setActionError(null);
       if (result.refused.length > 0) void load();
       const [first] = result.tokens;
-      if (first) setAnnouncement(ARENA_MOVED_LABEL(first.name, result.tokens.length));
+      if (first)
+        setAnnouncement(ARENA_MOVED_LABEL(tokenDisplayName(first, isGm), result.tokens.length));
     },
-    [socket, store, load],
+    [socket, store, load, isGm],
   );
 
   const onSelect = useCallback(
@@ -303,10 +319,6 @@ export function useArenaPage() {
 
   const tokenStatus = useArenaTokenStatus({ isGm, controlsRef, onAnnounce: setAnnouncement });
   const { openChangeMenu } = tokenStatus;
-  const onTokenMenu = useStableCallback((tokenId: string, client: IArenaPoint) =>
-    openChangeMenu(tokenId, client),
-  );
-
   const summary = selectionSummary(selectedTokens, isGm, view?.controllableCharacterIds ?? []);
   const { allHidden, sheetTarget } = summary;
 
@@ -354,48 +366,6 @@ export function useArenaPage() {
     }, ARENA_NUDGE_COMMIT_MS);
     return true;
   };
-
-  const onStageKeyDown = useStableCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    const delta = arrowDelta(event.key);
-    if (delta) {
-      if (nudgeSelected(delta, event.shiftKey)) event.preventDefault();
-      return;
-    }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
-      event.preventDefault();
-      store.getState().selectArenaTokens(
-        renderTokens.map((token) => token.id),
-        "replace",
-      );
-      return;
-    }
-    if (event.key.toLowerCase() === "m" && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      if (selectedTokens.length === 0) return;
-      event.preventDefault();
-      openChangeMenu(null, null);
-      return;
-    }
-    if (
-      (event.key === "Delete" || event.key === "Backspace") &&
-      isGm &&
-      selectedTokens.length > 0
-    ) {
-      event.preventDefault();
-      setConfirmRemove(true);
-      return;
-    }
-    const actions: Record<string, (() => void) | undefined> = {
-      "+": controlsRef.current?.zoomIn,
-      "=": controlsRef.current?.zoomIn,
-      "-": controlsRef.current?.zoomOut,
-      "0": controlsRef.current?.fit,
-      Escape: () => store.getState().selectArenaTokens([], "replace"),
-    };
-    const action = actions[event.key];
-    if (!action) return;
-    event.preventDefault();
-    action();
-  });
 
   const liveSceneId = view?.activeSceneId ?? null;
   const viewingSceneId = view?.scene?.id ?? null;
@@ -496,6 +466,7 @@ export function useArenaPage() {
   const onPlaceCharacter = useStableCallback(placement.placeCharacter);
   const onDropCharacter = useStableCallback(placement.dropCharacter);
   const onNewNpc = useStableCallback(placement.openNpcDialog);
+  const onDropFiles = useStableCallback(placement.dropImages);
   const stageScene = useMemo(
     () =>
       scene
@@ -511,6 +482,90 @@ export function useArenaPage() {
 
   const onOpenSelectedSheet = useStableCallback(() => {
     if (sheetTarget) openSheet(sheetTarget);
+  });
+
+  const onApplyChangeAt = useStableCallback((point: IArenaPoint) => openChangeMenu(null, point));
+  const tokenActions = useArenaTokenActions({
+    isGm,
+    sceneId: scene?.id ?? null,
+    selectedTokens,
+    selectedTokenIds,
+    controlsRef,
+    boundsRef,
+    allHidden,
+    canOpenSheet: sheetTarget !== null,
+    onApplyChange: onApplyChangeAt,
+    onConfigure: tokenStatus.openSettings,
+    onToggleHidden,
+    onOpenSheet: onOpenSelectedSheet,
+    onRemove: onRequestRemove,
+    onAnnounce: setAnnouncement,
+    onError: setActionError,
+  });
+  const onTokenMenu = useStableCallback((tokenId: string | null, client: IArenaPoint) =>
+    tokenActions.openMenu(tokenId, client),
+  );
+
+  const onStageKeyDown = useStableCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    const delta = arrowDelta(event.key);
+    if (delta) {
+      if (nudgeSelected(delta, event.shiftKey)) event.preventDefault();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      store.getState().selectArenaTokens(
+        renderTokens.map((token) => token.id),
+        "replace",
+      );
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "c") {
+      if (tokenActions.copySelection()) event.preventDefault();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "v") {
+      if (tokenActions.paste()) event.preventDefault();
+      return;
+    }
+    if (
+      (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) &&
+      selectedTokens.length > 0
+    ) {
+      event.preventDefault();
+      const rect = event.currentTarget.getBoundingClientRect();
+      tokenActions.openMenu(selectedTokens[0]?.id ?? null, {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      return;
+    }
+    if (event.key.toLowerCase() === "m" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (selectedTokens.length === 0) return;
+      event.preventDefault();
+      openChangeMenu(null, null);
+      return;
+    }
+    if (
+      (event.key === "Delete" || event.key === "Backspace") &&
+      isGm &&
+      selectedTokens.length > 0
+    ) {
+      event.preventDefault();
+      setConfirmRemove(true);
+      return;
+    }
+    const actions: Record<string, (() => void) | undefined> = {
+      "+": controlsRef.current?.zoomIn,
+      "=": controlsRef.current?.zoomIn,
+      "-": controlsRef.current?.zoomOut,
+      "0": controlsRef.current?.fit,
+      Escape: () => store.getState().selectArenaTokens([], "replace"),
+    };
+    const action = actions[event.key];
+    if (!action) return;
+    event.preventDefault();
+    action();
   });
 
   return {
@@ -550,11 +605,10 @@ export function useArenaPage() {
             allHidden,
             canOpenSheet: sheetTarget !== null,
             status: tokenStatus.selectionStatus,
-            canConfigure: isGm && selectedTokens.length === 1,
           }
         : null,
     onTokenMenu,
-    onConfigure: tokenStatus.openSettings,
+    tokenMenu: tokenActions.menu ? { ...tokenActions.menu, onClose: tokenActions.closeMenu } : null,
     changeMenu: tokenStatus.changeMenu
       ? {
           target: tokenStatus.changeMenu.target,
@@ -598,9 +652,6 @@ export function useArenaPage() {
           }
         : null,
     onSizeChange,
-    onToggleHidden,
-    onOpenSheet: onOpenSelectedSheet,
-    onRequestRemove,
     confirmRemove,
     confirmRemoveTitle: ARENA_SELECTION_TEXTS.confirmTitle(selectedTokens.length),
     onConfirmRemove: () => void onConfirmRemove(),
@@ -648,6 +699,14 @@ export function useArenaPage() {
         : ARENA_SELECTION_BAR_SLOT.bottom.free
     }`,
     onSubmitNpc: placement.submitNpc,
+    onDropFiles: isGm && scene && status === "ready" ? onDropFiles : undefined,
+    imageDrop: placement.imageDropFiles
+      ? {
+          files: placement.imageDropFiles,
+          onSubmit: placement.submitImageDrop,
+          onClose: placement.closeImageDrop,
+        }
+      : null,
     liveSceneId,
     viewingSceneId,
     onPreviewScene,

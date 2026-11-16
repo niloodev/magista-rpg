@@ -52,14 +52,16 @@ export function tokenRowPatch(
   token: Pick<IArenaToken, "characterId">,
   input: IUpdateArenaTokenInput,
 ): IUpdateArenaTokenRow {
-  const { name, size, hidden, status, statusPublic, statusViewerIds } = input;
+  const { name, size, hidden, style, showName, status, statusPublic, statusViewerIds } = input;
   const npc = token.characterId === null;
   return {
     ...(size === undefined ? {} : { size }),
     ...(hidden === undefined ? {} : { hidden }),
+    ...(showName === undefined ? {} : { showName }),
     ...(statusPublic === undefined ? {} : { statusPublic }),
     ...(statusViewerIds === undefined ? {} : { statusViewerIds }),
     ...(npc && name !== undefined ? { name } : {}),
+    ...(npc && style !== undefined ? { tokenStyle: style } : {}),
     ...(npc && status?.health
       ? { healthCurrent: status.health.current, healthMax: status.health.max }
       : {}),

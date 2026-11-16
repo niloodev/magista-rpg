@@ -21,6 +21,7 @@ import {
   renameFolder,
   setCharacterAccess,
   setCharacterFeatures,
+  setCharacterTokenSettings,
   uploadCharacterImage,
 } from "@/modules/library/services";
 import { CHARACTER_IMAGE_FIELDS } from "@/modules/library/library.constants";
@@ -84,6 +85,8 @@ export function useLibraryDialogs({
       if (!file) continue;
       const uploaded = await uploadCharacterImage(created.payload.id, field.kind, file);
       if (isErrorResult(uploaded)) failures.push(`${field.label}: ${uploaded.error}`);
+      else if (field.kind === "figure")
+        await setCharacterTokenSettings(created.payload.id, { style: "figure" });
     }
     const failure = failures.length > 0 ? failures.join(" ") : null;
     await onChanged();

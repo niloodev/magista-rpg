@@ -13,3 +13,4 @@ export * from "./SceneFormDialog";
 export * from "./SceneLibrary";
 export * from "./ArenaTokenSettingsDialog";
 export * from "./ArenaEffectPickerDialog";
+export * from "./ArenaImageTokenDialog";

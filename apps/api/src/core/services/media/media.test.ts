@@ -6,6 +6,7 @@ import { IMAGE_TYPES } from "./media.constants";
 import {
   assetIdOf,
   assetKeysFor,
+  characterTokenFields,
   detectImageType,
   isMediaKey,
   hashImage,
@@ -121,6 +122,22 @@ describe("optimizeMap", () => {
     expect(optimized.length).toBeLessThan(png.length);
   });
 
+  it("keeps the transparency of an isometric token image", async () => {
+    const width = 160;
+    const height = 240;
+    const pixels = Buffer.alloc(width * height * 4);
+    for (let at = 0; at < pixels.length; at += 4) {
+      pixels[at] = (at * 7919) % 251;
+      pixels[at + 3] = at % 3 === 0 ? 0 : 255;
+    }
+    const png = await sharp(pixels, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+    const optimized = await optimizeMap(png);
+    expect(detectImageType(optimized)).toBe(IMAGE_TYPES.webp);
+    expect((await sharp(optimized).metadata()).hasAlpha).toBe(true);
+  });
+
   it("keeps GIFs and unreadable bytes as they are", async () => {
     const gif = Buffer.from("GIF89a\x01\x00\x01\x00", "latin1");
     expect(await optimizeMap(gif)).toBe(gif);
@@ -140,5 +157,17 @@ describe("makeThumbnail", () => {
     expect(thumb && detectImageType(thumb)).toBe(IMAGE_TYPES.webp);
     expect(thumb && readImageSize(thumb)).toEqual({ width: 256, height: 128 });
     expect(await makeThumbnail(Buffer.from("nope"))).toBeNull();
+  });
+});
+
+describe("characterTokenFields", () => {
+  const figure = "media/6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90/full.webp";
+
+  it("keeps the figure style only while the sheet has the isometric image", () => {
+    expect(characterTokenFields(figure, "figure", false)).toMatchObject({
+      tokenStyle: "figure",
+      showTokenName: false,
+    });
+    expect(characterTokenFields(null, "figure", true).tokenStyle).toBe("portrait");
   });
 });

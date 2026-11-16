@@ -1,6 +1,6 @@
 import type { CharacterImageKind } from "@magista/shared";
 
-import type { ImageFieldShape } from "@/shared/components/molecules";
+import { FIGURE_HINT, IMAGE_HINT, type ImageFieldShape } from "@/shared/components/molecules";
 
 import type { ILibraryShape } from "./library.types";
 
@@ -54,27 +54,48 @@ export const LIBRARY_TITLES = { gm: "Fichas da mesa", player: "Suas fichas" } as
 export const SEARCH_PLACEHOLDER = "Buscar ficha pelo nome...  ( / )";
 
 /**
- * AVATAR (face token for small portraits and, later, the Arena) and ART (full artwork) fields of a character.
+ * AVATAR (face token for small portraits and the Arena), ART (full artwork) and FIGURE (isometric Arena token)
+ * fields of a character.
  */
 export const CHARACTER_IMAGE_FIELDS: {
   kind: CharacterImageKind;
   label: string;
   description: string;
   shape: ImageFieldShape;
+  hint: string;
 }[] = [
   {
     kind: "avatar",
     label: "Avatar",
     description: "Rosto em círculo, usado nos retratos da mesa e da biblioteca.",
     shape: "circle",
+    hint: IMAGE_HINT,
   },
   {
     kind: "art",
     label: "Arte",
     description: 'Arte completa do personagem, aberta em "Ver arte completa".',
     shape: "portrait",
+    hint: IMAGE_HINT,
+  },
+  {
+    kind: "figure",
+    label: "Token isométrico",
+    description:
+      "Variante do avatar para a Arena: imagem com fundo transparente, em qualquer proporção, desenhada inteira (sem círculo). Boa para mobs e monstros.",
+    shape: "figure",
+    hint: FIGURE_HINT,
   },
 ];
+
+/** Choice between the round avatar and the isometric figure for the character's tokens. */
+export const TOKEN_STYLE_TEXTS = {
+  legend: "Token na Arena",
+  needsFigure: "Envie o token isométrico para usar este formato.",
+  showName: "Mostrar nome do token no mapa",
+  showNameHint:
+    "Vale para os tokens desta ficha (os do mapa também). Desmarcado, os jogadores não veem o nome; cada token ainda pode mudar em Configurar.",
+} as const;
 
 /** Panel frame of the library inside a side bar (no own border, padding or blur). */
 export const LIBRARY_SIDEBAR_FRAME =

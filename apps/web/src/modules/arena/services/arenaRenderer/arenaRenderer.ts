@@ -11,6 +11,7 @@ import {
   Container,
   type FederatedPointerEvent,
   Graphics,
+  Rectangle,
   Sprite,
   Text,
   Texture,
@@ -49,6 +50,9 @@ import {
   ARENA_TOKEN_LERP,
   ARENA_MAP_TEXTURE_MAX,
   ARENA_TOKEN_TEXTURE_SIZE,
+  ARENA_FIGURE_TEXTURE_SIZE,
+  FIGURE_BRACKET_RATIO,
+  ARENA_LABEL_FAINT_ALPHA,
   ARENA_WHEEL_SENSITIVITY,
 } from "./arenaRenderer.constants";
 import type {
@@ -72,6 +76,7 @@ import {
   parseStoredCamera,
   scaleTokenSize,
   screenToWorld,
+  tokenExtents,
   tokensInRect,
   visibleCenterPoint,
   zoomAt,
@@ -85,6 +90,8 @@ interface ITokenView {
   ring: Graphics;
   label: Text;
   portrait: Sprite | null;
+  /** Width / height of the loaded image (the shape of an isometric figure). */
+  aspect: number | null;
   initial: Text | null;
   mask: Graphics;
   display: IArenaPoint;
@@ -130,8 +137,16 @@ interface IPanState {
   start: IArenaPoint;
   camera: IArenaCamera;
   moved: boolean;
-  /** Token under a right click, to open its menu when the pointer comes up without dragging. */
+  /** A right click: opens the menu of the token under it (or of the map) when it comes up without dragging. */
+  menu: boolean;
   menuTokenId: string | null;
+}
+
+/**
+ * Shift, Ctrl (or Cmd) while clicking adds to or removes from the selection.
+ */
+function togglesSelection(event: FederatedPointerEvent): boolean {
+  return event.shiftKey || event.ctrlKey || event.metaKey;
 }
 
 /**
@@ -160,6 +175,33 @@ async function loadTexture(url: string, maxSize: number): Promise<ILoadedTexture
     return { texture: Texture.from(bitmap, true), width, height };
   } finally {
     original.close();
+  }
+}
+
+/**
+ * Decodes a token image straight at its texture size (one decode, the longest side at most `maxSide`): only
+ * the proportion matters for a token, never the original size.
+ */
+async function loadTokenTexture(url: string, maxSide: number): Promise<Texture> {
+  const blob = await fetchMediaBlob(url);
+  const wide = await createImageBitmap(blob, { resizeWidth: maxSide, resizeQuality: "high" });
+  if (wide.height <= maxSide) {
+    try {
+      return Texture.from(wide, true);
+    } catch (error) {
+      wide.close();
+      throw error;
+    }
+  }
+  try {
+    const fitted = await createImageBitmap(wide, {
+      resizeWidth: Math.max(1, Math.round((maxSide * wide.width) / wide.height)),
+      resizeHeight: maxSide,
+      resizeQuality: "high",
+    });
+    return Texture.from(fitted, true);
+  } finally {
+    wide.close();
   }
 }
 
@@ -206,6 +248,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private marquee: IMarqueeState | null = null;
   private spaceHeld = false;
   private pan: IPanState | null = null;
+  private lastClient: IArenaPoint | null = null;
   private pinch: { distance: number; camera: IArenaCamera } | null = null;
   private frame = 0;
   private lastFrame = 0;
@@ -374,7 +417,9 @@ export class ArenaRenderer implements IArenaRenderer {
       seen.add(data.id);
       const existing = this.tokens.get(data.id);
       const view = existing ?? this.createToken(data);
-      const portraitChanged = existing !== undefined && existing.data.imageUrl !== data.imageUrl;
+      const portraitChanged =
+        existing !== undefined &&
+        (existing.data.imageUrl !== data.imageUrl || existing.data.style !== data.style);
       const resizing = this.resize?.sizes.has(data.id) ?? false;
       const statusChanged = !existing || existing.data.status !== data.status;
       view.data = resizing ? { ...data, size: view.data.size } : data;
@@ -476,6 +521,9 @@ export class ArenaRenderer implements IArenaRenderer {
   };
 
   zoom = (): number => this.camera.scale;
+
+  pointerWorld = (): IArenaPoint | null =>
+    this.lastClient ? this.clientToWorld(this.lastClient.x, this.lastClient.y) : null;
 
   visibleCenter = (): IArenaPoint =>
     screenToWorld(this.camera, visibleCenterPoint(this.viewport(), this.insets()));
@@ -702,7 +750,7 @@ export class ArenaRenderer implements IArenaRenderer {
     const now = performance.now();
     for (const view of this.tokens.values()) {
       this.scaleLabel(view);
-      view.bars.layout(view.data.size, this.camera.scale, now);
+      view.bars.layout(view.data.size, this.camera.scale, now, this.extentsOf(view).halfHeight);
     }
     this.world.scale.set(this.camera.scale);
     this.world.position.set(this.camera.x, this.camera.y);
@@ -773,6 +821,7 @@ export class ArenaRenderer implements IArenaRenderer {
       ring,
       label,
       portrait: null,
+      aspect: null,
       initial: null,
       mask,
       display: { x: data.x, y: data.y },
@@ -796,10 +845,13 @@ export class ArenaRenderer implements IArenaRenderer {
    */
   private prunePortraits(): void {
     const used = new Set<string>();
-    for (const view of this.tokens.values()) if (view.data.imageUrl) used.add(view.data.imageUrl);
-    for (const [url, pending] of this.portraits) {
-      if (used.has(url)) continue;
-      this.portraits.delete(url);
+    for (const view of this.tokens.values()) {
+      const key = this.portraitKey(view);
+      if (key) used.add(key);
+    }
+    for (const [key, pending] of this.portraits) {
+      if (used.has(key)) continue;
+      this.portraits.delete(key);
       void pending.then((texture) => destroyTexture(texture));
     }
   }
@@ -807,35 +859,49 @@ export class ArenaRenderer implements IArenaRenderer {
   private resetPortrait(view: ITokenView): void {
     view.portrait?.destroy();
     view.portrait = null;
+    view.aspect = null;
     view.drawnKey = "";
     void this.attachPortrait(view);
   }
 
+  /** Largest texture side of a token image: figures keep more detail, except in the lite mode. */
+  private portraitSide(view: ITokenView): number {
+    return view.data.style === "figure" && !this.options.lite
+      ? ARENA_FIGURE_TEXTURE_SIZE
+      : ARENA_TOKEN_TEXTURE_SIZE;
+  }
+
+  /** Cache key of a token image: the same URL at another texture size is another texture. */
+  private portraitKey(view: ITokenView): string | null {
+    return view.data.imageUrl ? `${this.portraitSide(view)}|${view.data.imageUrl}` : null;
+  }
+
   private async attachPortrait(view: ITokenView): Promise<void> {
     const url = view.data.imageUrl;
-    if (!url) return;
-    let pending = this.portraits.get(url);
+    const key = this.portraitKey(view);
+    if (!url || !key) return;
+    let pending = this.portraits.get(key);
     if (!pending) {
-      const loading: Promise<Texture | null> = loadTexture(url, ARENA_TOKEN_TEXTURE_SIZE)
-        .then((loaded) => loaded.texture)
-        .catch(() => {
-          if (this.portraits.get(url) === loading) this.portraits.delete(url);
+      const loading: Promise<Texture | null> = loadTokenTexture(url, this.portraitSide(view)).catch(
+        () => {
+          if (this.portraits.get(key) === loading) this.portraits.delete(key);
           return null;
-        });
+        },
+      );
       pending = loading;
-      this.portraits.set(url, pending);
+      this.portraits.set(key, pending);
     }
     const texture = await pending;
-    if (!texture || this.destroyed || view.container.destroyed || view.data.imageUrl !== url)
+    if (!texture || this.destroyed || view.container.destroyed || this.portraitKey(view) !== key)
       return;
-    if (this.portraits.get(url) !== pending) {
+    if (this.portraits.get(key) !== pending) {
       void this.attachPortrait(view);
       return;
     }
     view.portrait?.destroy();
     view.portrait = new Sprite(texture);
     view.portrait.anchor.set(0.5);
-    view.portrait.mask = view.mask;
+    view.aspect = texture.height > 0 ? texture.width / texture.height : null;
     view.container.addChildAt(view.portrait, view.container.getChildIndex(view.ring));
     view.drawnKey = "";
     this.drawToken(view);
@@ -850,22 +916,67 @@ export class ArenaRenderer implements IArenaRenderer {
     this.invalidate();
   }
 
+  private extentsOf(view: ITokenView): { halfWidth: number; halfHeight: number } {
+    return tokenExtents(view.data.size, view.data.style, view.aspect);
+  }
+
   private drawToken(view: ITokenView): void {
     const { data } = view;
     const selected = this.selection.has(data.id);
     const now = performance.now();
-    view.bars.layout(data.size, this.camera.scale, now);
+    const { halfWidth, halfHeight } = this.extentsOf(view);
+    view.bars.layout(data.size, this.camera.scale, now, halfHeight);
     view.bars.setExpanded(selected || view.hovered, now);
-    const key = [data.size, data.name, data.tone, data.hidden, selected, !!view.portrait].join("|");
+    const key = [
+      data.size,
+      data.name,
+      data.tone,
+      data.hidden,
+      data.style,
+      data.label,
+      selected,
+      !!view.portrait,
+      view.aspect,
+    ].join("|");
     if (key === view.drawnKey) return;
     view.drawnKey = key;
-    const radius = data.size / 2;
-    const ringWidth = Math.max(3, data.size * 0.045);
     const ringColor = selected
       ? ARENA_COLORS.gold400
       : data.tone === "own"
         ? ARENA_COLORS.ruby500
         : ARENA_COLORS.teal400;
+    if (data.style === "figure") this.drawFigure(view, selected);
+    else this.drawPortrait(view, ringColor, selected);
+    if (!view.portrait) {
+      if (!view.initial) {
+        view.initial = new Text({
+          text: "",
+          style: { fontFamily: this.options.fontFamily, fill: ARENA_COLORS.ruby400 },
+        });
+        view.initial.anchor.set(0.5);
+        view.container.addChildAt(view.initial, view.container.getChildIndex(view.ring));
+      }
+      view.initial.text = data.name.charAt(0).toUpperCase();
+      view.initial.style.fontSize = Math.round(data.size * 0.42);
+    }
+    view.label.text = data.name;
+    view.label.style.fontSize = Math.round(Math.min(Math.max(data.size * 0.16, 14), 30));
+    view.label.position.set(0, halfHeight + ARENA_LABEL_GAP);
+    view.label.visible = data.label !== "hidden";
+    view.label.alpha = data.label === "faint" ? ARENA_LABEL_FAINT_ALPHA : 1;
+    this.scaleLabel(view);
+    view.container.alpha = data.hidden ? 0.5 : 1;
+    view.container.hitArea =
+      data.style === "figure"
+        ? new Rectangle(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2)
+        : new Circle(0, 0, data.size / 2);
+    view.container.cursor = data.controllable ? "grab" : "pointer";
+  }
+
+  private drawPortrait(view: ITokenView, ringColor: number, selected: boolean): void {
+    const { data } = view;
+    const radius = data.size / 2;
+    const ringWidth = Math.max(3, data.size * 0.045);
     view.shadow
       .clear()
       .circle(0, data.size * 0.05, radius + 2)
@@ -881,29 +992,56 @@ export class ArenaRenderer implements IArenaRenderer {
         .circle(0, 0, radius + ringWidth * 1.6)
         .stroke({ width: 2, color: ARENA_COLORS.gold400, alpha: 0.45 });
     if (view.portrait) {
+      view.portrait.mask = view.mask;
       view.portrait.width = data.size;
       view.portrait.height = data.size;
       view.initial?.destroy();
       view.initial = null;
-    } else {
-      if (!view.initial) {
-        view.initial = new Text({
-          text: "",
-          style: { fontFamily: this.options.fontFamily, fill: ARENA_COLORS.ruby400 },
-        });
-        view.initial.anchor.set(0.5);
-        view.container.addChildAt(view.initial, view.container.getChildIndex(view.ring));
-      }
-      view.initial.text = data.name.charAt(0).toUpperCase();
-      view.initial.style.fontSize = Math.round(data.size * 0.42);
     }
-    view.label.text = data.name;
-    view.label.style.fontSize = Math.round(Math.min(Math.max(data.size * 0.16, 14), 30));
-    view.label.position.set(0, radius + ARENA_LABEL_GAP);
-    this.scaleLabel(view);
-    view.container.alpha = data.hidden ? 0.5 : 1;
-    view.container.hitArea = new Circle(0, 0, radius);
-    view.container.cursor = data.controllable ? "grab" : "pointer";
+  }
+
+  /**
+   * An isometric figure: the image whole, in its own proportion, with no frame or base; a selected one gets
+   * thin gold corner brackets around the image.
+   */
+  private drawFigure(view: ITokenView, selected: boolean): void {
+    const { data } = view;
+    const { halfWidth, halfHeight } = this.extentsOf(view);
+    view.shadow.clear();
+    view.base.clear();
+    view.mask.clear();
+    view.ring.clear();
+    if (selected) {
+      const pad = Math.max(4, data.size * 0.04);
+      const arm = Math.min(halfWidth, halfHeight) * FIGURE_BRACKET_RATIO;
+      const left = -halfWidth - pad;
+      const right = halfWidth + pad;
+      const top = -halfHeight - pad;
+      const bottom = halfHeight + pad;
+      for (const [x, y, dx, dy] of [
+        [left, top, 1, 1],
+        [right, top, -1, 1],
+        [left, bottom, 1, -1],
+        [right, bottom, -1, -1],
+      ] as const) {
+        view.ring
+          .moveTo(x + dx * arm, y)
+          .lineTo(x, y)
+          .lineTo(x, y + dy * arm);
+      }
+      view.ring.stroke({
+        width: Math.max(2, data.size * 0.02),
+        color: ARENA_COLORS.gold400,
+        cap: "square",
+      });
+    }
+    if (view.portrait) {
+      view.portrait.mask = null;
+      view.portrait.width = halfWidth * 2;
+      view.portrait.height = halfHeight * 2;
+      view.initial?.destroy();
+      view.initial = null;
+    }
   }
 
   private scaleLabel(view: ITokenView): void {
@@ -939,6 +1077,7 @@ export class ArenaRenderer implements IArenaRenderer {
       start: { x: event.global.x, y: event.global.y },
       camera: { ...this.camera },
       moved: false,
+      menu: event.button === 2,
       menuTokenId: event.button === 2 ? menuTokenId : null,
     };
     this.app.canvas.style.cursor = "grabbing";
@@ -953,7 +1092,7 @@ export class ArenaRenderer implements IArenaRenderer {
       return;
     }
     if (event.button !== 0) return;
-    if (event.shiftKey) {
+    if (togglesSelection(event)) {
       this.options.callbacks.onSelect([tokenId], "toggle");
       return;
     }
@@ -999,12 +1138,13 @@ export class ArenaRenderer implements IArenaRenderer {
       pointerId: event.pointerId,
       start,
       current: start,
-      additive: event.shiftKey,
+      additive: togglesSelection(event),
       moved: false,
     };
   };
 
   private onPointerMove = (event: FederatedPointerEvent): void => {
+    this.lastClient = { x: event.client.x, y: event.client.y };
     if (this.pointers.has(event.pointerId))
       this.pointers.set(event.pointerId, { x: event.global.x, y: event.global.y });
     if (this.pinch && this.pointers.size === 2) {
@@ -1105,9 +1245,11 @@ export class ArenaRenderer implements IArenaRenderer {
     if (pan && pan.pointerId === event.pointerId) {
       this.pan = null;
       this.restoreCursor();
-      if (!pan.moved && pan.menuTokenId && this.tokens.has(pan.menuTokenId)) {
+      if (!pan.moved && pan.menu) {
+        const tokenId =
+          pan.menuTokenId && this.tokens.has(pan.menuTokenId) ? pan.menuTokenId : null;
         this.swallowNextMenu();
-        this.options.callbacks.onTokenMenu(pan.menuTokenId, { x: event.clientX, y: event.clientY });
+        this.options.callbacks.onTokenMenu(tokenId, { x: event.clientX, y: event.clientY });
       }
     }
   };
@@ -1123,22 +1265,22 @@ export class ArenaRenderer implements IArenaRenderer {
     for (const id of this.selection) {
       const view = this.tokens.get(id);
       if (!view) continue;
-      const radius = view.data.size / 2;
+      const { halfWidth, halfHeight } = this.extentsOf(view);
       const labelHeight = ARENA_LABEL_GAP + view.label.height;
       const barsHeight = view.bars.height;
       const { x, y } = view.display;
       box = box
         ? {
-            left: Math.min(box.left, x - radius),
-            top: Math.min(box.top, y - radius - barsHeight),
-            right: Math.max(box.right, x + radius),
-            bottom: Math.max(box.bottom, y + radius + labelHeight),
+            left: Math.min(box.left, x - halfWidth),
+            top: Math.min(box.top, y - halfHeight - barsHeight),
+            right: Math.max(box.right, x + halfWidth),
+            bottom: Math.max(box.bottom, y + halfHeight + labelHeight),
           }
         : {
-            left: x - radius,
-            top: y - radius - barsHeight,
-            right: x + radius,
-            bottom: y + radius + labelHeight,
+            left: x - halfWidth,
+            top: y - halfHeight - barsHeight,
+            right: x + halfWidth,
+            bottom: y + halfHeight + labelHeight,
           };
     }
     return box;

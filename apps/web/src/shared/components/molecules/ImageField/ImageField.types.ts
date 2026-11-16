@@ -1,4 +1,5 @@
-export type ImageFieldShape = "circle" | "portrait" | "landscape";
+/** `figure` is a transparent isometric token: drawn whole, over a checkerboard that shows the transparency. */
+export type ImageFieldShape = "circle" | "portrait" | "landscape" | "figure";
 
 export interface ImageFieldProps {
   id: string;

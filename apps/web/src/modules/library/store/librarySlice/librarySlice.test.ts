@@ -13,6 +13,10 @@ const character = (id: string, position: number) =>
     artUrl: null,
     avatarThumbUrl: null,
     artThumbUrl: null,
+    figureUrl: null,
+    figureThumbUrl: null,
+    tokenStyle: "portrait",
+    showTokenName: true,
     classKey: "sem-classe",
     level: 1,
     accountIds: [],
@@ -48,6 +52,10 @@ describe("library slice", () => {
       artUrl: null,
       avatarThumbUrl: null,
       artThumbUrl: null,
+      figureUrl: null,
+      figureThumbUrl: null,
+      tokenStyle: "portrait",
+      showTokenName: true,
     });
     const [a, b] = store.getState().library.characters;
     expect(a).toMatchObject({ avatarUrl: null });
@@ -56,6 +64,10 @@ describe("library slice", () => {
       artUrl: null,
       avatarThumbUrl: null,
       artThumbUrl: null,
+      figureUrl: null,
+      figureThumbUrl: null,
+      tokenStyle: "portrait",
+      showTokenName: true,
     });
   });
 

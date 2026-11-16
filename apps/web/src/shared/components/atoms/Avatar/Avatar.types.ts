@@ -1,6 +1,7 @@
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-export type AvatarShape = "square" | "circle";
+/** `figure`: an isometric token, drawn whole without a frame. */
+export type AvatarShape = "square" | "circle" | "figure";
 
 export interface AvatarProps {
   src: string | null;

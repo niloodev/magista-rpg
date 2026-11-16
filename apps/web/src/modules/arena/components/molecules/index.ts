@@ -13,3 +13,4 @@ export * from "./SceneRow";
 export * from "./ArenaChangeMenu";
 export * from "./ArenaStatusReadout";
 export * from "./ArenaEffectPreviewCanvas";
+export * from "./ArenaTokenMenu";

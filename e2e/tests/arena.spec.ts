@@ -5,6 +5,7 @@ import { apiAs } from "../support/api";
 import {
   createArenaScene,
   openArena,
+  openTokenMenu,
   readArena,
   setLiveScene,
   type ArenaToken,
@@ -170,7 +171,10 @@ test.describe("arena", () => {
     expect(results.violations.map((violation) => violation.id)).toEqual([]);
   });
 
-  test("o Mestre muda o tamanho e oculta a seleção pela barra", async ({ page, browser }) => {
+  test("o Mestre muda o tamanho pela barra e oculta a seleção pelo menu do token", async ({
+    page,
+    browser,
+  }) => {
     const playerPage = await (await browser.newContext()).newPage();
     await loginAs(playerPage, PLAYER);
     await openArena(playerPage);
@@ -189,12 +193,12 @@ test.describe("arena", () => {
     await expect
       .poll(async () => (await readArena(gm, sceneId)).tokens.map((token) => token.size))
       .toEqual([220, 220, 220, 220]);
-    await bar.getByRole("button", { name: "Ocultar" }).click();
+    await (await openTokenMenu(page)).getByRole("menuitem", { name: "Ocultar" }).click();
     await expect
       .poll(async () => (await readArena(gm, sceneId)).tokens.every((token) => token.hidden))
       .toBe(true);
     await expect(playerMap(0)).toBeVisible();
-    await bar.getByRole("button", { name: "Mostrar" }).click();
+    await (await openTokenMenu(page)).getByRole("menuitem", { name: "Mostrar" }).click();
     await expect
       .poll(async () => (await readArena(gm, sceneId)).tokens.some((token) => token.hidden))
       .toBe(false);

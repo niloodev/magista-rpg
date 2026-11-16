@@ -294,5 +294,10 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
     set((state) => ({
       arena: { ...state.arena, dockTab: { ...state.arena.dockTab, [side]: characterId } },
     })),
-  resetArena: () => set(defaultArenaState),
+  copyArenaTokens: (tokens) =>
+    set((state) => ({ arena: { ...state.arena, tokenClipboard: tokens } })),
+  resetArena: () =>
+    set((state) => ({
+      arena: { ...defaultArenaState.arena, tokenClipboard: state.arena.tokenClipboard },
+    })),
 });

@@ -76,6 +76,8 @@ describe("token batches", () => {
       name: id,
       imageUrl: null,
       imageThumbUrl: null,
+      style: "portrait",
+      showName: true,
       x: 0,
       y: 0,
       size: 140,

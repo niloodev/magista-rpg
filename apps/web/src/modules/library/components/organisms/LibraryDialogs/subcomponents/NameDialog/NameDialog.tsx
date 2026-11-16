@@ -2,7 +2,7 @@
 
 import { CHARACTER_IMAGE_FIELDS } from "@/modules/library/library.constants";
 import { Button, Icon, Input, Select } from "@/shared/components/atoms";
-import { FormField, IMAGE_HINT, ImageField, Modal } from "@/shared/components/molecules";
+import { FormField, ImageField, Modal } from "@/shared/components/molecules";
 
 import { useNameDialog } from "./NameDialog.hook";
 import type { NameDialogProps } from "./NameDialog.types";
@@ -56,7 +56,12 @@ export function NameDialog({
         </>
       }
     >
-      <form id={formId} noValidate onSubmit={submit} className="grid gap-5">
+      <form
+        id={formId}
+        noValidate
+        onSubmit={submit}
+        className="grid grid-cols-[minmax(0,1fr)] gap-5"
+      >
         <FormField id={`${formId}-name`} label={label} error={error ?? undefined}>
           <Input
             id={`${formId}-name`}
@@ -83,7 +88,7 @@ export function NameDialog({
               key={field.kind}
               id={`${formId}-${field.kind}`}
               label={field.label}
-              hint={IMAGE_HINT}
+              hint={field.hint}
               shape={field.shape}
               file={images[field.kind]}
               currentUrl={null}
