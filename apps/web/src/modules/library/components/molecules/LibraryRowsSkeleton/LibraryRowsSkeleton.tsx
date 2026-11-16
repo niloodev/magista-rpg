@@ -15,12 +15,18 @@ export function LibraryRowsSkeleton({
   shape,
   tree = false,
   announce = true,
+  rowActions = false,
 }: LibraryRowsSkeletonProps) {
   if (!tree)
     return (
       <SkeletonRegion label={LIBRARY_SKELETON_LABEL} announce={announce} className="space-y-2">
         {shape.list.map((row, index) => (
-          <CharacterRowSkeleton key={index} name={row.name} subtitle={row.subtitle} />
+          <CharacterRowSkeleton
+            key={index}
+            name={row.name}
+            subtitle={row.subtitle}
+            withActions={rowActions}
+          />
         ))}
       </SkeletonRegion>
     );

@@ -28,6 +28,8 @@ export interface ArenaStageProps extends ArenaStageHookProps {
   label: string;
   /** Image files dropped from the computer at a page point (GM with a scene open). */
   onDropFiles?: (files: File[], point: { x: number; y: number }) => void;
+  /** A sheet row of a player's list dropped at a page point. */
+  onDropCharacterId?: (characterId: string, point: { x: number; y: number }) => void;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   className?: string;
 }

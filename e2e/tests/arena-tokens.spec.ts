@@ -87,12 +87,16 @@ test.describe("arena: Mestre cria tokens", () => {
       .toBe(true);
   });
 
-  test("o jogador não vê as ferramentas de criar tokens", async ({ page }) => {
+  test("o jogador só põe tokens das próprias fichas, sem Token avulso", async ({ page }) => {
     await loginAs(page, PLAYER);
     await openArena(page);
     const sidebar = page.getByRole("complementary", { name: "Barra lateral da Arena" });
     await expect(sidebar.getByRole("tab", { name: "Fichas" })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: "Token avulso" })).toHaveCount(0);
-    await expect(sidebar.getByRole("button", { name: /^Ações de / })).toHaveCount(0);
+    await sidebar
+      .getByRole("button", { name: /^Ações de / })
+      .first()
+      .click();
+    await expect(page.getByRole("menuitem")).toHaveText(["Colocar no mapa"]);
   });
 });

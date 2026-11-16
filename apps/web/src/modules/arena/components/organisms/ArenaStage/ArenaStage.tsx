@@ -20,11 +20,12 @@ export const ArenaStage = memo(function ArenaStage({
   label,
   onKeyDown,
   onDropFiles,
+  onDropCharacterId,
   className,
   ...hookProps
 }: ArenaStageProps) {
   const { hostRef, status } = useArenaStage(hookProps);
-  const { dragging, dropHandlers } = useArenaFileDrop(onDropFiles);
+  const { dragging, dropHandlers } = useArenaFileDrop({ onDropFiles, onDropCharacterId });
   const hintId = useId();
   return (
     <div className={className ?? "relative h-full"} {...dropHandlers}>
@@ -41,7 +42,7 @@ export const ArenaStage = memo(function ArenaStage({
       <p id={hintId} className="sr-only">
         {ARENA_STAGE_HINT}
       </p>
-      {dragging && (
+      {dragging === "files" && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-4 top-18 flex items-center justify-center border-2 border-dashed border-primary/70 bg-ruby-900/20"

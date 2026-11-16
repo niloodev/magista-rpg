@@ -23,11 +23,10 @@ export const ArenaCharactersTab = memo(function ArenaCharactersTab({
   isOverMap,
   tokenPreviewSize,
 }: ArenaCharactersTabProps) {
-  const placing = isGm && canPlace;
   const { dropPreview } = useArenaCharactersTab({ isOverMap, tokenPreviewSize });
   return (
     <div className="flex flex-col gap-4">
-      {isGm && (
+      {isGm ? (
         <div className="flex flex-col gap-2">
           <Button
             variant="secondary"
@@ -44,13 +43,19 @@ export const ArenaCharactersTab = memo(function ArenaCharactersTab({
             {canPlace ? ARENA_PLACEMENT_TEXTS.dragHint : ARENA_PLACEMENT_TEXTS.noScene}
           </p>
         </div>
+      ) : (
+        canPlace && (
+          <p className="font-sans text-xs text-muted-strong">
+            {ARENA_PLACEMENT_TEXTS.playerDragHint}
+          </p>
+        )
       )}
       <CharacterLibrary
         variant="sidebar"
         onOpenCharacter={onOpenCharacter}
-        onPlaceCharacter={placing ? onPlaceCharacter : undefined}
-        onDropCharacter={placing ? onDropCharacter : undefined}
-        dropPreview={placing ? dropPreview : undefined}
+        onPlaceCharacter={canPlace ? onPlaceCharacter : undefined}
+        onDropCharacter={canPlace ? onDropCharacter : undefined}
+        dropPreview={canPlace ? dropPreview : undefined}
       />
     </div>
   );

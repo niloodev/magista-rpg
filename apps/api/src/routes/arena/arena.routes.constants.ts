@@ -2,6 +2,7 @@ import { arenaErrors, type ArenaError } from "@/core/controllers/arena";
 
 export const ARENA_ERROR_STATUS: Record<ArenaError, number> = {
   [arenaErrors.gmOnly]: 403,
+  [arenaErrors.ownSheetsOnly]: 403,
   [arenaErrors.sceneNotFound]: 404,
   [arenaErrors.tokenNotFound]: 404,
   [arenaErrors.characterNotFound]: 404,

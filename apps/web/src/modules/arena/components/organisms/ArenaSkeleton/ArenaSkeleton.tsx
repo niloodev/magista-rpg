@@ -222,7 +222,17 @@ export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
                         </p>
                       </div>
                     )}
-                    <CharacterLibrarySkeleton known={known} gm={gm} variant="sidebar" />
+                    {known && !gm && !noScene && (
+                      <p className="font-sans text-xs text-muted-strong">
+                        {ARENA_PLACEMENT_TEXTS.playerDragHint}
+                      </p>
+                    )}
+                    <CharacterLibrarySkeleton
+                      known={known}
+                      gm={gm}
+                      variant="sidebar"
+                      rowActions={known && !gm && !noScene}
+                    />
                   </div>
                 )}
               </div>

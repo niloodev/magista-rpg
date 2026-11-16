@@ -26,6 +26,18 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
+ * A player's menu of a sheet: only "Colocar no mapa", when the Arena lets them place it (none otherwise).
+ */
+export function playerCharacterMenu(
+  character: ICharacterSummary,
+  place?: (character: ICharacterSummary) => void,
+): ActionMenuItem[] | undefined {
+  return place
+    ? [{ label: PLACE_ON_MAP_LABEL, icon: "map-pin", onSelect: () => place(character) }]
+    : undefined;
+}
+
+/**
  * Actions of the GM menu on a character card.
  */
 export function characterMenu(

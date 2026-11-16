@@ -15,6 +15,8 @@ export interface UseArenaTokenActionsProps {
   boundsRef: RefObject<IArenaBounds>;
   allHidden: boolean;
   canOpenSheet: boolean;
+  /** The viewer may remove the whole selection (the GM always; a player, only tokens they control). */
+  canRemove: boolean;
   onApplyChange: (anchor: IArenaPoint) => void;
   onConfigure: () => void;
   onToggleHidden: () => void;

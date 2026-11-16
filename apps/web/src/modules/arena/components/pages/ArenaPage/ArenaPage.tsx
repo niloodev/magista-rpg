@@ -72,6 +72,7 @@ export function ArenaPage() {
     onSizeChange,
     confirmRemove,
     confirmRemoveTitle,
+    confirmRemoveMessage,
     onConfirmRemove,
     onCancelRemove,
     onPickToken,
@@ -116,6 +117,7 @@ export function ArenaPage() {
     selectionSlotClassName,
     onSubmitNpc,
     onDropFiles,
+    onDropCharacterId,
     imageDrop,
     liveSceneId,
     viewingSceneId,
@@ -181,6 +183,7 @@ export function ArenaPage() {
           onMapError={onMapError}
           onTokenMenu={onTokenMenu}
           onDropFiles={onDropFiles}
+          onDropCharacterId={onDropCharacterId}
           onKeyDown={onStageKeyDown}
         />
       )}
@@ -291,7 +294,7 @@ export function ArenaPage() {
       <ConfirmDialog
         open={confirmRemove}
         title={confirmRemoveTitle}
-        message={ARENA_SELECTION_TEXTS.confirmMessage}
+        message={confirmRemoveMessage}
         confirmLabel={ARENA_SELECTION_TEXTS.remove}
         onConfirm={onConfirmRemove}
         onCancel={onCancelRemove}

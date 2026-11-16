@@ -127,6 +127,8 @@ export const CharacterLibrary = memo(function CharacterLibrary({
             items={gridItems}
             emptyText={searching ? EMPTY_SEARCH_TEXT : EMPTY_PLAYER_TEXT}
             onOpen={onOpenCharacter}
+            draggable={!isGm && Boolean(onDropCharacter)}
+            dragPreview={dropPreview}
           />
         )}
       </div>

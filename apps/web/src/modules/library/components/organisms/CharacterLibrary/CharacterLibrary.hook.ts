@@ -37,6 +37,7 @@ import {
   accessLabels,
   characterCountLabel,
   characterMenu,
+  playerCharacterMenu,
   folderMenu,
   isTypingTarget,
 } from "./CharacterLibrary.utils";
@@ -200,8 +201,11 @@ export function useCharacterLibrary({
       portraitUrl: toMediaUrl(portraitOf(character)),
       path,
       features: character.features,
+      character,
       accountLabels: isGm ? accessLabels(character, accountLogins) : undefined,
-      menu: isGm ? characterMenu(character, setDialog, onPlaceCharacter) : undefined,
+      menu: isGm
+        ? characterMenu(character, setDialog, onPlaceCharacter)
+        : playerCharacterMenu(character, onPlaceCharacter),
     });
     if (!isGm) return playerCharacters.map((character) => toItem(character));
     return results.map(({ character, path }) => toItem(character, path));

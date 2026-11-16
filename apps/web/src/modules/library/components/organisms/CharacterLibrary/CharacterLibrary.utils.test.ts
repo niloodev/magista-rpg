@@ -2,7 +2,7 @@ import type { ICharacterSummary } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { PLACE_ON_MAP_LABEL } from "./CharacterLibrary.constants";
-import { characterMenu } from "./CharacterLibrary.utils";
+import { characterMenu, playerCharacterMenu } from "./CharacterLibrary.utils";
 
 const character = {
   id: "c1",
@@ -33,6 +33,17 @@ describe("characterMenu", () => {
     const [first] = characterMenu(character, open, place);
     expect(first?.label).toBe(PLACE_ON_MAP_LABEL);
     first?.onSelect();
+    expect(place).toHaveBeenCalledWith(character);
+  });
+});
+
+describe("playerCharacterMenu", () => {
+  it("has only Colocar no mapa, and only when the Arena lets the player place", () => {
+    expect(playerCharacterMenu(character)).toBeUndefined();
+    const place = vi.fn();
+    const menu = playerCharacterMenu(character, place);
+    expect(menu?.map((item) => item.label)).toEqual([PLACE_ON_MAP_LABEL]);
+    menu?.[0]?.onSelect();
     expect(place).toHaveBeenCalledWith(character);
   });
 });

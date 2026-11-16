@@ -385,7 +385,7 @@ describe("arena controller: view", () => {
       activeSceneId: null,
       scene: null,
       tokens: [],
-      controllableCharacterIds: [],
+      controllableCharacterIds: [ANA],
       statuses: {},
     });
   });
@@ -475,7 +475,7 @@ describe("arena controller: GM tools", () => {
     expect(await controller.createToken(alice, LIVE, { name: "Lobo" })).toEqual({
       error: arenaErrors.gmOnly,
     });
-    expect(await controller.deleteToken(alice, T_WOLF)).toEqual({ error: arenaErrors.gmOnly });
+    expect(await controller.deleteToken(alice, T_WOLF)).toEqual({ error: arenaErrors.forbidden });
   });
 
   it("creates and renames scenes with valid names", async () => {
@@ -571,6 +571,42 @@ describe("arena controller: GM tools", () => {
     const { controller, tokens } = build();
     await controller.updateToken(gm, T_ANA, { showName: false });
     expect(tokens.updateMany).toHaveBeenLastCalledWith([{ id: T_ANA, patch: { showName: false } }]);
+  });
+
+  it("lets a player place tokens of their own sheets on the live scene only, always visible", async () => {
+    const { controller, tokens } = build();
+    expect(await controller.createToken(alice, LIVE, { name: "Lobo" })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    expect(await controller.createToken(alice, LIVE, { characterId: BRUNO })).toEqual({
+      error: arenaErrors.ownSheetsOnly,
+    });
+    expect(await controller.createToken(alice, PREP, { characterId: ANA })).toEqual({
+      error: arenaErrors.sceneNotFound,
+    });
+    const placed = await controller.createToken(alice, LIVE, { characterId: ANA, hidden: true });
+    expect(placed).toMatchObject({ payload: { audience: "table" } });
+    expect(tokens.create).toHaveBeenLastCalledWith(
+      LIVE,
+      expect.objectContaining({ characterId: ANA, hidden: false }),
+    );
+  });
+
+  it("lets a player remove only visible tokens they control on the live scene", async () => {
+    const { controller, tokens } = build();
+    expect(await controller.deleteTokens(alice, { ids: [T_ANA, T_WOLF] })).toEqual({
+      error: arenaErrors.forbidden,
+    });
+    expect(await controller.deleteToken(alice, T_HIDDEN)).toEqual({
+      error: arenaErrors.tokenNotFound,
+    });
+    expect(tokens.removeMany).not.toHaveBeenCalled();
+    expect(await controller.deleteToken(alice, T_ANA)).toMatchObject({
+      payload: { event: { id: T_ANA } },
+    });
+    expect(await controller.deleteTokens(alice, { ids: [T_ANA] })).toEqual({
+      error: arenaErrors.tokenNotFound,
+    });
   });
 
   it("keeps the figure style only on NPC tokens", async () => {
@@ -677,7 +713,7 @@ describe("arena controller: batch edits", () => {
       error: arenaErrors.gmOnly,
     });
     expect(await controller.deleteTokens(alice, { ids: [T_WOLF] })).toEqual({
-      error: arenaErrors.gmOnly,
+      error: arenaErrors.forbidden,
     });
     expect(await controller.updateTokens(gm, { updates: [{ id: T_ANA }] })).toEqual({
       error: arenaErrors.invalidToken,
