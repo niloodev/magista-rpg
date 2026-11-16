@@ -1,4 +1,9 @@
-import type { ICharacter, ICharacterFeaturesEvent, ICharacterImages } from "@magista/shared";
+import type {
+  ICharacterSheet,
+  ICharacter,
+  ICharacterFeaturesEvent,
+  ICharacterImages,
+} from "@magista/shared";
 
 import type { SaveStatus, SheetMutator } from "@/modules/sheet/sheet.types";
 import type { LoadStatus } from "@/shared/types";
@@ -14,6 +19,10 @@ export interface ISheetEntry {
   savedRevision: number;
   saveStatus: SaveStatus;
   saveError: string | null;
+  /** Health and sanity of the last server version known here (to tell a remote change from a local edit). */
+  baseResources: ICharacterSheet["resources"] | null;
+  /** Health and sanity of the save in flight (they become the base once it is stored). */
+  savingResources: ICharacterSheet["resources"] | null;
 }
 
 export interface SheetState {

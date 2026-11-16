@@ -1,14 +1,25 @@
 import {
+  matchesSearch,
+  type ArenaChangeKind,
+  type ArenaEffectStyle,
+  type ArenaResourceKey,
+  ARENA_EFFECT_STYLES,
+  ARENA_CHANGE_AMOUNT_MAX,
+  ARENA_CHANGE_KINDS,
+  ARENA_RESOURCE_KEYS,
   ARENA_NAME_MAX_LENGTH,
   canControlToken,
   clampToMap,
   type IArenaBounds,
   type IArenaPoint,
   type IArenaToken,
+  type IArenaTokenStatus,
   type IArenaView,
 } from "@magista/shared";
 
 import {
+  ARENA_CHANGE_STORAGE_KEY,
+  ARENA_STATUS_TEXTS,
   ARENA_DOCK_TAB_PREFIX,
   ARENA_DOCK_TEXTS,
   ARENA_HINT_DEFAULT_NAME,
@@ -20,6 +31,9 @@ import {
   DEFAULT_SIDEBAR,
 } from "@/modules/arena/arena.constants";
 import type {
+  ArenaEffectFilter,
+  IArenaEffectCatalogEntry,
+  IArenaChangePreference,
   ArenaDockSide,
   ArenaSidebarTab,
   IArenaDockedSheet,
@@ -55,6 +69,7 @@ export function toRenderTokens(
       hidden: token.hidden,
       controllable,
       tone: own ? "own" : "other",
+      status: view.statuses[token.id] ?? null,
     };
   });
 }
@@ -314,4 +329,110 @@ export function fitPanels(
     left: shrink(rolls, ARENA_ROLLS_WIDTH.min),
     right: shrink(sidebar, ARENA_SIDEBAR_WIDTH.min),
   };
+}
+
+const DEFAULT_CHANGE: IArenaChangePreference = {
+  kind: "damage",
+  resource: "health",
+  amount: 5,
+  effect: "auto",
+};
+
+/**
+ * The last action and amount of "Aplicar mudança" saved on this device (damage to health, 5, without one).
+ */
+export function readChangePreference(): IArenaChangePreference {
+  try {
+    const raw = window.localStorage.getItem(ARENA_CHANGE_STORAGE_KEY);
+    if (!raw) return DEFAULT_CHANGE;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return DEFAULT_CHANGE;
+    const { kind, resource, amount, effect } = parsed as Record<string, unknown>;
+    const validKind = ARENA_CHANGE_KINDS.find((entry) => entry === kind);
+    const validResource = ARENA_RESOURCE_KEYS.find((entry) => entry === resource);
+    const validAmount =
+      typeof amount === "number" &&
+      Number.isInteger(amount) &&
+      amount >= 1 &&
+      amount <= ARENA_CHANGE_AMOUNT_MAX;
+    if (!validKind || !validResource || !validAmount) return DEFAULT_CHANGE;
+    const validEffect = ARENA_EFFECT_STYLES.find((entry) => entry === effect) ?? "auto";
+    return { kind: validKind, resource: validResource, amount, effect: validEffect };
+  } catch {
+    return DEFAULT_CHANGE;
+  }
+}
+
+/**
+ * Remembers the last action and amount of "Aplicar mudança" on this device.
+ */
+export function saveChangePreference(preference: IArenaChangePreference): void {
+  try {
+    window.localStorage.setItem(ARENA_CHANGE_STORAGE_KEY, JSON.stringify(preference));
+  } catch {
+    return;
+  }
+}
+
+/**
+ * Tokens hit by "Aplicar mudança" from a token: the whole selection when it belongs to it, else only it.
+ */
+export function changeTargets(selected: readonly string[], tokenId: string): string[] {
+  return selected.includes(tokenId) ? [...selected] : [tokenId];
+}
+
+/**
+ * Text readout of a token status ("Vida 12/20 · Sanidade 8/15"), or null without any value to show.
+ */
+export function statusReadout(status: IArenaTokenStatus | null | undefined): string | null {
+  if (!status) return null;
+  const value = ({ current, max }: IArenaTokenStatus["health"]) =>
+    max === null && current === null ? null : `${current ?? max ?? 0}/${max ?? "?"}`;
+  const health = value(status.health);
+  const sanity = value(status.sanity);
+  const parts = [
+    ...(health ? [ARENA_STATUS_TEXTS.health(health)] : []),
+    ...(sanity ? [ARENA_STATUS_TEXTS.sanity(sanity)] : []),
+  ];
+  return parts.length > 0 ? ARENA_STATUS_TEXTS.readout(parts) : null;
+}
+
+/**
+ * Keeps a floating menu inside the viewport, opening it next to the point (to the left or above when it does
+ * not fit).
+ */
+export function placeMenu(
+  anchor: IArenaPoint,
+  size: { width: number; height: number },
+  viewport: { width: number; height: number },
+  margin = 12,
+): IArenaPoint {
+  const x = anchor.x + size.width + margin > viewport.width ? anchor.x - size.width : anchor.x;
+  const y = anchor.y + size.height + margin > viewport.height ? anchor.y - size.height : anchor.y;
+  return {
+    x: Math.min(Math.max(x, margin), Math.max(viewport.width - size.width - margin, margin)),
+    y: Math.min(Math.max(y, margin), Math.max(viewport.height - size.height - margin, margin)),
+  };
+}
+
+/**
+ * Effects of the catalog that match the search (name or description, ignoring accents and case) and the filter:
+ * a tag, "fits" (made for the action and attribute set) or "all". Keeps the catalog order.
+ */
+export function filterEffects(
+  catalog: Record<ArenaEffectStyle, IArenaEffectCatalogEntry>,
+  query: string,
+  filter: ArenaEffectFilter,
+  kind: ArenaChangeKind,
+  resource: ArenaResourceKey,
+): ArenaEffectStyle[] {
+  return ARENA_EFFECT_STYLES.filter((style) => {
+    const entry = catalog[style];
+    const tagged =
+      filter === "all" ||
+      (filter === "fits"
+        ? entry.tags.includes(kind) && entry.tags.includes(resource)
+        : entry.tags.includes(filter));
+    return tagged && (matchesSearch(entry.name, query) || matchesSearch(entry.description, query));
+  });
 }

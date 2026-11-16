@@ -14,10 +14,13 @@ import {
 } from "@magista/shared";
 import { Server } from "socket.io";
 
-import type {
-  ArenaAudience,
-  IArenaTokenChange,
-  IArenaTokenRemoval,
+import {
+  arenaController,
+  type ArenaAudience,
+  type IArenaEffectDelivery,
+  type IArenaStatusDelivery,
+  type IArenaTokenChange,
+  type IArenaTokenRemoval,
 } from "@/core/controllers/arena";
 import { characterController } from "@/core/controllers/character";
 import {
@@ -39,7 +42,9 @@ import type { RealtimeServer, RealtimeSocket } from "./realtime.types";
 import {
   accountRoom,
   characterRoom,
+  effectEmits,
   groupTokenChanges,
+  statusEmits,
   groupTokenRemovals,
   pendingOf,
 } from "./realtime.utils";
@@ -113,7 +118,15 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
       onResolved: broadcastMarkedResolved,
       onShare: broadcastMarkedShare,
     });
-    registerArenaHandlers(socket, { onMoved: broadcastArenaTokens });
+    registerArenaHandlers(socket, {
+      onMoved: broadcastArenaTokens,
+      onChanged: ({ effects, statuses, characters }) => {
+        broadcastArenaEffects(effects);
+        broadcastArenaStatuses(statuses);
+        for (const character of characters) emitCharacterUpdated(character, null);
+        void broadcastCharacterStatuses(characters);
+      },
+    });
   });
   io = server;
   return server;
@@ -167,7 +180,49 @@ export function disconnectAccount(accountId: string): void {
  * Pushes a saved sheet to the tabs of every account with access to it and to the GM.
  */
 export function broadcastCharacterUpdate(character: ICharacter, origin: string | null): void {
+  emitCharacterUpdated(character, origin);
+  void broadcastCharacterStatuses([character]);
+}
+
+function emitCharacterUpdated(character: ICharacter, origin: string | null): void {
   io?.to([characterRoom(character.id), GM_ROOM]).emit("character:updated", { character, origin });
+}
+
+const sentCharacterResources = new Map<string, string>();
+
+/**
+ * Drops what was remembered about a deleted character (the last resources sent to the Arena).
+ */
+export function forgetCharacterStatus(characterId: string): void {
+  sentCharacterResources.delete(characterId);
+}
+
+/**
+ * Sends the new health and sanity of saved characters to the accounts that see them only through a token
+ * permission on the live scene (the GM and the accounts with access already got `character:updated`), with one
+ * query for all of them. Saves that do not change the resources send nothing; a failed lookup is retried on the
+ * next save.
+ */
+async function broadcastCharacterStatuses(characters: ICharacter[]): Promise<void> {
+  const changed = characters.filter((character) => {
+    const key = JSON.stringify(character.sheet.resources);
+    if (sentCharacterResources.get(character.id) === key) return false;
+    sentCharacterResources.set(character.id, key);
+    return true;
+  });
+  if (changed.length === 0) return;
+  const deliveries = await arenaController.characterStatusDeliveries(
+    changed.map((character) => character.id),
+  );
+  for (const delivery of deliveries) {
+    const rooms = delivery.public ? [TABLE_ROOM] : delivery.accountIds.map(accountRoom);
+    io?.to(rooms)
+      .except([GM_ROOM, characterRoom(delivery.characterId)])
+      .emit("arena:character-status", {
+        characterId: delivery.characterId,
+        status: delivery.status,
+      });
+  }
 }
 
 /**
@@ -243,12 +298,34 @@ export function broadcastArenaToken({
   token,
   audience,
   previousAudience,
+  status,
 }: IArenaTokenChange): void {
   io?.to(arenaRoom(audience)).emit("arena:token", token);
   if (audience === "gm" && previousAudience === "table") {
     io?.to(TABLE_ROOM)
       .except(GM_ROOM)
       .emit("arena:token-removed", { id: token.id, sceneId: token.sceneId });
+  }
+  if (status) broadcastArenaStatuses([status]);
+}
+
+/**
+ * Delivers token statuses: the GM gets everything with the permissions, each visible token reaches only the
+ * allowed rooms, and who lost the permission is told to drop it. Never sent to the whole table unless public.
+ */
+export function broadcastArenaStatuses(deliveries: IArenaStatusDelivery[]): void {
+  if (!io || deliveries.length === 0) return;
+  for (const { to, except, event } of statusEmits(deliveries)) {
+    io.to(to).except(except).emit("arena:status", event);
+  }
+}
+
+/**
+ * Plays damage and healing animations for who sees each token (the amount applied, never the status).
+ */
+export function broadcastArenaEffects(effects: IArenaEffectDelivery[]): void {
+  for (const { audience, event } of effectEmits(effects)) {
+    io?.to(arenaRoom(audience)).emit("arena:effect", event);
   }
 }
 
@@ -268,6 +345,7 @@ export function broadcastArenaTokens(changes: IArenaTokenChange[]): void {
   if (gm.length > 0) io?.to(GM_ROOM).emit("arena:tokens", gm);
   if (hiddenFromTable.length > 0)
     io?.to(TABLE_ROOM).except(GM_ROOM).emit("arena:tokens-removed", hiddenFromTable);
+  broadcastArenaStatuses(changes.flatMap((change) => change.status ?? []));
 }
 
 /**

@@ -26,7 +26,13 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
       return updateEntry(state, character.id, (entry) =>
         entry.character
           ? withRemoteCharacter(entry, character, viewerIsGm)
-          : { ...EMPTY_SHEET_ENTRY, status: "ready", accountId: entry.accountId, character },
+          : {
+              ...EMPTY_SHEET_ENTRY,
+              status: "ready",
+              accountId: entry.accountId,
+              character,
+              baseResources: character.sheet.resources,
+            },
       );
     }),
   failSheetLoad: (characterId, error) =>
@@ -53,7 +59,11 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
     ),
   markSheetSaving: (characterId) =>
     set((state) =>
-      updateEntry(state, characterId, (entry) => ({ ...entry, saveStatus: "saving" })),
+      updateEntry(state, characterId, (entry) => ({
+        ...entry,
+        saveStatus: "saving",
+        savingResources: entry.character?.sheet.resources ?? null,
+      })),
     ),
   markSheetSaved: (characterId, revision, updatedAt) =>
     set((state) =>
@@ -65,6 +75,8 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
               savedRevision: revision,
               saveStatus: revision === entry.revision ? "saved" : "pending",
               saveError: null,
+              baseResources: entry.savingResources ?? entry.baseResources,
+              savingResources: null,
             }
           : null,
       ),
@@ -83,6 +95,7 @@ export const createSheetSlice: StateCreator<AppStore, [], [], SheetSlice> = (set
         savedRevision: entry.revision,
         saveStatus: "saved",
         saveError: null,
+        baseResources: character.sheet.resources,
       })),
     ),
   applySheetImages: ({ id, ...images }) =>

@@ -1,6 +1,6 @@
-import { ARENA_UNIT_PX, type IArenaBounds } from "@magista/shared";
+import { ARENA_UNIT_PX, type ArenaEffectStyle, type IArenaBounds } from "@magista/shared";
 
-import type { IArenaSidebarState } from "./arena.types";
+import type { IArenaEffectCatalogEntry, IArenaSidebarState } from "./arena.types";
 
 export const ARENA_TITLE = "Arena";
 
@@ -47,7 +47,7 @@ export const ARENA_UNSUPPORTED_TEXTS = {
 export const ARENA_LOAD_RETRY_LABEL = "Tentar de novo";
 
 export const ARENA_STAGE_HINT =
-  "Clique num token para selecionar; Shift+clique soma à seleção e arrastar no vazio seleciona em grupo. Arraste os tokens selecionados para mover. Botão direito, do meio ou Espaço+arrastar movem a câmera. Setas movem a seleção (Shift move mais), Ctrl+A seleciona todos, + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção.";
+  "Clique num token para selecionar; Shift+clique soma à seleção e arrastar no vazio seleciona em grupo. Arraste os tokens selecionados para mover. Botão direito num token abre Aplicar mudança (dano e cura); arrastar com o botão direito, do meio ou Espaço move a câmera. Setas movem a seleção (Shift move mais), M aplica dano ou cura na seleção, Ctrl+A seleciona todos, + e - aproximam e afastam, 0 ajusta o mapa e Esc limpa a seleção.";
 
 export const ARENA_MY_TRAY_LABEL = "Meus tokens";
 
@@ -93,6 +93,7 @@ export const ARENA_SELECTION_TEXTS = {
   hide: "Ocultar",
   show: "Mostrar",
   openSheet: "Abrir ficha",
+  configure: "Configurar",
   remove: "Remover",
   count: (count: number) => (count === 1 ? "1 token selecionado" : `${count} tokens selecionados`),
   confirmTitle: (count: number) => (count === 1 ? "Remover token?" : `Remover ${count} tokens?`),
@@ -290,3 +291,146 @@ export const ARENA_MAP_MIN_WIDTH = 360;
 
 /** Screen diameter limits of the token drag preview, in CSS pixels. */
 export const ARENA_TOKEN_PREVIEW_LIMITS = { min: 40, max: 200 } as const;
+
+/** Texts of "Aplicar mudança" (damage and healing from the token). */
+export const ARENA_CHANGE_TEXTS = {
+  title: "Aplicar mudança",
+  close: "Fechar",
+  action: "Ação",
+  damage: "Causar dano",
+  heal: "Aplicar cura",
+  resource: "Atributo",
+  health: "Vida",
+  sanity: "Sanidade",
+  amount: "Valor",
+  attacker: "Quem ataca",
+  noAttacker: "Ninguém",
+  noAttackerHint: "Só o alvo anima.",
+  attackerHint: (name: string) => `${name} avança e golpeia.`,
+  casterHint: (name: string) => `${name} conjura e lança.`,
+  decrease: "Diminuir valor",
+  increase: "Aumentar valor",
+  effect: "Efeito",
+  changeEffect: "Trocar",
+  changeEffectLabel: (name: string) => `Efeito: ${name}. Trocar efeito`,
+  quick: (amount: number) => `Valor ${amount}`,
+  target: (name: string, count: number) => (count > 1 ? `${count} tokens` : name),
+  submit: (kind: "damage" | "heal", resource: "health" | "sanity", amount: number) =>
+    kind === "damage"
+      ? `Causar ${amount} de dano na ${resource === "health" ? "vida" : "sanidade"}`
+      : `Curar ${amount} de ${resource === "health" ? "vida" : "sanidade"}`,
+  keys: "Enter aplica · Shift mantém aberto",
+  invalid: "Informe um valor entre 1 e 999.",
+  applied: (label: string, target: string) => `${label} em ${target}.`,
+} as const;
+
+/** Texts of the effect picker. */
+export const ARENA_EFFECT_TEXTS = {
+  title: "Escolher efeito",
+  description: "O efeito toca para toda a mesa. Clique num efeito para ver o exemplo.",
+  auto: "Automático",
+  autoDescription: (name: string) => `Muda com a ação e o atributo. Agora: ${name}.`,
+  autoShort: (name: string) => `Automático (${name})`,
+  search: "Buscar efeito",
+  searchPlaceholder: "Buscar efeito...",
+  filters: "Filtrar efeitos",
+  count: (count: number) => (count === 1 ? "1 efeito" : `${count} efeitos`),
+  empty: "Nenhum efeito encontrado. Tente outro nome ou filtro.",
+  withAttacker: "Mostrar quem ataca",
+  withAttackerLite: "No modo performance o exemplo mostra só o alvo.",
+  pause: "Pausar exemplo",
+  replay: "Tocar exemplo",
+  previewLabel: (name: string) => `Exemplo do efeito ${name}`,
+  previewLoading: "Carregando o exemplo",
+  use: "Usar efeito",
+  cancel: "Cancelar",
+} as const;
+
+/** Labels of the effect tags (what each effect fits best). */
+export const ARENA_EFFECT_TAG_LABELS = {
+  damage: "Dano",
+  heal: "Cura",
+  health: "Vida",
+  sanity: "Sanidade",
+} as const;
+
+/** Filters of the picker, in order; "fits" keeps the effects made for the action and attribute set. */
+export const ARENA_EFFECT_FILTERS = [
+  { value: "all", label: "Todos" },
+  { value: "fits", label: "Para esta ação" },
+  { value: "damage", label: "Dano" },
+  { value: "heal", label: "Cura" },
+  { value: "health", label: "Vida" },
+  { value: "sanity", label: "Sanidade" },
+] as const;
+
+/**
+ * Catalog of the animations: the one place that names and describes each effect, tells what it fits (tags,
+ * used by the picker filters) and gives its accent. A new effect needs an id in `ARENA_EFFECT_STYLES` (shared),
+ * an entry here and its players in `services/arenaEffectPlayers` (the types refuse a missing one).
+ */
+export const ARENA_EFFECT_CATALOG: Record<ArenaEffectStyle, IArenaEffectCatalogEntry> = {
+  strike: {
+    name: "Golpe",
+    description: "Cortes em lâmina, faíscas, cacos e um tranco no mapa. Quem ataca voa e bate.",
+    tags: ["damage", "health"],
+    accent: "bg-primary",
+    attack: "lunge",
+  },
+  fissure: {
+    name: "Fissura",
+    description:
+      "O alvo falha e racha, fumaça escura e runas quebrando. Quem ataca lança um orbe sombrio.",
+    tags: ["damage", "sanity"],
+    accent: "bg-teal-600",
+    attack: "cast",
+  },
+  ember: {
+    name: "Brasa viva",
+    description:
+      "Aura rosada, brasas em espiral e pétalas subindo. Quem ataca lança um orbe quente.",
+    tags: ["heal", "health"],
+    accent: "bg-ruby-400",
+    attack: "cast",
+  },
+  clarity: {
+    name: "Clareza",
+    description: "Ondas calmas, feixes de luz e runas subindo. Quem ataca lança um orbe claro.",
+    tags: ["heal", "sanity"],
+    accent: "bg-teal-400",
+    attack: "cast",
+  },
+};
+
+export const ARENA_CHANGE_QUICK_AMOUNTS = [1, 5, 10] as const;
+
+export const ARENA_CHANGE_STORAGE_KEY = "magista-arena-change";
+
+/** Width of the menu, used to keep it inside the map area. */
+export const ARENA_CHANGE_MENU_WIDTH = 352;
+
+export const ARENA_CHANGE_MENU_HEIGHT = 420;
+
+/** Texts of the status readout and of the token settings dialog. */
+export const ARENA_STATUS_TEXTS = {
+  readout: (parts: string[]) => parts.join(" · "),
+  health: (value: string) => `Vida ${value}`,
+  sanity: (value: string) => `Sanidade ${value}`,
+  settingsTitle: "Configurações do token",
+  settingsDescription: (name: string) => `Ajustes só deste token: ${name}.`,
+  statusSection: "Vida e sanidade",
+  linked: (name: string) => `Acompanha a ficha de ${name}. Edite pela ficha.`,
+  npcHint: "Valores próprios deste token. Sem máximo, a barra não aparece.",
+  openSheet: "Abrir ficha",
+  viewersSection: "Quem vê vida e sanidade",
+  viewersHint: "O Mestre sempre vê. Os demais só veem as barras se estiverem marcados aqui.",
+  everyone: "Todos os jogadores",
+  alwaysSee: (logins: string) => `Sempre veem (acesso à ficha): ${logins}.`,
+  noPlayers: "Nenhuma conta de jogador criada ainda.",
+  accountsLoading: "Carregando as contas",
+  accountsFailed: "Não foi possível carregar as contas.",
+  retryAccounts: "Tentar de novo",
+  save: "Salvar",
+  cancel: "Cancelar",
+  saved: "Configurações do token salvas.",
+} as const;

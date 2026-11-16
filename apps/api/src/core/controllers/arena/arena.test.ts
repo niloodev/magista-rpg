@@ -3,12 +3,21 @@ import {
   type IArenaFolder,
   type IArenaScene,
   type IArenaToken,
+  type ArenaResourceKey,
+  type ICharacter,
 } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
 import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
-import type { IArenaMoveGuard, IArenaTokenModels, IArenaTokenMove } from "@/core/models/arenaToken";
+import type {
+  IArenaMoveGuard,
+  IArenaTokenModels,
+  IArenaTokenMove,
+  IArenaTokenStatusRow,
+  IUpdateArenaTokenRow,
+  ResourceChange,
+} from "@/core/models/arenaToken";
 import type { IArenaImageStore } from "@/core/services/media";
 
 import { createArenaController } from "./arena";
@@ -85,6 +94,62 @@ function build(
     token(T_HIDDEN, LIVE, { hidden: true, name: "Emboscada" }),
     token(T_PREP, PREP, { characterId: ANA, name: "Ana" }),
   ];
+  const empty = { current: null, max: null };
+  const sheets: Record<
+    string,
+    {
+      health: { current: number | null; max: number | null };
+      sanity: { current: number | null; max: number | null };
+    }
+  > = {
+    [ANA]: { health: { current: 10, max: 20 }, sanity: { current: 5, max: 15 } },
+    [BRUNO]: { health: { current: 8, max: 8 }, sanity: empty },
+  };
+  const npcStatus: Record<string, IArenaTokenStatusRow["status"]> = {
+    [T_WOLF]: { health: { current: 12, max: 30 }, sanity: empty },
+  };
+  const accessState: Record<string, IArenaTokenStatusRow["access"]> = {
+    [T_BRUNO]: { public: false, accountIds: ["alice"] },
+  };
+  const statusRow = (entry: IArenaToken): IArenaTokenStatusRow => ({
+    id: entry.id,
+    sceneId: entry.sceneId,
+    characterId: entry.characterId,
+    hidden: entry.hidden,
+    status: entry.characterId
+      ? (sheets[entry.characterId] ?? { health: empty, sanity: empty })
+      : (npcStatus[entry.id] ?? { health: empty, sanity: empty }),
+    access: accessState[entry.id] ?? { public: false, accountIds: [] },
+  });
+  const applyPatch = (id: string, patch: IUpdateArenaTokenRow) => {
+    const {
+      statusViewerIds,
+      statusPublic,
+      healthCurrent,
+      healthMax,
+      sanityCurrent,
+      sanityMax,
+      ...rest
+    } = patch;
+    const previous = accessState[id] ?? { public: false, accountIds: [] };
+    accessState[id] = {
+      public: statusPublic ?? previous.public,
+      accountIds: statusViewerIds ?? previous.accountIds,
+    };
+    const own = npcStatus[id] ?? { health: empty, sanity: empty };
+    npcStatus[id] = {
+      health:
+        healthCurrent === undefined
+          ? own.health
+          : { current: healthCurrent, max: healthMax ?? null },
+      sanity:
+        sanityCurrent === undefined
+          ? own.sanity
+          : { current: sanityCurrent, max: sanityMax ?? null },
+    };
+    tokenList = tokenList.map((entry) => (entry.id === id ? { ...entry, ...rest } : entry));
+    return tokenList.find((entry) => entry.id === id) ?? null;
+  };
   const mapKeys: Record<string, string | null> = {};
   const unmeasured: { id: string; mapKey: string }[] = options.unmeasured ?? [];
   const scenes: IArenaSceneModels = {
@@ -168,11 +233,38 @@ function build(
       tokenList = tokenList.filter((entry) => entry.id !== id);
       return { id, sceneId: found.sceneId, hidden: found.hidden, imageKey: "media/npc/full.webp" };
     }),
-    updateMany: vi.fn(async (patches: { id: string; patch: Partial<IArenaToken> }[]) =>
-      patches.flatMap(({ id, patch }) => {
-        const found = tokenList.find((entry) => entry.id === id);
-        return found ? [{ ...found, ...patch }] : [];
-      }),
+    updateMany: vi.fn(async (patches: { id: string; patch: IUpdateArenaTokenRow }[]) =>
+      patches.flatMap(({ id, patch }) => applyPatch(id, patch) ?? []),
+    ),
+    listStatuses: vi.fn(async (query) => {
+      if ("ids" in query)
+        return tokenList.filter((entry) => query.ids.includes(entry.id)).map(statusRow);
+      if ("characterIds" in query) {
+        return tokenList
+          .filter(
+            (entry) =>
+              entry.characterId !== null &&
+              query.characterIds.includes(entry.characterId) &&
+              entry.sceneId === query.sceneId &&
+              !entry.hidden,
+          )
+          .map(statusRow);
+      }
+      return tokenList
+        .filter(
+          (entry) => entry.sceneId === query.sceneId && (query.includeHidden || !entry.hidden),
+        )
+        .map(statusRow);
+    }),
+    changeNpcResource: vi.fn(
+      async (ids: string[], resource: ArenaResourceKey, change: ResourceChange) =>
+        ids.flatMap((id) => {
+          const own = npcStatus[id];
+          const next = own ? change(own[resource]) : null;
+          if (!own || !next) return [];
+          npcStatus[id] = { ...own, [resource]: next };
+          return [id];
+        }),
     ),
     removeMany: vi.fn(async (ids: string[]) =>
       tokenList
@@ -230,9 +322,24 @@ function build(
     characters: {
       exists: vi.fn(async (id) => [ANA, BRUNO].includes(id)),
       listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
+      changeResource: vi.fn(
+        async (ids: string[], resource: ArenaResourceKey, change: ResourceChange) =>
+          ids.flatMap((id) => {
+            const sheet = sheets[id];
+            const next = sheet ? change(sheet[resource]) : null;
+            if (!sheet || !next) return [];
+            sheets[id] = { ...sheet, [resource]: next };
+            return [{ id } as ICharacter];
+          }),
+      ),
+    },
+    accounts: {
+      countPlayersByIds: vi.fn(
+        async (ids: string[]) => ids.filter((id) => ["alice", "bob"].includes(id)).length,
+      ),
     },
   });
-  return { controller, scenes, tokens, images, folders, assets };
+  return { controller, scenes, tokens, images, folders, assets, sheets, npcStatus };
 }
 
 const png = Buffer.from("png-bytes");
@@ -268,6 +375,7 @@ describe("arena controller: view", () => {
       scene: null,
       tokens: [],
       controllableCharacterIds: [],
+      statuses: {},
     });
   });
 });
@@ -451,12 +559,14 @@ describe("arena controller: GM tools", () => {
   it("only renames NPC tokens", async () => {
     const { controller, tokens } = build();
     await controller.updateToken(gm, T_ANA, { name: "Outra", size: 200 });
-    expect(tokens.update).toHaveBeenLastCalledWith(T_ANA, { size: 200 });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([{ id: T_ANA, patch: { size: 200 } }]);
     expect(await controller.updateToken(gm, T_ANA, { name: "Outra" })).toEqual({
       error: arenaErrors.characterName,
     });
     await controller.updateToken(gm, T_WOLF, { name: "Lobo Alfa" });
-    expect(tokens.update).toHaveBeenLastCalledWith(T_WOLF, { name: "Lobo Alfa" });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([
+      { id: T_WOLF, patch: { name: "Lobo Alfa" } },
+    ]);
   });
 
   it("removes tokens and tells only who saw them", async () => {
@@ -749,5 +859,179 @@ describe("arena controller: board size", () => {
     expect(tokens.moveMany).toHaveBeenCalledWith([{ tokenId: T_WOLF, x: 2000, y: 120 }], undefined);
     await controller.createToken(gm, LIVE, { name: "Lobo", x: 9000, y: 9000 });
     expect(tokens.create).toHaveBeenCalledWith(LIVE, expect.objectContaining({ x: 2000, y: 1000 }));
+  });
+});
+
+describe("arena controller: token status", () => {
+  it("gives each viewer only the statuses they may see", async () => {
+    const { controller } = build();
+    const player = await controller.getView(alice);
+    if ("error" in player) throw new Error(player.error);
+    expect(Object.keys(player.payload.statuses).sort()).toEqual([T_ANA, T_BRUNO].sort());
+    expect(player.payload.statusAccess).toBeUndefined();
+    const master = await controller.getView(gm);
+    if ("error" in master) throw new Error(master.error);
+    expect(Object.keys(master.payload.statuses)).toHaveLength(4);
+    expect(master.payload.statusAccess?.[T_BRUNO]).toEqual({
+      public: false,
+      accountIds: ["alice"],
+    });
+  });
+
+  it("stores own status only on NPC tokens and validates the viewers", async () => {
+    const { controller } = build();
+    const health = { current: 3, max: 9 };
+    expect(await controller.updateToken(gm, T_ANA, { status: { health } })).toEqual({
+      error: arenaErrors.characterStatus,
+    });
+    expect(
+      await controller.updateTokens(gm, { updates: [{ id: T_ANA, status: { health } }] }),
+    ).toEqual({ error: arenaErrors.characterStatus });
+    expect(await controller.updateToken(gm, T_WOLF, { statusViewerIds: [MISSING] })).toEqual({
+      error: arenaErrors.invalidViewers,
+    });
+    expect(await controller.updateToken(alice, T_WOLF, { statusPublic: true })).toEqual({
+      error: arenaErrors.gmOnly,
+    });
+    const result = await controller.updateToken(gm, T_WOLF, { status: { health } });
+    expect(result).toMatchObject({
+      payload: { status: { tokenId: T_WOLF, table: true, status: { health } } },
+    });
+  });
+
+  it("reports who lost the permission", async () => {
+    const { controller } = build();
+    await controller.updateToken(gm, T_WOLF, { statusPublic: true });
+    const result = await controller.updateTokens(gm, {
+      updates: [
+        { id: T_BRUNO, statusViewerIds: [] },
+        { id: T_WOLF, statusPublic: false },
+      ],
+    });
+    expect(result).toMatchObject({
+      payload: [
+        { status: { tokenId: T_BRUNO, revokedAccountIds: ["alice"], revokedPublic: false } },
+        { status: { tokenId: T_WOLF, revokedAccountIds: [], revokedPublic: true } },
+      ],
+    });
+  });
+
+  it("delivers a status only when the edit touches it", async () => {
+    const { controller } = build();
+    const result = await controller.updateToken(gm, T_WOLF, { size: 200 });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload.status).toBeUndefined();
+  });
+});
+
+describe("arena controller: apply change", () => {
+  const change = (tokenIds: string[], extra: object = {}) => ({
+    tokenIds,
+    kind: "damage",
+    resource: "health",
+    amount: 5,
+    ...extra,
+  });
+
+  it("lets a player damage any visible token, sheets included", async () => {
+    const { controller, sheets, npcStatus } = build();
+    const result = await controller.applyChange(alice, change([T_WOLF, T_BRUNO]));
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload.result).toEqual({ applied: [T_WOLF, T_BRUNO], refused: [] });
+    expect(npcStatus[T_WOLF]?.health.current).toBe(7);
+    expect(sheets[BRUNO]?.health.current).toBe(3);
+    expect(result.payload.effects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tokenId: T_WOLF, amount: 5, audience: "table" }),
+        expect.objectContaining({ tokenId: T_BRUNO, amount: 5, audience: "table" }),
+      ]),
+    );
+    expect(result.payload.statuses.map((entry) => entry.tokenId)).toEqual([T_WOLF]);
+  });
+
+  it("refuses hidden tokens and other scenes for players, not for the GM", async () => {
+    const { controller } = build();
+    expect(await controller.applyChange(alice, change([T_HIDDEN]))).toEqual({
+      error: arenaErrors.tokenNotFound,
+    });
+    expect(await controller.applyChange(alice, change([T_PREP]))).toEqual({
+      error: arenaErrors.tokenNotFound,
+    });
+    expect(await controller.applyChange(gm, change([T_PREP]))).toMatchObject({
+      payload: { result: { applied: [T_PREP] } },
+    });
+  });
+
+  it("changes a sheet once even with several of its tokens", async () => {
+    const { controller, sheets } = build();
+    await controller.applyChange(gm, change([T_ANA, T_PREP], { kind: "heal", amount: 4 }));
+    expect(sheets[ANA]?.health.current).toBe(14);
+  });
+
+  it("stops at zero, at the maximum and refuses undefined resources", async () => {
+    const { controller, sheets } = build();
+    await controller.applyChange(gm, change([T_BRUNO], { amount: 50 }));
+    expect(sheets[BRUNO]?.health.current).toBe(0);
+    await controller.applyChange(gm, change([T_BRUNO], { kind: "heal", amount: 50 }));
+    expect(sheets[BRUNO]?.health.current).toBe(8);
+    expect(await controller.applyChange(gm, change([T_BRUNO], { resource: "sanity" }))).toEqual({
+      error: arenaErrors.noSanity,
+    });
+    expect(await controller.applyChange(gm, change([T_WOLF], { amount: 0 }))).toEqual({
+      error: arenaErrors.invalidChange,
+    });
+  });
+
+  it("lets a player attack only with a token they control on the same scene", async () => {
+    const { controller } = build();
+    expect(
+      await controller.applyChange(alice, change([T_WOLF], { attackerTokenId: T_BRUNO })),
+    ).toEqual({ error: arenaErrors.invalidAttacker });
+    expect(
+      await controller.applyChange(alice, change([T_WOLF], { attackerTokenId: T_HIDDEN })),
+    ).toEqual({ error: arenaErrors.invalidAttacker });
+    const result = await controller.applyChange(
+      alice,
+      change([T_WOLF], { attackerTokenId: T_ANA }),
+    );
+    expect(result).toMatchObject({
+      payload: { effects: [{ tokenId: T_WOLF, attackerTokenId: T_ANA }] },
+    });
+    expect(await controller.applyChange(gm, change([T_PREP], { attackerTokenId: T_WOLF }))).toEqual(
+      { error: arenaErrors.invalidAttacker },
+    );
+  });
+
+  it("passes the chosen animation to everyone", async () => {
+    const { controller } = build();
+    const result = await controller.applyChange(alice, change([T_WOLF], { effect: "clarity" }));
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload.effects[0]?.effect).toBe("clarity");
+    expect(await controller.applyChange(alice, change([T_WOLF], { effect: "nope" }))).toEqual({
+      error: arenaErrors.invalidChange,
+    });
+  });
+
+  it("hides a hidden attacker from the table", async () => {
+    const { controller } = build();
+    const result = await controller.applyChange(
+      gm,
+      change([T_WOLF], { attackerTokenId: T_HIDDEN }),
+    );
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload.effects[0]?.attackerTokenId).toBeUndefined();
+  });
+
+  it("tells who sees a character only through token permissions", async () => {
+    const { controller } = build();
+    expect(await controller.characterStatusDeliveries([BRUNO, ANA])).toEqual([
+      {
+        characterId: BRUNO,
+        status: { health: { current: 8, max: 8 }, sanity: { current: null, max: null } },
+        public: false,
+        accountIds: ["alice"],
+      },
+    ]);
+    expect(await controller.characterStatusDeliveries([])).toEqual([]);
   });
 });

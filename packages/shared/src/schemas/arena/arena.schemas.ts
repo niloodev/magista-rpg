@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { resourceSchema } from "../character/character.schemas";
+
 export const ARENA_NAME_MAX_LENGTH = 60;
 
 /** Message of the API when a scene does not exist (the web uses it to drop a preview of a deleted scene). */
@@ -34,6 +36,19 @@ export const ARENA_TOKEN_SIZE_DEFAULT = 140;
 export const ARENA_MOVE_BATCH_MAX = 50;
 
 export const ARENA_EDIT_BATCH_MAX = 100;
+
+/** Most player accounts one token can list as allowed to see its status. */
+export const ARENA_STATUS_VIEWERS_MAX = 100;
+
+/** Largest damage or healing applied at once through "Aplicar mudança". */
+export const ARENA_CHANGE_AMOUNT_MAX = 999;
+
+export const ARENA_RESOURCE_KEYS = ["health", "sanity"] as const;
+
+export const ARENA_CHANGE_KINDS = ["damage", "heal"] as const;
+
+/** Animations a change can play; without a choice, the one of its kind and resource. */
+export const ARENA_EFFECT_STYLES = ["strike", "fissure", "ember", "clarity"] as const;
 
 export const arenaIdSchema = z.uuid();
 
@@ -82,11 +97,27 @@ export const arenaTokenSchema = z.object({
   position: z.number().int(),
 });
 
+/** Health and sanity of a token: the sheet resources for a character token, its own values for an NPC. */
+export const arenaTokenStatusSchema = z.object({
+  health: resourceSchema,
+  sanity: resourceSchema,
+});
+
+/** Who may see a token status besides the GM and the accounts with access to its sheet. */
+export const arenaTokenStatusAccessSchema = z.object({
+  public: z.boolean(),
+  accountIds: z.array(z.string()),
+});
+
 export const arenaViewSchema = z.object({
   activeSceneId: z.string().nullable(),
   scene: arenaSceneSchema.nullable(),
   tokens: z.array(arenaTokenSchema),
   controllableCharacterIds: z.array(z.string()),
+  /** Status of each token the viewer may see, by token id. */
+  statuses: z.record(z.string(), arenaTokenStatusSchema),
+  /** Status permissions of every token, by token id (GM only). */
+  statusAccess: z.record(z.string(), arenaTokenStatusAccessSchema).optional(),
 });
 
 export const createArenaSceneInputSchema = z.object({
@@ -143,22 +174,31 @@ export const createArenaTokenInputSchema = z
   })
   .refine((input) => input.characterId !== null || input.name !== undefined);
 
-export const updateArenaTokenInputSchema = z
-  .object({
-    name: arenaNameSchema.optional(),
-    size: arenaTokenSizeSchema.optional(),
-    hidden: z.boolean().optional(),
-  })
-  .refine((input) => Object.values(input).some((value) => value !== undefined));
+const tokenStatusPatchSchema = z
+  .object({ health: resourceSchema.optional(), sanity: resourceSchema.optional() })
+  .refine((status) => status.health !== undefined || status.sanity !== undefined);
 
-const tokenPatchSchema = z
-  .object({
-    id: arenaIdSchema,
-    name: arenaNameSchema.optional(),
-    size: arenaTokenSizeSchema.optional(),
-    hidden: z.boolean().optional(),
-  })
-  .refine((input) => [input.name, input.size, input.hidden].some((value) => value !== undefined));
+const statusViewerIdsSchema = z
+  .array(arenaIdSchema)
+  .max(ARENA_STATUS_VIEWERS_MAX)
+  .refine((ids) => new Set(ids).size === ids.length);
+
+const tokenEditFields = {
+  name: arenaNameSchema.optional(),
+  size: arenaTokenSizeSchema.optional(),
+  hidden: z.boolean().optional(),
+  /** Own health and sanity (NPC tokens only; a character token follows its sheet). */
+  status: tokenStatusPatchSchema.optional(),
+  statusPublic: z.boolean().optional(),
+  statusViewerIds: statusViewerIdsSchema.optional(),
+};
+
+const hasTokenEdit = (input: Record<string, unknown>) =>
+  Object.entries(input).some(([key, value]) => key !== "id" && value !== undefined);
+
+export const updateArenaTokenInputSchema = z.object(tokenEditFields).refine(hasTokenEdit);
+
+const tokenPatchSchema = z.object({ id: arenaIdSchema, ...tokenEditFields }).refine(hasTokenEdit);
 
 export const updateArenaTokensInputSchema = z.object({
   updates: z
@@ -189,3 +229,21 @@ export const moveArenaTokensInputSchema = z.object({
     .max(ARENA_MOVE_BATCH_MAX)
     .refine((moves) => new Set(moves.map((move) => move.tokenId)).size === moves.length),
 });
+
+/** Damage or healing applied to one or more tokens ("Aplicar mudança"); anyone who sees the tokens may apply it. */
+export const applyArenaChangeInputSchema = z
+  .object({
+    tokenIds: z
+      .array(arenaIdSchema)
+      .min(1)
+      .max(ARENA_EDIT_BATCH_MAX)
+      .refine((ids) => new Set(ids).size === ids.length),
+    kind: z.enum(ARENA_CHANGE_KINDS),
+    resource: z.enum(ARENA_RESOURCE_KEYS),
+    amount: z.number().int().min(1).max(ARENA_CHANGE_AMOUNT_MAX),
+    /** Token that deals the change (its own animation plays before the hit); never one of the targets. */
+    attackerTokenId: arenaIdSchema.optional(),
+    /** Animation chosen by hand; without it, the automatic one. */
+    effect: z.enum(ARENA_EFFECT_STYLES).optional(),
+  })
+  .refine((input) => !input.attackerTokenId || !input.tokenIds.includes(input.attackerTokenId));

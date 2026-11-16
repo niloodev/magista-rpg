@@ -13,15 +13,16 @@ enum AccountRole {
 }
 
 model Account {
-  id             String            @id @default(uuid()) @db.Uuid
-  login          String
-  loginKey       String            @unique
-  passwordHash   String
-  role           AccountRole       @default(PLAYER)
-  sessionVersion Int               @default(0)
-  access         CharacterAccess[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id               String                   @id @default(uuid()) @db.Uuid
+  login            String
+  loginKey         String                   @unique
+  passwordHash     String
+  role             AccountRole              @default(PLAYER)
+  sessionVersion   Int                      @default(0)
+  access           CharacterAccess[]
+  tokenStatusViews ArenaTokenStatusViewer[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
   @@map("accounts")
 }
@@ -122,24 +123,41 @@ model ArenaScene {
 }
 
 model ArenaToken {
-  id          String     @id @default(uuid()) @db.Uuid
-  sceneId     String     @db.Uuid
-  scene       ArenaScene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  characterId String?    @db.Uuid
-  character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  name        String?
-  imageKey    String?
-  x           Float      @default(0)
-  y           Float      @default(0)
-  size        Int        @default(140)
-  hidden      Boolean    @default(false)
-  position    Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id            String                   @id @default(uuid()) @db.Uuid
+  sceneId       String                   @db.Uuid
+  scene         ArenaScene               @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  characterId   String?                  @db.Uuid
+  character     Character?               @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name          String?
+  imageKey      String?
+  x             Float                    @default(0)
+  y             Float                    @default(0)
+  size          Int                      @default(140)
+  hidden        Boolean                  @default(false)
+  position      Int                      @default(0)
+  healthCurrent Int?
+  healthMax     Int?
+  sanityCurrent Int?
+  sanityMax     Int?
+  statusPublic  Boolean                  @default(false)
+  statusViewers ArenaTokenStatusViewer[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
   @@index([sceneId])
   @@index([characterId])
   @@map("arena_tokens")
+}
+
+model ArenaTokenStatusViewer {
+  tokenId   String     @db.Uuid
+  token     ArenaToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  accountId String     @db.Uuid
+  account   Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([tokenId, accountId])
+  @@index([accountId])
+  @@map("arena_token_status_viewers")
 }
 
 model ArenaState {

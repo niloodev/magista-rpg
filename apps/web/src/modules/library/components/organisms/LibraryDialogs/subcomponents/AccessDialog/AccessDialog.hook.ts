@@ -1,6 +1,5 @@
 "use client";
 
-import { matchesSearch } from "@magista/shared";
 import { useId, useMemo, useState, type FormEvent } from "react";
 
 import type { AccessDialogProps } from "./AccessDialog.types";
@@ -15,16 +14,12 @@ export function useAccessDialog({
 }: Pick<AccessDialogProps, "accounts" | "initialAccountIds" | "onSubmit">) {
   const formId = useId();
   const [selected, setSelected] = useState<string[]>(initialAccountIds);
-  const [filter, setFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const players = useMemo(
-    () =>
-      accounts
-        .filter((account) => account.role === "PLAYER")
-        .filter((account) => matchesSearch(account.login, filter)),
-    [accounts, filter],
+    () => accounts.filter((account) => account.role === "PLAYER"),
+    [accounts],
   );
 
   const toggle = (accountId: string, checked: boolean) =>
@@ -51,8 +46,6 @@ export function useAccessDialog({
     players,
     selected,
     selectionLabel,
-    filter,
-    setFilter,
     toggle,
     error,
     pending,

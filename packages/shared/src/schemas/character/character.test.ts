@@ -6,6 +6,7 @@ import {
   createEmptySheet,
   exceedsResourceMax,
   mergeGmOnlyFields,
+  sheetResourceOf,
 } from "./character.utils";
 
 describe("character sheet schema", () => {
@@ -60,5 +61,23 @@ describe("characterPortrait", () => {
         artThumbUrl: "/art-t",
       }),
     ).toBe("/av-t");
+  });
+});
+
+describe("sheetResourceOf", () => {
+  it("reads a stored resource and falls back to an empty one", () => {
+    expect(sheetResourceOf({ health: { current: 3, max: 9 } }, "health")).toEqual({
+      current: 3,
+      max: 9,
+    });
+    expect(sheetResourceOf({ health: { current: 3, max: 9 } }, "sanity")).toEqual({
+      current: null,
+      max: null,
+    });
+    expect(sheetResourceOf({ health: { current: "x" } }, "health")).toEqual({
+      current: null,
+      max: null,
+    });
+    expect(sheetResourceOf(null, "health")).toEqual({ current: null, max: null });
   });
 });

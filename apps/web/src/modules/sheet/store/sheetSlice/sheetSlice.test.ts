@@ -149,6 +149,41 @@ describe("sheet slice", () => {
     expect(state.saveStatus).toBe("pending");
   });
 
+  it("takes damage applied from the Arena when the draft did not touch the resource", () => {
+    const store = loaded();
+    store.getState().editSheet("c1", (sheet) => {
+      sheet.identity.alignmentNote = "local";
+      sheet.resources.sanity = { current: 5, max: null };
+    });
+    const remoteSheet = createEmptySheet();
+    remoteSheet.resources.health = { current: 3, max: null };
+    remoteSheet.resources.sanity = { current: 9, max: null };
+    store.getState().applyRemoteCharacter({ ...character, sheet: remoteSheet, updatedAt: "v2" });
+    const sheet = entry(store)!.character?.sheet;
+    expect(sheet?.identity.alignmentNote).toBe("local");
+    expect(sheet?.resources.health.current).toBe(3);
+    expect(sheet?.resources.sanity.current).toBe(5);
+  });
+
+  it("takes Arena damage into the GM draft too, after a save moved the base", () => {
+    const store = loaded();
+    store.getState().setSession({ account: { id: "gm", login: "mestre", role: "GM" } });
+    store.getState().editSheet("c1", (sheet) => {
+      sheet.resources.health = { current: 20, max: 20 };
+    });
+    store.getState().markSheetSaving("c1");
+    store.getState().markSheetSaved("c1", 1, "v2");
+    store.getState().editSheet("c1", (sheet) => {
+      sheet.identity.level = 5;
+    });
+    const remoteSheet = createEmptySheet();
+    remoteSheet.resources.health = { current: 14, max: 20 };
+    store.getState().applyRemoteCharacter({ ...character, sheet: remoteSheet, updatedAt: "v3" });
+    const sheet = entry(store)!.character?.sheet;
+    expect(sheet?.identity.level).toBe(5);
+    expect(sheet?.resources.health).toEqual({ current: 14, max: 20 });
+  });
+
   it("replaces the character after a level up and marks it saved", () => {
     const store = loaded();
     store.getState().editSheet("c1", (sheet) => void (sheet.identity.alignmentNote = "x"));

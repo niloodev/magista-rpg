@@ -12,8 +12,10 @@ import {
   slotsFor,
   upsertToken,
   upsertTokens,
+  withCharacterStatus,
   withoutDocked,
   withSheetOnTop,
+  withStatusEntries,
 } from "./arenaSlice.utils";
 
 export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set, get) => ({
@@ -136,6 +138,20 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           },
         },
       };
+    }),
+  applyArenaStatus: ({ sceneId, entries }) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (!view || view.scene?.id !== sceneId || entries.length === 0) return state;
+      return { arena: { ...state.arena, view: { ...view, ...withStatusEntries(view, entries) } } };
+    }),
+  applyCharacterStatus: (characterId, status) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (!view) return state;
+      const statuses = withCharacterStatus(view, characterId, status);
+      if (statuses === view.statuses) return state;
+      return { arena: { ...state.arena, view: { ...view, statuses } } };
     }),
   selectArenaTokens: (tokenIds, mode) =>
     set((state) => ({

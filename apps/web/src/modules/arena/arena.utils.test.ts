@@ -16,7 +16,14 @@ import {
   selectionSummary,
   toRenderTokens,
   dockedTabsOf,
+  changeTargets,
+  placeMenu,
+  statusReadout,
+  filterEffects,
+  readChangePreference,
+  saveChangePreference,
 } from "./arena.utils";
+import { ARENA_EFFECT_CATALOG } from "./arena.constants";
 
 function token(id: string, characterId: string | null): IArenaToken {
   return {
@@ -50,6 +57,7 @@ const view: IArenaView = {
   },
   tokens: [token("ana", "c-ana"), token("bruno", "c-bruno"), token("lobo", null)],
   controllableCharacterIds: ["c-ana"],
+  statuses: { ana: { health: { current: 4, max: 10 }, sanity: { current: null, max: null } } },
 };
 
 const media = (path: string | null) => (path ? `http://api${path}` : null);
@@ -202,5 +210,90 @@ describe("docked tabs", () => {
     expect(tabs.active).toBe("c1");
     tabs.onShow(null);
     expect(show).toHaveBeenCalledWith("left", null);
+  });
+});
+
+describe("arena utils: token status", () => {
+  it("passes each visible status to the board", () => {
+    const tokens = toRenderTokens(view, false, media);
+    expect(tokens[0]?.status?.health).toEqual({ current: 4, max: 10 });
+    expect(tokens[1]?.status).toBeNull();
+  });
+
+  it("writes the readout of a status", () => {
+    expect(
+      statusReadout({ health: { current: 12, max: 20 }, sanity: { current: 8, max: 15 } }),
+    ).toBe("Vida 12/20 · Sanidade 8/15");
+    expect(
+      statusReadout({ health: { current: 3, max: 9 }, sanity: { current: null, max: null } }),
+    ).toBe("Vida 3/9");
+    expect(statusReadout(null)).toBeNull();
+  });
+
+  it("applies a change to the selection only when the token belongs to it", () => {
+    expect(changeTargets(["a", "b"], "a")).toEqual(["a", "b"]);
+    expect(changeTargets(["a", "b"], "c")).toEqual(["c"]);
+  });
+
+  it("keeps the menu inside the screen", () => {
+    const size = { width: 300, height: 200 };
+    const screen = { width: 1000, height: 800 };
+    expect(placeMenu({ x: 100, y: 100 }, size, screen)).toEqual({ x: 100, y: 100 });
+    expect(placeMenu({ x: 900, y: 700 }, size, screen)).toEqual({ x: 600, y: 500 });
+  });
+});
+
+describe("arena utils: effect picker", () => {
+  it("filters by tag, by what fits the action and by name or description", () => {
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "all", "damage", "health")).toHaveLength(4);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "fits", "heal", "sanity")).toEqual(["clarity"]);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "damage", "heal", "health")).toEqual([
+      "strike",
+      "fissure",
+    ]);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "brasa", "all", "damage", "health")).toEqual([
+      "ember",
+    ]);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "petalas", "all", "damage", "health")).toEqual([
+      "ember",
+    ]);
+  });
+});
+
+describe("arena utils: change preference", () => {
+  it("keeps a valid preference and drops anything malformed", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+      },
+    });
+    expect(readChangePreference()).toEqual({
+      kind: "damage",
+      resource: "health",
+      amount: 5,
+      effect: "auto",
+    });
+    saveChangePreference({ kind: "heal", resource: "sanity", amount: 12, effect: "ember" });
+    expect(readChangePreference()).toEqual({
+      kind: "heal",
+      resource: "sanity",
+      amount: 12,
+      effect: "ember",
+    });
+    window.localStorage.setItem(
+      "magista-arena-change",
+      JSON.stringify({ kind: "heal", resource: "sanity", amount: 12, effect: "nope" }),
+    );
+    expect(readChangePreference().effect).toBe("auto");
+    window.localStorage.setItem(
+      "magista-arena-change",
+      JSON.stringify({ kind: "heal", resource: "sanity", amount: 5000, effect: "ember" }),
+    );
+    expect(readChangePreference().amount).toBe(5);
+    window.localStorage.setItem("magista-arena-change", "{oops");
+    expect(readChangePreference().kind).toBe("damage");
+    vi.unstubAllGlobals();
   });
 });

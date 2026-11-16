@@ -8,4 +8,6 @@ export interface ResourceBarProps {
   resource: ISheetResource;
   onChange: (resource: ISheetResource) => void;
   maxLocked?: boolean;
+  /** Shows the values without editing them (both fields disabled). */
+  readOnly?: boolean;
 }

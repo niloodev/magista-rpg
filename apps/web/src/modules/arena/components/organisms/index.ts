@@ -11,3 +11,5 @@ export * from "./NpcTokenDialog";
 export * from "./SceneBoardDialog";
 export * from "./SceneFormDialog";
 export * from "./SceneLibrary";
+export * from "./ArenaTokenSettingsDialog";
+export * from "./ArenaEffectPickerDialog";

@@ -4,9 +4,13 @@ import {
   ARENA_MAP_MAX_SIDE,
   ARENA_TOKEN_IMAGE_MAX_BYTES,
   ARENA_TOKEN_IMAGE_MAX_SIDE,
+  applyArenaChangeInputSchema,
+  applyResourceChange,
   arenaBoardInputSchema,
   arenaIdSchema,
   canControlToken,
+  canSeeTokenStatus,
+  hasResource,
   clampToMap,
   createArenaFolderInputSchema,
   createArenaSceneInputSchema,
@@ -26,13 +30,27 @@ import { arenaSceneModels } from "@/core/models/arenaScene";
 import { arenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import { arenaTokenModels } from "@/core/models/arenaToken";
 import { characterModels } from "@/core/models/character";
+import { accountModels } from "@/core/models/account";
 import { imageAssets } from "@/core/controllers/mediaAsset";
 import { arenaImages } from "@/core/services/media";
+import type { IArenaToken } from "@magista/shared";
+import type { IUpdateArenaTokenRow } from "@/core/models/arenaToken";
 
 import type { IViewer } from "../controllers.types";
 import { arenaErrors } from "./arena.errors";
-import type { IArenaController, IArenaControllerDeps } from "./arena.types";
-import { sceneAudience, tokenAudience } from "./arena.utils";
+import type {
+  IArenaController,
+  IArenaControllerDeps,
+  IArenaStatusDelivery,
+  IArenaTokenChange,
+} from "./arena.types";
+import {
+  sceneAudience,
+  statusDelivery,
+  tokenAudience,
+  tokenRowPatch,
+  touchesStatus,
+} from "./arena.utils";
 
 /**
  * Builds the Arena controller: scenes (maps), the live scene, tokens and their movement.
@@ -44,6 +62,7 @@ export function createArenaController({
   folders,
   tokens,
   characters,
+  accounts,
   images,
   assets,
 }: IArenaControllerDeps): IArenaController {
@@ -99,6 +118,41 @@ export function createArenaController({
     return { allowed, forbidden: visible.length > allowed.length, activeSceneId };
   };
 
+  const validViewers = async (patches: IUpdateArenaTokenRow[]) => {
+    const ids = [...new Set(patches.flatMap((patch) => patch.statusViewerIds ?? []))];
+    return ids.length === 0 || (await accounts.countPlayersByIds(ids)) === ids.length;
+  };
+
+  /**
+   * Stores token patches and pairs each stored token with its audiences and, when the patch touched what the
+   * status depends on, the status to deliver (with the permissions it had before, to hide it from who lost them).
+   */
+  const storePatches = async (
+    patches: { id: string; patch: IUpdateArenaTokenRow }[],
+    before: Map<string, IArenaToken>,
+  ): Promise<IArenaTokenChange[]> => {
+    const statusIds = patches.filter(({ patch }) => touchesStatus(patch)).map(({ id }) => id);
+    const previous = await tokens.listStatuses({ ids: statusIds });
+    const previousAccess = new Map(previous.map((row) => [row.id, row.access]));
+    const updated = await tokens.updateMany(patches);
+    const activeSceneId = await scenes.findActiveSceneId();
+    const current = await tokens.listStatuses({
+      ids: updated.map((token) => token.id).filter((id) => statusIds.includes(id)),
+    });
+    const deliveries = new Map(
+      current.map((row) => [
+        row.id,
+        statusDelivery(row, activeSceneId, previousAccess.get(row.id)),
+      ]),
+    );
+    return updated.map((token) => ({
+      token,
+      audience: tokenAudience(token, activeSceneId),
+      previousAudience: tokenAudience(before.get(token.id) ?? token, activeSceneId),
+      ...(deliveries.has(token.id) ? { status: deliveries.get(token.id) } : {}),
+    }));
+  };
+
   const getView: IArenaController["getView"] = async (viewer, requestedSceneId) => {
     const wantsScene =
       viewer.role === "GM" && requestedSceneId !== undefined && requestedSceneId !== "";
@@ -123,9 +177,31 @@ export function createArenaController({
         ),
       ];
       const shownScene = scene && viewer.role !== "GM" ? { ...scene, folderId: null } : scene;
+      const statusRows = scene
+        ? await tokens.listStatuses({ sceneId: scene.id, includeHidden: viewer.role === "GM" })
+        : [];
+      const statuses = Object.fromEntries(
+        statusRows
+          .filter((row) =>
+            canSeeTokenStatus(viewer, row, {
+              accessibleCharacterIds: accessible,
+              access: row.access,
+            }),
+          )
+          .map((row) => [row.id, row.status]),
+      );
       return {
         message: "Arena carregada",
-        payload: { activeSceneId, scene: shownScene, tokens: list, controllableCharacterIds },
+        payload: {
+          activeSceneId,
+          scene: shownScene,
+          tokens: list,
+          controllableCharacterIds,
+          statuses,
+          ...(viewer.role === "GM"
+            ? { statusAccess: Object.fromEntries(statusRows.map((row) => [row.id, row.access])) }
+            : {}),
+        },
       };
     } catch (error) {
       return failed("getView", error);
@@ -347,8 +423,18 @@ export function createArenaController({
         ...placement,
         ...clampToMap(placement, scene),
       });
-      const audience = tokenAudience(token, await scenes.findActiveSceneId());
-      return { message: "Token criado", payload: { token, audience, previousAudience: audience } };
+      const activeSceneId = await scenes.findActiveSceneId();
+      const audience = tokenAudience(token, activeSceneId);
+      const [row] = await tokens.listStatuses({ ids: [token.id] });
+      return {
+        message: "Token criado",
+        payload: {
+          token,
+          audience,
+          previousAudience: audience,
+          ...(row ? { status: statusDelivery(row, activeSceneId) } : {}),
+        },
+      };
     } catch (error) {
       return failed("createToken", error);
     }
@@ -362,20 +448,15 @@ export function createArenaController({
     try {
       const existing = await tokens.findById(id);
       if (!existing) return { error: arenaErrors.tokenNotFound };
-      const { name, ...rest } = parsed.data;
-      const patch = existing.characterId || name === undefined ? rest : { ...rest, name };
-      if (Object.keys(patch).length === 0) return { error: arenaErrors.characterName };
-      const token = await tokens.update(id, patch);
-      if (!token) return { error: arenaErrors.tokenNotFound };
-      const activeSceneId = await scenes.findActiveSceneId();
-      return {
-        message: "Token atualizado",
-        payload: {
-          token,
-          audience: tokenAudience(token, activeSceneId),
-          previousAudience: tokenAudience(existing, activeSceneId),
-        },
-      };
+      const patch = tokenRowPatch(existing, parsed.data);
+      if (Object.keys(patch).length === 0)
+        return {
+          error: parsed.data.status ? arenaErrors.characterStatus : arenaErrors.characterName,
+        };
+      if (!(await validViewers([patch]))) return { error: arenaErrors.invalidViewers };
+      const [change] = await storePatches([{ id, patch }], new Map([[id, existing]]));
+      if (!change) return { error: arenaErrors.tokenNotFound };
+      return { message: "Token atualizado", payload: change };
     } catch (error) {
       return failed("updateToken", error);
     }
@@ -388,30 +469,20 @@ export function createArenaController({
     try {
       const existing = await tokens.findManyByIds(parsed.data.updates.map((update) => update.id));
       const byId = new Map(existing.map((token) => [token.id, token]));
-      const patches = parsed.data.updates.flatMap(({ id, name, size, hidden }) => {
+      const patches = parsed.data.updates.flatMap(({ id, ...input }) => {
         const token = byId.get(id);
         if (!token) return [];
-        const patch = {
-          ...(size === undefined ? {} : { size }),
-          ...(hidden === undefined ? {} : { hidden }),
-          ...(name === undefined || token.characterId ? {} : { name }),
-        };
+        const patch = tokenRowPatch(token, input);
         return Object.keys(patch).length > 0 ? [{ id, patch }] : [];
       });
-      if (patches.length === 0)
-        return {
-          error: existing.length > 0 ? arenaErrors.characterName : arenaErrors.tokenNotFound,
-        };
-      const updated = await tokens.updateMany(patches);
-      const activeSceneId = await scenes.findActiveSceneId();
-      const changes = updated.map((token) => {
-        const before = byId.get(token.id) ?? token;
-        return {
-          token,
-          audience: tokenAudience(token, activeSceneId),
-          previousAudience: tokenAudience(before, activeSceneId),
-        };
-      });
+      if (patches.length === 0) {
+        if (existing.length === 0) return { error: arenaErrors.tokenNotFound };
+        const wantedStatus = parsed.data.updates.some((update) => update.status !== undefined);
+        return { error: wantedStatus ? arenaErrors.characterStatus : arenaErrors.characterName };
+      }
+      if (!(await validViewers(patches.map(({ patch }) => patch))))
+        return { error: arenaErrors.invalidViewers };
+      const changes = await storePatches(patches, byId);
       return { message: "Tokens atualizados", payload: changes };
     } catch (error) {
       return failed("updateTokens", error);
@@ -530,7 +601,110 @@ export function createArenaController({
     }
   };
 
+  const applyChange: IArenaController["applyChange"] = async (viewer, input) => {
+    const parsed = applyArenaChangeInputSchema.safeParse(input);
+    if (!parsed.success) return { error: arenaErrors.invalidChange };
+    const { tokenIds, kind, resource, amount, attackerTokenId, effect } = parsed.data;
+    try {
+      const found = await tokens.findManyByIds(
+        attackerTokenId ? [...tokenIds, attackerTokenId] : tokenIds,
+      );
+      const activeSceneId = await scenes.findActiveSceneId();
+      const seen = (token: IArenaToken) =>
+        viewer.role === "GM" || (token.sceneId === activeSceneId && !token.hidden);
+      const visible = found.filter((token) => token.id !== attackerTokenId && seen(token));
+      if (visible.length === 0) return { error: arenaErrors.tokenNotFound };
+      const attacker = attackerTokenId
+        ? found.find((token) => token.id === attackerTokenId)
+        : undefined;
+      if (attackerTokenId) {
+        const accessible =
+          viewer.role === "GM" ? [] : await characters.listAccessibleIds(viewer.accountId);
+        const allowed =
+          attacker !== undefined &&
+          seen(attacker) &&
+          visible.every((token) => token.sceneId === attacker.sceneId) &&
+          canControlToken(viewer, attacker, accessible);
+        if (!allowed) return { error: arenaErrors.invalidAttacker };
+      }
+      const change = (value: Parameters<typeof applyResourceChange>[0]) =>
+        hasResource(value) ? applyResourceChange(value, kind, amount) : null;
+      const npcIds = visible.filter((token) => token.characterId === null).map((token) => token.id);
+      const characterIds = [
+        ...new Set(visible.flatMap((token) => (token.characterId ? [token.characterId] : []))),
+      ];
+      const changedNpcIds = new Set(await tokens.changeNpcResource(npcIds, resource, change));
+      const changedCharacters = await characters.changeResource(characterIds, resource, change);
+      const changedCharacterIds = new Set(changedCharacters.map((character) => character.id));
+      const applied = visible.filter((token) =>
+        token.characterId
+          ? changedCharacterIds.has(token.characterId)
+          : changedNpcIds.has(token.id),
+      );
+      if (applied.length === 0)
+        return { error: resource === "health" ? arenaErrors.noHealth : arenaErrors.noSanity };
+      const appliedIds = new Set(applied.map((token) => token.id));
+      const npcRows = await tokens.listStatuses({ ids: [...changedNpcIds] });
+      const statuses: IArenaStatusDelivery[] = npcRows.map((row) =>
+        statusDelivery(row, activeSceneId),
+      );
+      return {
+        message: "Mudança aplicada",
+        payload: {
+          result: {
+            applied: tokenIds.filter((id) => appliedIds.has(id)),
+            refused: tokenIds.filter((id) => !appliedIds.has(id)),
+          },
+          effects: applied.map((token) => {
+            const audience = tokenAudience(token, activeSceneId);
+            const showAttacker =
+              attacker && (audience === "gm" || tokenAudience(attacker, activeSceneId) === "table");
+            return {
+              sceneId: token.sceneId,
+              tokenId: token.id,
+              kind,
+              resource,
+              amount,
+              audience,
+              ...(showAttacker ? { attackerTokenId: attacker.id } : {}),
+              ...(effect ? { effect } : {}),
+            };
+          }),
+          statuses,
+          characters: changedCharacters,
+        },
+      };
+    } catch (error) {
+      return failed("applyChange", error);
+    }
+  };
+
+  const characterStatusDeliveries: IArenaController["characterStatusDeliveries"] = async (
+    characterIds,
+  ) => {
+    try {
+      if (characterIds.length === 0) return [];
+      const activeSceneId = await scenes.findActiveSceneId();
+      if (!activeSceneId) return [];
+      const rows = await tokens.listStatuses({ characterIds, sceneId: activeSceneId });
+      return characterIds.flatMap((characterId) => {
+        const own = rows.filter((row) => row.characterId === characterId);
+        const first = own[0];
+        if (!first) return [];
+        const isPublic = own.some((row) => row.access.public);
+        const accountIds = [...new Set(own.flatMap((row) => row.access.accountIds))];
+        if (!isPublic && accountIds.length === 0) return [];
+        return [{ characterId, status: first.status, public: isPublic, accountIds }];
+      });
+    } catch (error) {
+      console.error("characterStatusDeliveries failed:", error);
+      return [];
+    }
+  };
+
   return {
+    applyChange,
+    characterStatusDeliveries,
     getView,
     listScenes,
     listLibrary,
@@ -559,6 +733,7 @@ export const arenaController = createArenaController({
   folders: arenaSceneFolderModels,
   tokens: arenaTokenModels,
   characters: characterModels,
+  accounts: accountModels,
   images: arenaImages,
   assets: imageAssets,
 });

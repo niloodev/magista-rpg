@@ -16,6 +16,11 @@ import type {
 } from "../game/rolls/rolls.types";
 import type { AccountRole } from "../schemas/account";
 import type {
+  IApplyArenaChangeInput,
+  IArenaChangeResult,
+  IArenaCharacterStatusEvent,
+  IArenaEffectEvent,
+  IArenaStatusEvent,
   IArenaSceneEvent,
   IArenaToken,
   IArenaTokenRemovedEvent,
@@ -69,6 +74,12 @@ export interface ServerToClientEvents {
   "arena:tokens": (tokens: IArenaToken[]) => void;
   /** Several tokens removed at once (or hidden from the players), sent as one event. */
   "arena:tokens-removed": (events: IArenaTokenRemovedEvent[]) => void;
+  /** Token statuses for the viewers allowed to see them (`status` null hides it). */
+  "arena:status": (event: IArenaStatusEvent) => void;
+  /** New status of a character for the accounts that see it only through a token permission. */
+  "arena:character-status": (event: IArenaCharacterStatusEvent) => void;
+  /** Damage or healing applied to tokens, for the animation. */
+  "arena:effect": (event: IArenaEffectEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -97,6 +108,10 @@ export interface ClientToServerEvents {
   "arena:move": (
     request: IMoveArenaTokensInput,
     ack: (result: ControllerResult<IArenaMoveResult>) => void,
+  ) => void;
+  "arena:apply": (
+    request: IApplyArenaChangeInput,
+    ack: (result: ControllerResult<IArenaChangeResult>) => void,
   ) => void;
 }
 

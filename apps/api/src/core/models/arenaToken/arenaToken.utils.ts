@@ -1,4 +1,5 @@
-import type { IArenaToken } from "@magista/shared";
+import { sheetResourceOf } from "@magista/shared";
+import type { IArenaToken, IArenaTokenStatus } from "@magista/shared";
 
 import { characterImageUrls, mediaUrlOf, thumbUrlOf } from "@/core/services/media";
 
@@ -48,5 +49,35 @@ export function toArenaToken(row: ArenaTokenRow): IArenaToken {
     size: row.size,
     hidden: row.hidden,
     position: row.position,
+  };
+}
+
+export interface ArenaTokenStatusSqlRow {
+  id: string;
+  sceneId: string;
+  characterId: string | null;
+  hidden: boolean;
+  healthCurrent: number | null;
+  healthMax: number | null;
+  sanityCurrent: number | null;
+  sanityMax: number | null;
+  statusPublic: boolean;
+  resources: unknown;
+  viewers: string[] | null;
+}
+
+/**
+ * Status of a token: the resources of its sheet for a character token, its own columns for an NPC.
+ */
+export function tokenStatusOf(row: ArenaTokenStatusSqlRow): IArenaTokenStatus {
+  if (row.characterId) {
+    return {
+      health: sheetResourceOf(row.resources, "health"),
+      sanity: sheetResourceOf(row.resources, "sanity"),
+    };
+  }
+  return {
+    health: { current: row.healthCurrent, max: row.healthMax },
+    sanity: { current: row.sanityCurrent, max: row.sanityMax },
   };
 }

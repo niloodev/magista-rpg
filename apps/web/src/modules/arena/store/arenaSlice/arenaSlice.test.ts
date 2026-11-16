@@ -34,8 +34,9 @@ const view: IArenaView = {
     mapHeight: null,
     position: 0,
   },
-  tokens: [token("a", { position: 0 }), token("b", { position: 1 })],
+  tokens: [token("a", { position: 0 }), token("b", { position: 1, characterId: "c1" })],
   controllableCharacterIds: [],
+  statuses: {},
 };
 
 function loaded() {
@@ -234,5 +235,39 @@ describe("arena slice", () => {
     store.getState().showDockTab("right", null);
     store.getState().closeDockedSheet("b");
     expect(store.getState().arena.docked.right).toEqual([]);
+  });
+});
+
+describe("arena slice: token status", () => {
+  const status = { health: { current: 5, max: 10 }, sanity: { current: null, max: null } };
+
+  it("applies statuses of the shown scene and drops the ones taken away", () => {
+    const store = loaded();
+    const access = { public: false, accountIds: ["bob"] };
+    store.getState().applyArenaStatus({
+      sceneId: "s1",
+      entries: [
+        { tokenId: "a", status, access },
+        { tokenId: "b", status },
+      ],
+    });
+    store
+      .getState()
+      .applyArenaStatus({ sceneId: "other", entries: [{ tokenId: "a", status: null }] });
+    expect(store.getState().arena.view?.statuses).toEqual({ a: status, b: status });
+    expect(store.getState().arena.view?.statusAccess).toEqual({ a: access });
+    store.getState().applyArenaStatus({ sceneId: "s1", entries: [{ tokenId: "a", status: null }] });
+    expect(Object.keys(store.getState().arena.view?.statuses ?? {})).toEqual(["b"]);
+  });
+
+  it("follows a character only on tokens whose status is already shown", () => {
+    const store = loaded();
+    const before = store.getState().arena.view;
+    store.getState().applyCharacterStatus("c1", status);
+    expect(store.getState().arena.view).toBe(before);
+    store.getState().applyArenaStatus({ sceneId: "s1", entries: [{ tokenId: "b", status }] });
+    const healed = { ...status, health: { current: 9, max: 10 } };
+    store.getState().applyCharacterStatus("c1", healed);
+    expect(store.getState().arena.view?.statuses.b).toEqual(healed);
   });
 });

@@ -10,3 +10,6 @@ export * from "./ArenaZoomControls";
 export * from "./DockedTabPanels";
 export * from "./SceneLibrarySkeleton";
 export * from "./SceneRow";
+export * from "./ArenaChangeMenu";
+export * from "./ArenaStatusReadout";
+export * from "./ArenaEffectPreviewCanvas";

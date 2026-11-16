@@ -6,6 +6,7 @@ import { rollController } from "@/core/controllers/roll";
 import { requireAuth } from "@/middlewares";
 import {
   broadcastArenaRefresh,
+  forgetCharacterStatus,
   broadcastCharacterFeatures,
   broadcastCharacterImages,
   broadcastCharacterUpdate,
@@ -57,6 +58,7 @@ characterRoutes.delete("/:id", async (req, res: AuthedResponse) => {
   syncCharacterAccess(deleted.id, deleted.previousAccountIds, []);
   broadcastLibraryChanged(deleted.previousAccountIds);
   broadcastArenaRefresh();
+  forgetCharacterStatus(deleted.id);
   await syncMarkedCharacter(deleted.id);
 });
 

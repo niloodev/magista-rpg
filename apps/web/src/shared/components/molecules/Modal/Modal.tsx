@@ -26,7 +26,7 @@ export function Modal({
       onClick={onBackdropClick}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      className={`m-auto max-h-[92vh] max-w-none border border-primary/50 bg-void-800 p-0 text-foreground shadow-[0_0_60px_rgba(218,32,84,0.3)] backdrop:bg-black/80 backdrop:backdrop-blur-sm open:animate-pop-in ${MODAL_SIZES[size]}`}
+      className={`m-auto max-h-[92vh] max-w-none overflow-x-hidden border border-primary/50 bg-void-800 p-0 text-foreground shadow-[0_0_60px_rgba(218,32,84,0.3)] backdrop:bg-black/80 backdrop:backdrop-blur-sm open:animate-pop-in ${MODAL_SIZES[size]}`}
     >
       {open && (
         <div className="flex max-h-[92vh] flex-col">
@@ -50,7 +50,9 @@ export function Modal({
               <Icon name="x" size={20} />
             </button>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-5 py-5">
+            {children}
+          </div>
           {footer && (
             <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-white/10 bg-black/30 px-5 py-4">
               {footer}

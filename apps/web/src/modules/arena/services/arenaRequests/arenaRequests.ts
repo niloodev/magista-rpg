@@ -8,13 +8,17 @@ import {
   type IArenaTokenPatch,
   type IArenaView,
   type IMoveArenaTokensInput,
+  type IAccount,
+  type IApplyArenaChangeInput,
+  type IArenaChangeResult,
+  type IUpdateArenaTokenInput,
 } from "@magista/shared";
 
 import { apiRequest } from "@/core/services/http";
 import type { TableSocket } from "@/core/services/socket";
 import { TABLE_ACK_TIMEOUT_MS, TABLE_OFFLINE_ERROR } from "@/modules/table/table.constants";
 
-import type { MoveArenaTokensResult } from "./arenaRequests.types";
+import type { ApplyArenaChangeResult, MoveArenaTokensResult } from "./arenaRequests.types";
 
 /**
  * Loads what this account sees in the Arena: the live scene (the GM may ask for another one) and its tokens.
@@ -80,6 +84,44 @@ export async function moveArenaTokens(
     return isErrorResult(result)
       ? { ok: false, error: result.error }
       : { ok: true, tokens: result.payload.tokens, refused: result.payload.refused };
+  } catch {
+    return { ok: false, error: TABLE_OFFLINE_ERROR };
+  }
+}
+
+/**
+ * Saves the settings of one token (GM): own health and sanity (NPC) and who may see them.
+ */
+export function updateArenaToken(
+  tokenId: string,
+  input: IUpdateArenaTokenInput,
+): Promise<ControllerResult<unknown>> {
+  return apiRequest(`/arena/tokens/${tokenId}`, { method: "PATCH", body: input });
+}
+
+/**
+ * The accounts of the table (GM), to choose who sees a token status.
+ */
+export function fetchArenaAccounts(): Promise<ControllerResult<IAccount[]>> {
+  return apiRequest<IAccount[]>("/accounts");
+}
+
+/**
+ * Applies damage or healing to tokens; everyone who sees them gets the animation in "arena:effect" and the new
+ * status only if they may see it.
+ */
+export async function applyArenaChange(
+  socket: TableSocket | null,
+  request: IApplyArenaChangeInput,
+): Promise<ApplyArenaChangeResult> {
+  if (!socket?.connected) return { ok: false, error: TABLE_OFFLINE_ERROR };
+  try {
+    const result: ControllerResult<IArenaChangeResult> = await socket
+      .timeout(TABLE_ACK_TIMEOUT_MS)
+      .emitWithAck("arena:apply", request);
+    return isErrorResult(result)
+      ? { ok: false, error: result.error }
+      : { ok: true, applied: result.payload.applied, refused: result.payload.refused };
   } catch {
     return { ok: false, error: TABLE_OFFLINE_ERROR };
   }

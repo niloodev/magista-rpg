@@ -1,6 +1,7 @@
 import {
   clampToMap,
   type IArenaBounds,
+  type IArenaEffect,
   type IArenaPoint,
   type IMoveArenaTokenInput,
 } from "@magista/shared";
@@ -17,6 +18,21 @@ import {
 
 import { fetchMediaBlob } from "@/core/services/http";
 import { ARENA_EMPTY_BOUNDS } from "@/modules/arena/arena.constants";
+import { ArenaStatusBars } from "@/modules/arena/services/arenaStatusBars";
+import { ArenaFxTextures } from "@/modules/arena/services/arenaFxTextures";
+import {
+  ArenaShockwaves,
+  createAttackerEffect,
+  createTargetEffect,
+} from "@/modules/arena/services/arenaEffectPlayers";
+import {
+  EFFECT_FLOAT_QUIET_MS,
+  EFFECT_MAX_PER_TOKEN,
+  EFFECT_RICH_BUDGET,
+  effectStyle,
+  type IArenaEffectPlayer,
+  type IArenaFxHost,
+} from "@/modules/arena/services/arenaTokenEffects";
 
 import {
   ARENA_CAMERA_SAVE_DELAY_MS,
@@ -74,6 +90,14 @@ interface ITokenView {
   display: IArenaPoint;
   target: IArenaPoint;
   drawnKey: string;
+  bars: ArenaStatusBars;
+  effects: IArenaEffectPlayer[];
+  hovered: boolean;
+  /** When the last damage or healing animation started (a status change right after it floats no number). */
+  lastEffectAt: number;
+  /** A status that arrived before the hit of an incoming attacker; it shows when the hit lands. */
+  pendingStatus: IArenaRenderToken["status"] | undefined;
+  holdStatusUntil: number;
 }
 
 interface IDragState {
@@ -106,6 +130,8 @@ interface IPanState {
   start: IArenaPoint;
   camera: IArenaCamera;
   moved: boolean;
+  /** Token under a right click, to open its menu when the pointer comes up without dragging. */
+  menuTokenId: string | null;
 }
 
 /**
@@ -187,6 +213,9 @@ export class ArenaRenderer implements IArenaRenderer {
   private sceneVersion = 0;
   private loadingMap = false;
   private destroyed = false;
+  private effectSeed = 1;
+  private fxTextures: ArenaFxTextures | null = null;
+  private shockwaves: ArenaShockwaves | null = null;
 
   private constructor(
     private readonly app: Application,
@@ -347,7 +376,22 @@ export class ArenaRenderer implements IArenaRenderer {
       const view = existing ?? this.createToken(data);
       const portraitChanged = existing !== undefined && existing.data.imageUrl !== data.imageUrl;
       const resizing = this.resize?.sizes.has(data.id) ?? false;
+      const statusChanged = !existing || existing.data.status !== data.status;
       view.data = resizing ? { ...data, size: view.data.size } : data;
+      if (statusChanged && performance.now() < view.holdStatusUntil) {
+        view.pendingStatus = data.status;
+      } else if (statusChanged) {
+        const now = performance.now();
+        view.pendingStatus = undefined;
+        view.bars.setStatus(
+          data.status,
+          {
+            animate: existing !== undefined,
+            float: now - view.lastEffectAt > EFFECT_FLOAT_QUIET_MS,
+          },
+          now,
+        );
+      }
       if (portraitChanged) this.resetPortrait(view);
       if (!this.drag?.offsets.has(data.id)) view.target = { x: data.x, y: data.y };
       if (!existing) view.display = { ...view.target };
@@ -361,6 +405,8 @@ export class ArenaRenderer implements IArenaRenderer {
     });
     for (const [id, view] of this.tokens) {
       if (seen.has(id)) continue;
+      for (const effect of view.effects) effect.destroy();
+      view.bars.destroy();
       view.container.destroy({ children: true });
       this.tokens.delete(id);
       this.drag?.offsets.delete(id);
@@ -434,6 +480,107 @@ export class ArenaRenderer implements IArenaRenderer {
   visibleCenter = (): IArenaPoint =>
     screenToWorld(this.camera, visibleCenterPoint(this.viewport(), this.insets()));
 
+  /**
+   * Plays damage and healing on the tokens they hit. A blow to many tokens keeps the rich animation for the first
+   * `EFFECT_RICH_BUDGET` tokens on screen; the others (and the ones off screen) get the light flash, so an area
+   * attack does not stack dozens of particle systems and filters on the GPU.
+   */
+  playEffects = (effects: IArenaEffect[]): void => {
+    const now = performance.now();
+    const delays = this.launchAttackers(effects);
+    let budget = EFFECT_RICH_BUDGET;
+    for (const { tokenId, kind, resource, amount, attackerTokenId, effect: style } of effects) {
+      const view = this.tokens.get(tokenId);
+      if (!view) continue;
+      const delayMs = attackerTokenId ? (delays.get(attackerTokenId) ?? 0) : 0;
+      const rich = !this.options.lite && budget > 0 && this.isOnScreen(view);
+      if (rich) budget -= 1;
+      const effect = createTargetEffect(
+        {
+          kind,
+          resource,
+          amount,
+          size: view.data.size,
+          fontFamily: this.options.fontFamily,
+          lite: !rich,
+          seed: this.effectSeed++,
+          delayMs,
+          ...(style ? { style } : {}),
+        },
+        this.fxHost(),
+      );
+      this.attachEffect(view, effect);
+      view.lastEffectAt = now + delayMs;
+      view.holdStatusUntil = now + delayMs;
+    }
+    this.invalidate();
+  };
+
+  private isOnScreen(view: ITokenView): boolean {
+    const { scale, x, y } = this.camera;
+    const radius = (view.data.size / 2) * scale;
+    const sx = view.display.x * scale + x;
+    const sy = view.display.y * scale + y;
+    const { width, height } = this.viewport();
+    return sx + radius > 0 && sy + radius > 0 && sx - radius < width && sy - radius < height;
+  }
+
+  private attachEffect(view: ITokenView, effect: IArenaEffectPlayer): void {
+    view.effects.push(effect);
+    view.container.addChild(effect.container);
+    while (view.effects.length > EFFECT_MAX_PER_TOKEN) view.effects.shift()?.destroy();
+  }
+
+  /**
+   * Plays each attacker's part toward its targets (their center when there are several): a blow to health makes
+   * it fly and strike (on top of the other tokens), anything else makes it cast an orb in an arc. Returns, per
+   * attacker, how long the targets wait for the hit. Nothing plays in the light mode.
+   */
+  private launchAttackers(effects: IArenaEffect[]): Map<string, number> {
+    const delays = new Map<string, number>();
+    if (this.options.lite) return delays;
+    const targetsOf = new Map<string, ITokenView[]>();
+    const styleOf = new Map<string, ReturnType<typeof effectStyle>>();
+    for (const { tokenId, attackerTokenId, kind, resource, effect } of effects) {
+      const target = this.tokens.get(tokenId);
+      if (!attackerTokenId || !target) continue;
+      targetsOf.set(attackerTokenId, [...(targetsOf.get(attackerTokenId) ?? []), target]);
+      styleOf.set(attackerTokenId, effectStyle(kind, resource, effect));
+    }
+    for (const [attackerId, targets] of targetsOf) {
+      const attacker = this.tokens.get(attackerId);
+      if (!attacker) continue;
+      const center = {
+        x: targets.reduce((sum, view) => sum + view.display.x, 0) / targets.length,
+        y: targets.reduce((sum, view) => sum + view.display.y, 0) / targets.length,
+      };
+      const toward = { x: center.x - attacker.display.x, y: center.y - attacker.display.y };
+      if (Math.hypot(toward.x, toward.y) < 1) continue;
+      const play = createAttackerEffect(
+        {
+          style: styleOf.get(attackerId) ?? "strike",
+          size: attacker.data.size,
+          toward,
+          targetRadius:
+            targets.length === 1 ? (targets[0]?.data.size ?? 0) / 2 : attacker.data.size / 2,
+          seed: this.effectSeed++,
+        },
+        this.fxHost(),
+      );
+      this.attachEffect(attacker, play.effect);
+      if (play.flies) attacker.container.addChildAt(play.effect.container, 0);
+      this.tokenLayer.addChild(attacker.container);
+      delays.set(attackerId, play.hitMs);
+    }
+    return delays;
+  }
+
+  private fxHost(): IArenaFxHost {
+    this.fxTextures ??= new ArenaFxTextures();
+    this.shockwaves ??= new ArenaShockwaves(this.app);
+    return { textures: this.fxTextures.frames, shockwave: this.shockwaves.add };
+  }
+
   retryMap = (): void => {
     this.mapUrl = undefined;
     void this.setScene(this.scene);
@@ -454,6 +601,8 @@ export class ArenaRenderer implements IArenaRenderer {
     this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
     destroyTexture(this.mapTexture);
+    this.shockwaves?.destroy();
+    this.fxTextures?.destroy();
     for (const pending of this.portraits.values())
       void pending.then((texture) => destroyTexture(texture));
     this.portraits.clear();
@@ -491,13 +640,24 @@ export class ArenaRenderer implements IArenaRenderer {
       return;
     }
     this.lastFrame = now;
-    const animating = this.stepTokens();
+    const animating = this.stepTokens(now);
+    const rippling = this.shockwaves?.step(now) ?? false;
     this.drawSelectionFrame();
     this.app.render();
-    if (animating) this.invalidate();
+    if (animating || rippling) this.invalidate();
   };
 
-  private stepTokens(): boolean {
+  /** Puts on the token the filters its playing animations ask for (only when they change). */
+  private applyTokenFilters(view: ITokenView): void {
+    const wanted = view.effects.flatMap((effect) => effect.tokenFilters ?? []);
+    const current = view.container.filters ?? [];
+    const same =
+      wanted.length === current.length &&
+      wanted.every((filter, index) => filter === current[index]);
+    if (!same) view.container.filters = wanted.length > 0 ? wanted : null;
+  }
+
+  private stepTokens(now: number): boolean {
     let animating = false;
     const factor = this.options.lite ? 1 : ARENA_TOKEN_LERP;
     for (const view of this.tokens.values()) {
@@ -507,13 +667,43 @@ export class ArenaRenderer implements IArenaRenderer {
         display.y = approach(display.y, target.y, factor, ARENA_SETTLE_DISTANCE);
         animating ||= display.x !== target.x || display.y !== target.y;
       }
-      view.container.position.set(display.x, display.y);
+      if (view.pendingStatus !== undefined && now >= view.holdStatusUntil) {
+        view.bars.setStatus(view.pendingStatus, { animate: true, float: false }, now);
+        view.pendingStatus = undefined;
+      }
+      animating = view.bars.step(now) || animating;
+      let dx = 0;
+      let dy = 0;
+      let scaleX = 1;
+      let scaleY = 1;
+      if (view.effects.length > 0) {
+        view.effects = view.effects.filter((effect) => {
+          const { done, frame } = effect.step(now, this.camera.scale, view.bars.height);
+          if (done) {
+            effect.destroy();
+            return false;
+          }
+          dx += frame.dx;
+          dy += frame.dy;
+          scaleX *= frame.scaleX;
+          scaleY *= frame.scaleY;
+          return true;
+        });
+        animating ||= view.effects.length > 0;
+      }
+      view.container.position.set(display.x + dx, display.y + dy);
+      view.container.scale.set(scaleX, scaleY);
+      if (view.effects.length > 0 || view.container.filters?.length) this.applyTokenFilters(view);
     }
     return animating;
   }
 
   private applyCamera(): void {
-    for (const view of this.tokens.values()) this.scaleLabel(view);
+    const now = performance.now();
+    for (const view of this.tokens.values()) {
+      this.scaleLabel(view);
+      view.bars.layout(view.data.size, this.camera.scale, now);
+    }
     this.world.scale.set(this.camera.scale);
     this.world.position.set(this.camera.x, this.camera.y);
     this.scheduleCameraSave();
@@ -566,9 +756,15 @@ export class ArenaRenderer implements IArenaRenderer {
       },
     });
     label.anchor.set(0.5, 0);
-    container.addChild(shadow, base, mask, ring, label);
+    const bars = new ArenaStatusBars({
+      fontFamily: this.options.fontFamily,
+      lite: this.options.lite,
+    });
+    container.addChild(shadow, base, mask, ring, label, bars.container);
     container.eventMode = "static";
     container.on("pointerdown", (event: FederatedPointerEvent) => this.onTokenDown(data.id, event));
+    container.on("pointerover", () => this.setHovered(data.id, true));
+    container.on("pointerout", () => this.setHovered(data.id, false));
     const view: ITokenView = {
       data,
       container,
@@ -582,6 +778,12 @@ export class ArenaRenderer implements IArenaRenderer {
       display: { x: data.x, y: data.y },
       target: { x: data.x, y: data.y },
       drawnKey: "",
+      bars,
+      effects: [],
+      hovered: false,
+      lastEffectAt: 0,
+      pendingStatus: undefined,
+      holdStatusUntil: 0,
     };
     this.tokens.set(data.id, view);
     void this.attachPortrait(view);
@@ -640,9 +842,20 @@ export class ArenaRenderer implements IArenaRenderer {
     this.invalidate();
   }
 
+  private setHovered(tokenId: string, hovered: boolean): void {
+    const view = this.tokens.get(tokenId);
+    if (!view || view.hovered === hovered) return;
+    view.hovered = hovered;
+    view.bars.setExpanded(hovered || this.selection.has(tokenId), performance.now());
+    this.invalidate();
+  }
+
   private drawToken(view: ITokenView): void {
     const { data } = view;
     const selected = this.selection.has(data.id);
+    const now = performance.now();
+    view.bars.layout(data.size, this.camera.scale, now);
+    view.bars.setExpanded(selected || view.hovered, now);
     const key = [data.size, data.name, data.tone, data.hidden, selected, !!view.portrait].join("|");
     if (key === view.drawnKey) return;
     view.drawnKey = key;
@@ -720,12 +933,13 @@ export class ArenaRenderer implements IArenaRenderer {
     return event.button === 1 || event.button === 2 || (event.button === 0 && this.spaceHeld);
   }
 
-  private startPan(event: FederatedPointerEvent): void {
+  private startPan(event: FederatedPointerEvent, menuTokenId: string | null = null): void {
     this.pan = {
       pointerId: event.pointerId,
       start: { x: event.global.x, y: event.global.y },
       camera: { ...this.camera },
       moved: false,
+      menuTokenId: event.button === 2 ? menuTokenId : null,
     };
     this.app.canvas.style.cursor = "grabbing";
   }
@@ -735,7 +949,7 @@ export class ArenaRenderer implements IArenaRenderer {
     this.trackPointer(event);
     if (this.pinch) return;
     if (this.wantsPan(event)) {
-      this.startPan(event);
+      this.startPan(event, tokenId);
       return;
     }
     if (event.button !== 0) return;
@@ -891,6 +1105,10 @@ export class ArenaRenderer implements IArenaRenderer {
     if (pan && pan.pointerId === event.pointerId) {
       this.pan = null;
       this.restoreCursor();
+      if (!pan.moved && pan.menuTokenId && this.tokens.has(pan.menuTokenId)) {
+        this.swallowNextMenu();
+        this.options.callbacks.onTokenMenu(pan.menuTokenId, { x: event.clientX, y: event.clientY });
+      }
     }
   };
 
@@ -907,17 +1125,18 @@ export class ArenaRenderer implements IArenaRenderer {
       if (!view) continue;
       const radius = view.data.size / 2;
       const labelHeight = ARENA_LABEL_GAP + view.label.height;
+      const barsHeight = view.bars.height;
       const { x, y } = view.display;
       box = box
         ? {
             left: Math.min(box.left, x - radius),
-            top: Math.min(box.top, y - radius),
+            top: Math.min(box.top, y - radius - barsHeight),
             right: Math.max(box.right, x + radius),
             bottom: Math.max(box.bottom, y + radius + labelHeight),
           }
         : {
             left: x - radius,
-            top: y - radius,
+            top: y - radius - barsHeight,
             right: x + radius,
             bottom: y + radius + labelHeight,
           };
@@ -1058,6 +1277,19 @@ export class ArenaRenderer implements IArenaRenderer {
     });
     this.applyCamera();
   };
+
+  /**
+   * Blocks the browser menu of this right click wherever it lands: on Windows it fires after the button comes
+   * up, when "Aplicar mudança" is already open under the pointer.
+   */
+  private swallowNextMenu(): void {
+    const swallow = (event: Event) => {
+      event.preventDefault();
+      window.removeEventListener("contextmenu", swallow, true);
+    };
+    window.addEventListener("contextmenu", swallow, true);
+    window.setTimeout(() => window.removeEventListener("contextmenu", swallow, true), 600);
+  }
 
   private preventMenu = (event: Event): void => {
     event.preventDefault();
