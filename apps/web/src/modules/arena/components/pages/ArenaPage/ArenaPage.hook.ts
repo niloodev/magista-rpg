@@ -627,6 +627,7 @@ export function useArenaPage() {
           preference: tokenStatus.changePreference,
           onPreferenceChange: tokenStatus.updateChange,
           effectLabel: tokenStatus.effectLabel,
+          autoStyle: tokenStatus.autoStyle,
           onPickEffect: tokenStatus.openEffectPicker,
           suspended: tokenStatus.effectPickerOpen,
           attackers: tokenStatus.attackerOptions,
@@ -645,6 +646,7 @@ export function useArenaPage() {
             kind: tokenStatus.changePreference.kind,
             resource: tokenStatus.changePreference.resource,
             value: tokenStatus.changePreference.effect,
+            autoStyle: tokenStatus.autoStyle,
             onChoose: tokenStatus.chooseEffect,
             onClose: tokenStatus.closeEffectPicker,
           }

@@ -15,6 +15,7 @@ import {
   CHOICE_CLASS,
   FILTER_CLASS,
   TAG_CLASS,
+  ULTIMATE_TAG_CLASS,
 } from "./ArenaEffectPickerDialog.constants";
 import { useArenaEffectPickerDialog } from "./ArenaEffectPickerDialog.hook";
 import type { ArenaEffectPickerDialogProps } from "./ArenaEffectPickerDialog.types";
@@ -28,6 +29,7 @@ export function ArenaEffectPickerDialog({
   kind,
   resource,
   value,
+  autoStyle,
   onChoose,
   onClose,
 }: ArenaEffectPickerDialogProps) {
@@ -50,7 +52,7 @@ export function ArenaEffectPickerDialog({
     previewDetail,
     previewLabel,
     confirm,
-  } = useArenaEffectPickerDialog({ kind, resource, value, onChoose });
+  } = useArenaEffectPickerDialog({ kind, resource, value, autoStyle, onChoose });
   return (
     <Modal
       open
@@ -158,7 +160,10 @@ export function ArenaEffectPickerDialog({
                         </span>
                         <span className="flex gap-1">
                           {entry.tags.map((tag) => (
-                            <span key={tag} className={TAG_CLASS}>
+                            <span
+                              key={tag}
+                              className={tag === "ultimate" ? ULTIMATE_TAG_CLASS : TAG_CLASS}
+                            >
                               {ARENA_EFFECT_TAG_LABELS[tag]}
                             </span>
                           ))}

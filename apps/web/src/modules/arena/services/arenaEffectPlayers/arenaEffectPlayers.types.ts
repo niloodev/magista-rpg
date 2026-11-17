@@ -14,6 +14,11 @@ export interface IArenaAttackerPlay {
   hitMs: number;
   /** It flies over the others (lunge), so it goes on top. */
   flies: boolean;
+  /**
+   * The target animation starts this long before the hit, so its own wind-up (the axe coming down) lands
+   * exactly when the attacker arrives; the status still changes at the hit.
+   */
+  leadMs?: number;
 }
 
 export interface IArenaAttackerInput {

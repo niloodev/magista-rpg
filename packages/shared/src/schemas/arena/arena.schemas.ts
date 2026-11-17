@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 import { resourceSchema, tokenStyleSchema } from "../character/character.schemas";
+import { ARENA_CHANGE_KINDS, ARENA_RESOURCE_KEYS, arenaEffectStyleSchema } from "./arena.effects";
+
+export * from "./arena.effects";
 
 export const ARENA_NAME_MAX_LENGTH = 60;
 
@@ -42,13 +45,6 @@ export const ARENA_STATUS_VIEWERS_MAX = 100;
 
 /** Largest damage or healing applied at once through "Aplicar mudança". */
 export const ARENA_CHANGE_AMOUNT_MAX = 999;
-
-export const ARENA_RESOURCE_KEYS = ["health", "sanity"] as const;
-
-export const ARENA_CHANGE_KINDS = ["damage", "heal"] as const;
-
-/** Animations a change can play; without a choice, the one of its kind and resource. */
-export const ARENA_EFFECT_STYLES = ["strike", "fissure", "ember", "clarity"] as const;
 
 export const arenaIdSchema = z.uuid();
 
@@ -261,6 +257,6 @@ export const applyArenaChangeInputSchema = z
     /** Token that deals the change (its own animation plays before the hit); never one of the targets. */
     attackerTokenId: arenaIdSchema.optional(),
     /** Animation chosen by hand; without it, the automatic one. */
-    effect: z.enum(ARENA_EFFECT_STYLES).optional(),
+    effect: arenaEffectStyleSchema.optional(),
   })
   .refine((input) => !input.attackerTokenId || !input.tokenIds.includes(input.attackerTokenId));

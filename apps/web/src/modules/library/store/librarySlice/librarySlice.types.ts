@@ -2,6 +2,7 @@ import type {
   IAccount,
   ICharacterFeaturesEvent,
   ICharacterImages,
+  ISheetEffects,
   IMoveLibraryItemInput,
 } from "@magista/shared";
 
@@ -30,6 +31,8 @@ export interface LibraryActions {
   restoreLibraryData: (data: ILibraryData) => void;
   applyLibraryImages: (images: ICharacterImages) => void;
   applyLibraryFeatures: (event: ICharacterFeaturesEvent) => void;
+  /** Applies the preferred animations of a sheet (saved here or on another tab). */
+  applyLibraryEffects: (id: string, effects: ISheetEffects) => void;
 }
 
 export type LibrarySlice = LibraryState & LibraryActions;

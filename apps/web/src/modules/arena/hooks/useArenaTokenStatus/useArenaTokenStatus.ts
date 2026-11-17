@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  autoEffectStyle,
+  resolveAutoEffect,
   canControlToken,
   isErrorResult,
   type IAccount,
@@ -77,12 +77,13 @@ export function useArenaTokenStatus({
 
   useEffect(() => {
     if (!socket) return;
-    const { applyArenaStatus, applyCharacterStatus } = store.getState();
+    const { applyArenaStatus, applyCharacterStatus, applyLibraryEffects } = store.getState();
     const onCharacterStatus = ({ characterId, status }: IArenaCharacterStatusEvent) =>
       applyCharacterStatus(characterId, status);
     const onCharacterUpdated = ({ character }: ICharacterUpdatedEvent) => {
       const { health, sanity } = character.sheet.resources;
       applyCharacterStatus(character.id, { health, sanity });
+      applyLibraryEffects(character.id, character.sheet.effects);
     };
     const onEffect = ({ sceneId, effects }: IArenaEffectEvent) => {
       if (store.getState().arena.view?.scene?.id === sceneId)
@@ -177,12 +178,19 @@ export function useArenaTokenStatus({
     },
     [updateChange],
   );
+  const attackerCharacterId =
+    view?.tokens.find((token) => token.id === attackerId)?.characterId ?? null;
+  const attackerEffects = attackerCharacterId
+    ? libraryCharacters.find((character) => character.id === attackerCharacterId)?.effects
+    : undefined;
+  const autoStyle = resolveAutoEffect(
+    changePreference.kind,
+    changePreference.resource,
+    attackerEffects,
+  );
   const effectLabel =
     changePreference.effect === "auto"
-      ? ARENA_EFFECT_TEXTS.autoShort(
-          ARENA_EFFECT_CATALOG[autoEffectStyle(changePreference.kind, changePreference.resource)]
-            .name,
-        )
+      ? ARENA_EFFECT_TEXTS.autoShort(ARENA_EFFECT_CATALOG[autoStyle].name)
       : ARENA_EFFECT_CATALOG[changePreference.effect].name;
   const closeEffectPicker = useCallback(() => setEffectPickerOpen(false), []);
 
@@ -294,6 +302,7 @@ export function useArenaTokenStatus({
     changePreference,
     updateChange,
     effectLabel,
+    autoStyle,
     chooseEffect,
     effectPickerOpen,
     openEffectPicker,

@@ -28,8 +28,9 @@ export function SheetHeaderSkeleton({ gm, art }: SheetHeaderSkeletonProps) {
               <Skeleton shape="text" className="w-80 max-w-full" />
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex basis-full flex-wrap gap-2 @min-[77rem]:basis-auto">
             <ButtonSkeleton label="Editar identidade" size="sm" icon="pen-line" />
+            <ButtonSkeleton label="Animações" size="sm" icon="wand-sparkles" />
             {gm && <ButtonSkeleton label="Imagens" size="sm" icon="image" />}
             <ButtonSkeleton
               label="Subir de nível"

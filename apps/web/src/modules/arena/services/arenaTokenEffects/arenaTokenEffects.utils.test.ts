@@ -14,6 +14,9 @@ import {
   phase,
   seededRandom,
   shake,
+  mixStops,
+  starPolygon,
+  groupShape,
 } from "./arenaTokenEffects.utils";
 
 describe("token effects", () => {
@@ -90,5 +93,38 @@ describe("token effects: particles", () => {
     expect(outline[0]).toBeCloseTo(0);
     expect(outline[1]).toBeCloseTo(0);
     expect(Math.abs((outline[5] ?? 0) - (outline[15] ?? 0))).toBeCloseTo(10);
+  });
+});
+
+describe("starPolygon", () => {
+  it("alternates the outer and inner radius around the center, first point on top", () => {
+    const points = starPolygon({ x: 10, y: 10 }, 4, 2, 5);
+    expect(points).toHaveLength(20);
+    expect(points[0]).toBeCloseTo(10);
+    expect(points[1]).toBeCloseTo(6);
+    const second = Math.hypot((points[2] ?? 0) - 10, (points[3] ?? 0) - 10);
+    expect(second).toBeCloseTo(2);
+  });
+});
+
+describe("mixStops", () => {
+  it("walks through every stop in order", () => {
+    const stops = [0x000000, 0xff0000, 0xffffff];
+    expect(mixStops(stops, 0)).toBe(0x000000);
+    expect(mixStops(stops, 0.5)).toBe(0xff0000);
+    expect(mixStops(stops, 1)).toBe(0xffffff);
+    expect(mixStops(stops, 0.25)).toBe(0x800000);
+  });
+});
+
+describe("groupShape", () => {
+  it("is the token itself without a group, and the middle and reach of a group", () => {
+    expect(groupShape(undefined)).toEqual({ center: { x: 0, y: 0 }, spread: 1 });
+    const shape = groupShape([
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+    ]);
+    expect(shape.center).toEqual({ x: 2, y: 0 });
+    expect(shape.spread).toBe(3);
   });
 });

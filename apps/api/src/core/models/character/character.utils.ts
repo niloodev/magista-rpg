@@ -42,13 +42,13 @@ type SummaryRow = Pick<
 > & { access: { accountId: string }[] };
 
 /**
- * Reads class and level from a stored sheet, falling back to an empty sheet when it is invalid.
+ * Reads a stored sheet (class, level, preferred animations), falling back to an empty sheet when it is invalid.
  */
-function identityOf(row: Pick<Character, "sheet" | "sheetVersion">) {
+function sheetOf(row: Pick<Character, "sheet" | "sheetVersion">) {
   try {
-    return migrateSheet(row.sheet, row.sheetVersion).identity;
+    return migrateSheet(row.sheet, row.sheetVersion);
   } catch {
-    return createEmptySheet().identity;
+    return createEmptySheet();
   }
 }
 
@@ -56,7 +56,8 @@ function identityOf(row: Pick<Character, "sheet" | "sheetVersion">) {
  * Maps a database character row (with its access list) to the summary DTO used by the library.
  */
 export function toCharacterSummary(row: SummaryRow): ICharacterSummary {
-  const identity = identityOf(row);
+  const sheet = sheetOf(row);
+  const identity = sheet.identity;
   return {
     id: row.id,
     name: row.name,
@@ -68,5 +69,6 @@ export function toCharacterSummary(row: SummaryRow): ICharacterSummary {
     position: row.position,
     accountIds: row.access.map((entry) => entry.accountId),
     features: normalizeFeatures(row.features),
+    effects: sheet.effects,
   };
 }

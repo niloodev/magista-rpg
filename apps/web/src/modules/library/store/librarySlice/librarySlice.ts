@@ -4,7 +4,7 @@ import { applyMove, reuseUnchanged } from "@/modules/library/library.utils";
 import type { AppStore } from "@/modules/shell/store/appSlice/appSlice.types";
 
 import { defaultLibraryState } from "./librarySlice.constants";
-import { keptFolderIds } from "./librarySlice.utils";
+import { keptFolderIds, sameSheetEffects } from "./librarySlice.utils";
 import type { LibrarySlice } from "./librarySlice.types";
 
 export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = (set, get) => ({
@@ -61,6 +61,21 @@ export const createLibrarySlice: StateCreator<AppStore, [], [], LibrarySlice> = 
               ...state.library,
               characters: state.library.characters.map((character) =>
                 character.id === id ? { ...character, ...images } : character,
+              ),
+            },
+          }
+        : state,
+    ),
+  applyLibraryEffects: (id, effects) =>
+    set((state) =>
+      state.library.characters.some(
+        (character) => character.id === id && !sameSheetEffects(character.effects, effects),
+      )
+        ? {
+            library: {
+              ...state.library,
+              characters: state.library.characters.map((character) =>
+                character.id === id ? { ...character, effects } : character,
               ),
             },
           }

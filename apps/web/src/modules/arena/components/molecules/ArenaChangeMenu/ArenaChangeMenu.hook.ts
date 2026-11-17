@@ -1,6 +1,6 @@
 "use client";
 
-import { ARENA_CHANGE_AMOUNT_MAX, autoEffectStyle } from "@magista/shared";
+import { ARENA_CHANGE_AMOUNT_MAX } from "@magista/shared";
 import {
   useEffect,
   useId,
@@ -19,6 +19,7 @@ import {
 } from "@/modules/arena/arena.constants";
 import { placeMenu } from "@/modules/arena/arena.utils";
 
+import { ATTACKER_HINTS } from "./ArenaChangeMenu.constants";
 import { barAnchor, keepFocusInside } from "./ArenaChangeMenu.utils";
 
 import type { ArenaChangeMenuProps } from "./ArenaChangeMenu.types";
@@ -35,10 +36,12 @@ export function useArenaChangeMenu({
   suspended,
   attackers,
   attackerId,
+  autoStyle,
   onApply,
   onClose,
 }: Pick<
   ArenaChangeMenuProps,
+  | "autoStyle"
   | "anchor"
   | "preference"
   | "pending"
@@ -152,11 +155,8 @@ export function useArenaChangeMenu({
     pick(Math.min(Math.max((amount ?? 0) + delta, 1), ARENA_CHANGE_AMOUNT_MAX));
 
   const attackerName = attackers.find((attacker) => attacker.id === attackerId)?.name;
-  const style =
-    preference.effect === "auto"
-      ? autoEffectStyle(preference.kind, preference.resource)
-      : preference.effect;
-  const casts = ARENA_EFFECT_CATALOG[style].attack === "cast";
+  const style = preference.effect === "auto" ? autoStyle : preference.effect;
+  const attack = ARENA_EFFECT_CATALOG[style].attack;
 
   return {
     titleId,
@@ -172,9 +172,7 @@ export function useArenaChangeMenu({
     onContextMenu,
     submitLabel: ARENA_CHANGE_TEXTS.submit(preference.kind, preference.resource, amount ?? 0),
     attackerHint: attackerName
-      ? casts
-        ? ARENA_CHANGE_TEXTS.casterHint(attackerName)
-        : ARENA_CHANGE_TEXTS.attackerHint(attackerName)
+      ? ATTACKER_HINTS[attack](attackerName)
       : ARENA_CHANGE_TEXTS.noAttackerHint,
     style: {
       left: position?.x ?? anchor?.x ?? 0,

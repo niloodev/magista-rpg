@@ -23,10 +23,13 @@ import type {
   arenaTokenStatusSchema,
   arenaTokenStatusAccessSchema,
   applyArenaChangeInputSchema,
-  ARENA_RESOURCE_KEYS,
+} from "./arena.schemas";
+import type {
   ARENA_CHANGE_KINDS,
   ARENA_EFFECT_STYLES,
-} from "./arena.schemas";
+  ARENA_RESOURCE_KEYS,
+  sheetEffectsSchema,
+} from "./arena.effects";
 
 export type IArenaScene = z.infer<typeof arenaSceneSchema>;
 
@@ -95,6 +98,8 @@ export type ArenaResourceKey = (typeof ARENA_RESOURCE_KEYS)[number];
 export type ArenaChangeKind = (typeof ARENA_CHANGE_KINDS)[number];
 
 export type ArenaEffectStyle = (typeof ARENA_EFFECT_STYLES)[number];
+
+export type ISheetEffects = z.infer<typeof sheetEffectsSchema>;
 
 export type IApplyArenaChangeInput = z.infer<typeof applyArenaChangeInputSchema>;
 

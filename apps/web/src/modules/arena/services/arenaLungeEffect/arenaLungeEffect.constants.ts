@@ -19,8 +19,15 @@ export const LUNGE_GHOSTS = 4;
 
 export const LUNGE_STREAKS = 16;
 
-export const LUNGE_COLORS = {
-  white: 0xffffff,
-  rubyLight: 0xf07a9b,
-  ruby: 0xe42a63,
+/** Trail colors of each kind of lunge: the white core, the light edge and the main color. */
+export const LUNGE_PALETTES = {
+  ruby: { white: 0xffffff, rubyLight: 0xf07a9b, ruby: 0xe42a63 },
+  voodoo: { white: 0xeaffc8, rubyLight: 0x9dff3c, ruby: 0x1fbf45 },
+  floral: { white: 0xfff0f6, rubyLight: 0xf9a8d4, ruby: 0xec4899 },
+  earth: { white: 0xfff7e6, rubyLight: 0xd6b48a, ruby: 0x8b6b45 },
 } as const;
+
+/** Petals shed along the dash by a floral lunge, and their colors from light to deep pink. */
+export const LUNGE_PETALS = 30;
+
+export const LUNGE_PETAL_COLORS = [0xffe4f1, 0xf9a8d4, 0xf472b6, 0xec4899] as const;

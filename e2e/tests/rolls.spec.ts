@@ -1,9 +1,10 @@
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, type BrowserContext } from "@playwright/test";
 
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { dismissRoll, loginAs, openSheet } from "../support/session";
 import { ability, readSheet, writeLists } from "../support/sheet";
+import { test } from "../support/test";
 
 async function forceNaturalTwenty(context: BrowserContext): Promise<void> {
   await context.routeWebSocket(/socket\.io/, (ws) => {

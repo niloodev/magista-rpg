@@ -1,7 +1,15 @@
 import { Rectangle, Texture } from "pixi.js";
 
-import { FX_FRAME_SIZE, FX_FRAMES } from "./arenaFxTextures.constants";
+import {
+  FX_DIGITS,
+  FX_ATLAS_COLUMNS,
+  FX_FRAME_SIZE,
+  FX_FRAMES,
+  FX_GLYPH_FONT,
+  FX_GLYPHS,
+} from "./arenaFxTextures.constants";
 import type { ArenaFxFrame, IArenaFxTextureSet } from "./arenaFxTextures.types";
+import { atlasCell, smooth } from "./arenaFxTextures.utils";
 
 type Painter = (context: CanvasRenderingContext2D, size: number) => void;
 
@@ -57,10 +65,97 @@ const PAINTERS: Record<ArenaFxFrame, Painter> = {
       [0.6, "rgba(255,255,255,0.18)"],
       [1, "rgba(255,255,255,0)"],
     ]),
+  petal: (context, size) => {
+    const half = size / 2;
+    const gradient = context.createLinearGradient(half, size * 0.92, half, size * 0.08);
+    gradient.addColorStop(0, "rgba(255,255,255,0.7)");
+    gradient.addColorStop(0.6, "rgba(255,255,255,1)");
+    gradient.addColorStop(1, "rgba(255,255,255,0.92)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.moveTo(half, size * 0.94);
+    context.bezierCurveTo(
+      size * 0.12,
+      size * 0.62,
+      size * 0.16,
+      size * 0.12,
+      half * 0.86,
+      size * 0.1,
+    );
+    context.lineTo(half, size * 0.17);
+    context.lineTo(half * 1.14, size * 0.1);
+    context.bezierCurveTo(size * 0.84, size * 0.12, size * 0.88, size * 0.62, half, size * 0.94);
+    context.fill();
+    context.strokeStyle = "rgba(255,255,255,0.45)";
+    context.lineWidth = size * 0.02;
+    context.beginPath();
+    context.moveTo(half, size * 0.88);
+    context.lineTo(half, size * 0.3);
+    context.stroke();
+  },
+  beam: (context, size) => {
+    const half = size / 2;
+    for (let row = 0; row < size; row += 1) {
+      const down = row / (size - 1);
+      const reach = size * (0.1 + 0.38 * down);
+      const strength = smooth(down / 0.4) * (1 - 0.65 * smooth((down - 0.82) / 0.18));
+      const gradient = context.createLinearGradient(half - reach, 0, half + reach, 0);
+      gradient.addColorStop(0, "rgba(255,255,255,0)");
+      gradient.addColorStop(0.3, `rgba(255,255,255,${(0.45 * strength).toFixed(3)})`);
+      gradient.addColorStop(0.5, `rgba(255,255,255,${strength.toFixed(3)})`);
+      gradient.addColorStop(0.7, `rgba(255,255,255,${(0.45 * strength).toFixed(3)})`);
+      gradient.addColorStop(1, "rgba(255,255,255,0)");
+      context.fillStyle = gradient;
+      context.fillRect(half - reach, row, reach * 2, 1);
+    }
+  },
+  link: (context, size) => {
+    const half = size / 2;
+    context.lineWidth = size * 0.13;
+    context.strokeStyle = "rgba(255,255,255,1)";
+    context.beginPath();
+    context.ellipse(half, half, size * 0.24, size * 0.4, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.lineWidth = size * 0.04;
+    context.strokeStyle = "rgba(255,255,255,0.55)";
+    context.beginPath();
+    context.ellipse(
+      half - size * 0.03,
+      half - size * 0.03,
+      size * 0.22,
+      size * 0.37,
+      0,
+      Math.PI,
+      Math.PI * 1.6,
+    );
+    context.stroke();
+  },
+  blossom: (context, size) => {
+    const half = size / 2;
+    context.fillStyle = "rgba(255,255,255,0.95)";
+    for (let index = 0; index < 5; index += 1) {
+      const a = (index / 5) * Math.PI * 2 - Math.PI / 2;
+      context.beginPath();
+      context.ellipse(
+        half + Math.cos(a) * size * 0.2,
+        half + Math.sin(a) * size * 0.2,
+        size * 0.2,
+        size * 0.13,
+        a,
+        0,
+        Math.PI * 2,
+      );
+      context.fill();
+    }
+    context.fillStyle = "rgba(255,255,255,1)";
+    context.beginPath();
+    context.arc(half, half, size * 0.1, 0, Math.PI * 2);
+    context.fill();
+  },
 };
 
 /**
- * The particle atlas of the Arena effects: soft glow, spark streak, shard, hot spark and smoke, painted once
+ * The particle atlas of the Arena effects: soft glow, spark streak, shard, hot spark, smoke, petals, a light beam, a chain link and math glyphs, painted once
  * on a canvas (no image to download) and shared by every effect, since a ParticleContainer needs all its
  * particles on the same texture source.
  */
@@ -70,29 +165,52 @@ export class ArenaFxTextures {
 
   constructor() {
     const canvas = document.createElement("canvas");
-    canvas.width = FX_FRAME_SIZE * FX_FRAMES.length;
-    canvas.height = FX_FRAME_SIZE;
+    const texts = [...FX_GLYPHS, ...FX_DIGITS];
+    const slots = FX_FRAMES.length + texts.length;
+    canvas.width = FX_FRAME_SIZE * Math.min(slots, FX_ATLAS_COLUMNS);
+    canvas.height = FX_FRAME_SIZE * Math.ceil(slots / FX_ATLAS_COLUMNS);
     const context = canvas.getContext("2d");
     FX_FRAMES.forEach((frame, index) => {
       if (!context) return;
       context.save();
-      context.translate(index * FX_FRAME_SIZE, 0);
+      const { x, y } = atlasCell(index);
+      context.translate(x, y);
       PAINTERS[frame](context, FX_FRAME_SIZE);
       context.restore();
     });
+    if (context) {
+      context.fillStyle = "rgba(255,255,255,1)";
+      context.font = FX_GLYPH_FONT;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      texts.forEach((glyph, index) => {
+        const { x, y } = atlasCell(FX_FRAMES.length + index);
+        context.fillText(
+          glyph,
+          x + FX_FRAME_SIZE / 2,
+          y + FX_FRAME_SIZE / 2 + 2,
+          FX_FRAME_SIZE - 6,
+        );
+      });
+    }
     this.atlas = Texture.from(canvas);
-    const entries = FX_FRAMES.map((frame, index) => [
-      frame,
-      new Texture({
+    const cell = (index: number) => {
+      const { x, y } = atlasCell(index);
+      return new Texture({
         source: this.atlas.source,
-        frame: new Rectangle(index * FX_FRAME_SIZE, 0, FX_FRAME_SIZE, FX_FRAME_SIZE),
-      }),
-    ]);
-    this.frames = Object.fromEntries(entries) as IArenaFxTextureSet;
+        frame: new Rectangle(x, y, FX_FRAME_SIZE, FX_FRAME_SIZE),
+      });
+    };
+    const entries = FX_FRAMES.map((frame, index) => [frame, cell(index)]);
+    const slot = (index: number) => cell(FX_FRAMES.length + index);
+    const glyphs = FX_GLYPHS.map((_, index) => slot(index));
+    const digits = FX_DIGITS.map((_, index) => slot(FX_GLYPHS.length + index));
+    this.frames = { ...Object.fromEntries(entries), glyphs, digits } as IArenaFxTextureSet;
   }
 
   destroy(): void {
-    for (const texture of Object.values(this.frames)) texture.destroy(false);
+    for (const frame of FX_FRAMES) this.frames[frame].destroy(false);
+    for (const glyph of [...this.frames.glyphs, ...this.frames.digits]) glyph.destroy(false);
     this.atlas.destroy(true);
   }
 }

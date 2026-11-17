@@ -1,10 +1,11 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import { apiAs, payloadOf } from "../support/api";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
 import { readSheet, writeLists } from "../support/sheet";
+import { test } from "../support/test";
 
 const TRAIT = { id: "marked-trait", name: "Olhar da Marca", description: "Vê o que a Marca vê." };
 const NPC = `Marcado E2E ${Date.now()}`;

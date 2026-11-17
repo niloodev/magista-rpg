@@ -31,6 +31,7 @@ export function ArenaChangeMenu({
   preference,
   onPreferenceChange,
   effectLabel,
+  autoStyle,
   onPickEffect,
   suspended,
   attackers,
@@ -63,6 +64,7 @@ export function ArenaChangeMenu({
     suspended,
     attackers,
     attackerId,
+    autoStyle,
     onApply,
     onClose,
   });
@@ -106,8 +108,8 @@ export function ArenaChangeMenu({
           <Icon name="x" size={16} />
         </button>
       </header>
-      <div className="grid gap-4 p-4">
-        <fieldset className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 overflow-x-clip p-4">
+        <fieldset className="grid min-w-0 gap-2">
           <legend className={`${SECTION_LABEL_CLASS} mb-2`}>{ARENA_CHANGE_TEXTS.action}</legend>
           <div className="flex gap-2">
             {KIND_SEGMENTS.map((segment) => (
@@ -129,7 +131,7 @@ export function ArenaChangeMenu({
             ))}
           </div>
         </fieldset>
-        <fieldset className="grid gap-2">
+        <fieldset className="grid min-w-0 gap-2">
           <legend className={`${SECTION_LABEL_CLASS} mb-2`}>{ARENA_CHANGE_TEXTS.resource}</legend>
           <div className="flex gap-2">
             {RESOURCE_SEGMENTS.map((segment) => (
@@ -149,7 +151,7 @@ export function ArenaChangeMenu({
           </div>
         </fieldset>
         {attackers.length > 0 && (
-          <fieldset className="grid gap-2">
+          <fieldset className="grid min-w-0 gap-2">
             <legend className={`${SECTION_LABEL_CLASS} mb-2`}>{ARENA_CHANGE_TEXTS.attacker}</legend>
             <div className="-mx-1 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:thin]">
               <label className={`group/attacker ${ATTACKER_CHOICE_CLASS}`}>
@@ -252,7 +254,7 @@ export function ArenaChangeMenu({
             </p>
           )}
         </div>
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
           <span className={SECTION_LABEL_CLASS} aria-hidden="true">
             {ARENA_CHANGE_TEXTS.effect}
           </span>
@@ -261,10 +263,10 @@ export function ArenaChangeMenu({
             onClick={onPickEffect}
             aria-haspopup="dialog"
             aria-label={ARENA_CHANGE_TEXTS.changeEffectLabel(effectLabel)}
-            className="group flex min-h-11 items-center gap-3 border border-gold-400/30 bg-gradient-to-r from-gold-400/10 to-black/40 px-3 text-left transition-colors hover:border-gold-400/70"
+            className="group flex min-h-11 min-w-0 items-center gap-3 border border-gold-400/30 bg-gradient-to-r from-gold-400/10 to-black/40 px-3 py-1.5 text-left transition-colors hover:border-gold-400/70"
           >
             <Icon name="wand-sparkles" size={16} className="text-gold-300" />
-            <span className="min-w-0 flex-1 truncate font-serif text-[15px] text-gold-200">
+            <span className="line-clamp-2 min-w-0 flex-1 font-serif text-[15px] leading-tight text-gold-200">
               {effectLabel}
             </span>
             <span className="flex items-center gap-1 font-sans text-xs font-semibold tracking-[0.12em] text-muted-strong uppercase group-hover:text-label">

@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { apiAs, payloadOf } from "../support/api";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
+import { test } from "../support/test";
 
 test.describe("ficha", () => {
   test("o Mestre vê todas as fichas e o jogador só as liberadas para ele", async ({ browser }) => {

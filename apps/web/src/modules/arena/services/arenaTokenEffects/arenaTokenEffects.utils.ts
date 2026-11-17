@@ -128,6 +128,17 @@ export function mixColor(from: number, to: number, t: number): number {
 }
 
 /**
+ * Color along a gradient of evenly spaced stops (0xRRGGBB), `t` from 0 to 1.
+ */
+export function mixStops(stops: readonly number[], t: number): number {
+  const first = stops[0] ?? 0;
+  if (stops.length < 2) return first;
+  const scaled = Math.min(Math.max(t, 0), 1) * (stops.length - 1);
+  const index = Math.min(Math.floor(scaled), stops.length - 2);
+  return mixColor(stops[index] ?? first, stops[index + 1] ?? first, scaled - index);
+}
+
+/**
  * Outline of a blade cut from `from` to `to`, bent sideways by `bend` (share of the length), thick in the
  * middle and sharp at the ends; only the part between `start` and `end` (0 to 1 along the cut) is returned.
  */
@@ -163,4 +174,41 @@ export function bladeOutline(
     right.unshift(x + (ty / tl) * half, y - (tx / tl) * half);
   }
   return [...left, ...right];
+}
+
+/**
+ * Points of a star (alternating outer and inner radius), flat for `Graphics.poly`: comic bursts and stars.
+ */
+export function starPolygon(
+  center: IArenaPoint2,
+  outer: number,
+  inner: number,
+  points: number,
+  rotation = 0,
+): number[] {
+  const flat: number[] = [];
+  for (let index = 0; index < points * 2; index += 1) {
+    const radius = index % 2 === 0 ? outer : inner;
+    const angle = rotation + (index * Math.PI) / points - Math.PI / 2;
+    flat.push(center.x + Math.cos(angle) * radius, center.y + Math.sin(angle) * radius);
+  }
+  return flat;
+}
+
+/**
+ * The middle of a group of targets (offsets in radii of one of them, see `IArenaEffectOptions.group`) and how far
+ * it spreads from there, out to the edge of the farthest target (at least one radius: a single target).
+ */
+export function groupShape(points: readonly IArenaPoint2[] | undefined): {
+  center: IArenaPoint2;
+  spread: number;
+} {
+  if (!points || points.length === 0) return { center: { x: 0, y: 0 }, spread: 1 };
+  const center = {
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+  };
+  const spread =
+    Math.max(...points.map((point) => Math.hypot(point.x - center.x, point.y - center.y))) + 1;
+  return { center, spread };
 }

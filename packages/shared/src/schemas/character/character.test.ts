@@ -14,6 +14,12 @@ describe("character sheet schema", () => {
     expect(characterSheetSchema.safeParse(createEmptySheet()).success).toBe(true);
   });
 
+  it("gives old sheets no preferred animations", () => {
+    const old: Record<string, unknown> = { ...createEmptySheet() };
+    delete old.effects;
+    expect(characterSheetSchema.parse(old).effects).toEqual({});
+  });
+
   it("rejects an unknown class", () => {
     const sheet = createEmptySheet();
     const invalid = { ...sheet, identity: { ...sheet.identity, class: "bardo" } };

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { sheetEffectsSchema } from "../arena/arena.effects";
 import {
   ALIGNMENT_KEYS,
   ATTRIBUTE_KEYS,
@@ -106,6 +107,8 @@ export const characterSheetSchema = z.object({
     items: z.array(inventoryItemSchema).max(500),
   }),
   traits: z.array(traitSchema).max(200),
+  /** Animations this sheet uses on "Aplicar mudança" when it attacks with the effect on "Automático". */
+  effects: sheetEffectsSchema.default({}),
 });
 
 export const CHARACTER_NAME_MAX_LENGTH = 80;
@@ -139,6 +142,8 @@ export const characterSummarySchema = z.object({
   position: z.number().int(),
   accountIds: z.array(z.string()),
   features: characterFeaturesSchema,
+  /** Animations the sheet prefers on "Aplicar mudança" (shown as the resolved "Automático"). */
+  effects: sheetEffectsSchema,
 });
 
 export const characterSchema = z.object({

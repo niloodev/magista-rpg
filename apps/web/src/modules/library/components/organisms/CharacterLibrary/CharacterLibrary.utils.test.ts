@@ -17,6 +17,7 @@ const character = {
   figureThumbUrl: null,
   tokenStyle: "portrait",
   showTokenName: true,
+  effects: {},
   classKey: "arcanista",
   level: 1,
   accountIds: [],

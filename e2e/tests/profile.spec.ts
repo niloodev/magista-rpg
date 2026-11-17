@@ -1,8 +1,9 @@
-import { expect, request, test, type APIRequestContext } from "@playwright/test";
+import { expect, request, type APIRequestContext } from "@playwright/test";
 
 import { apiAs } from "../support/api";
 import { API_URL, GM, PLAYER, WEB_URL } from "../support/env";
 import { loginAs } from "../support/session";
+import { test } from "../support/test";
 
 const PROFILE_ACCOUNT = { login: "e2e-perfil", password: "senha-e2e-original" };
 

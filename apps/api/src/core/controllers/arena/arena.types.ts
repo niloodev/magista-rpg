@@ -30,7 +30,10 @@ export interface IArenaControllerDeps {
   scenes: IArenaSceneModels;
   folders: IArenaSceneFolderModels;
   tokens: IArenaTokenModels;
-  characters: Pick<ICharacterModels, "exists" | "listAccessibleIds" | "changeResource">;
+  characters: Pick<
+    ICharacterModels,
+    "exists" | "findSheetEffects" | "listAccessibleIds" | "changeResource"
+  >;
   accounts: Pick<IAccountModels, "countPlayersByIds">;
   images: IArenaImageStore;
   assets: Pick<IImageAssets, "ingest" | "release">;

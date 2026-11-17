@@ -29,4 +29,4 @@ Um hook `Stop` (`.claude/hooks/review-gate.sh`, registrado em `.claude/settings.
 @docs/DOMAIN.md
 @docs/DESIGN.md
 
-Ler sob demanda: `docs/MIGRATION.md` (mapa Roll20 → schema) ao mexer na ficha ou em importação; `docs/SECURITY.md` ao mexer em auth, sessão, permissões, API pública ou socket.
+Ler sob demanda: `docs/MIGRATION.md` (mapa Roll20 → schema) ao mexer na ficha ou em importação; `docs/SECURITY.md` ao mexer em auth, sessão, permissões, API pública ou socket; `docs/VFX.md` (boas práticas de animação, o kit de energia e fluido e as receitas de visual) ao criar ou ajustar qualquer animação da Arena.

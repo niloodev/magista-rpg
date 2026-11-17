@@ -5,6 +5,7 @@ import {
   type IArenaToken,
   type ArenaResourceKey,
   type ICharacter,
+  type ISheetEffects,
 } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
@@ -324,33 +325,37 @@ function build(
     ),
     release: vi.fn(async () => undefined),
   };
+  const characters = {
+    exists: vi.fn(async (id) => [ANA, BRUNO].includes(id)),
+    findSheetEffects: vi.fn(async (id: string): Promise<ISheetEffects | null> =>
+      id === ANA ? { damage: { health: "ember" } } : null,
+    ),
+    listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
+    changeResource: vi.fn(
+      async (ids: string[], resource: ArenaResourceKey, change: ResourceChange) =>
+        ids.flatMap((id) => {
+          const sheet = sheets[id];
+          const next = sheet ? change(sheet[resource]) : null;
+          if (!sheet || !next) return [];
+          sheets[id] = { ...sheet, [resource]: next };
+          return [{ id } as ICharacter];
+        }),
+    ),
+  };
   const controller = createArenaController({
     scenes,
     folders,
     tokens,
     images,
     assets,
-    characters: {
-      exists: vi.fn(async (id) => [ANA, BRUNO].includes(id)),
-      listAccessibleIds: vi.fn(async (accountId) => access[accountId] ?? []),
-      changeResource: vi.fn(
-        async (ids: string[], resource: ArenaResourceKey, change: ResourceChange) =>
-          ids.flatMap((id) => {
-            const sheet = sheets[id];
-            const next = sheet ? change(sheet[resource]) : null;
-            if (!sheet || !next) return [];
-            sheets[id] = { ...sheet, [resource]: next };
-            return [{ id } as ICharacter];
-          }),
-      ),
-    },
+    characters,
     accounts: {
       countPlayersByIds: vi.fn(
         async (ids: string[]) => ids.filter((id) => ["alice", "bob"].includes(id)).length,
       ),
     },
   });
-  return { controller, scenes, tokens, images, folders, assets, sheets, npcStatus };
+  return { controller, scenes, tokens, images, folders, assets, sheets, npcStatus, characters };
 }
 
 const png = Buffer.from("png-bytes");
@@ -1124,6 +1129,58 @@ describe("arena controller: apply change", () => {
     expect(await controller.applyChange(alice, change([T_WOLF], { effect: "nope" }))).toEqual({
       error: arenaErrors.invalidChange,
     });
+  });
+
+  it("plays the attacking sheet's animation on Automático, never over a chosen one", async () => {
+    const { controller } = build();
+    const fromSheet = await controller.applyChange(
+      alice,
+      change([T_WOLF], { attackerTokenId: T_ANA }),
+    );
+    if ("error" in fromSheet) throw new Error(fromSheet.error);
+    expect(fromSheet.payload.effects[0]?.effect).toBe("ember");
+    const chosen = await controller.applyChange(
+      alice,
+      change([T_WOLF], { attackerTokenId: T_ANA, effect: "clarity" }),
+    );
+    if ("error" in chosen) throw new Error(chosen.error);
+    expect(chosen.payload.effects[0]?.effect).toBe("clarity");
+    const withoutAttacker = await controller.applyChange(alice, change([T_WOLF]));
+    if ("error" in withoutAttacker) throw new Error(withoutAttacker.error);
+    expect(withoutAttacker.payload.effects[0]?.effect).toBeUndefined();
+  });
+
+  it("keeps a hidden attacking sheet's animation from the table and survives an unreadable sheet", async () => {
+    const { controller, characters } = build();
+    await controller.updateToken(gm, T_ANA, { hidden: true });
+    const hidden = await controller.applyChange(gm, change([T_WOLF], { attackerTokenId: T_ANA }));
+    if ("error" in hidden) throw new Error(hidden.error);
+    expect(hidden.payload.effects[0]?.effect).toBeUndefined();
+    await controller.updateToken(gm, T_ANA, { hidden: false });
+    characters.findSheetEffects.mockResolvedValueOnce(null);
+    const unreadable = await controller.applyChange(
+      gm,
+      change([T_WOLF], { attackerTokenId: T_ANA }),
+    );
+    if ("error" in unreadable) throw new Error(unreadable.error);
+    expect(unreadable.payload.effects[0]?.effect).toBeUndefined();
+  });
+
+  it("falls back to the default animation without a sheet preference", async () => {
+    const { controller, characters } = build();
+    const npc = await controller.applyChange(gm, change([T_ANA], { attackerTokenId: T_WOLF }));
+    if ("error" in npc) throw new Error(npc.error);
+    expect(npc.payload.effects[0]?.effect).toBeUndefined();
+    expect(characters.findSheetEffects).not.toHaveBeenCalled();
+    const missing = await controller.applyChange(gm, change([T_ANA], { attackerTokenId: T_BRUNO }));
+    if ("error" in missing) throw new Error(missing.error);
+    expect(missing.payload.effects[0]?.effect).toBeUndefined();
+    const other = await controller.applyChange(
+      alice,
+      change([T_WOLF], { attackerTokenId: T_ANA, kind: "heal" }),
+    );
+    if ("error" in other) throw new Error(other.error);
+    expect(other.payload.effects[0]?.effect).toBe("ember");
   });
 
   it("hides a hidden attacker from the table", async () => {
