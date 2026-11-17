@@ -1,6 +1,10 @@
 "use client";
 
-import { ARENA_NAME_MAX_LENGTH } from "@magista/shared";
+import {
+  ARENA_INITIATIVE_BONUS_MAX,
+  ARENA_INITIATIVE_BONUS_MIN,
+  ARENA_NAME_MAX_LENGTH,
+} from "@magista/shared";
 
 import {
   ARENA_CHANGE_TEXTS,
@@ -14,6 +18,7 @@ import {
   FormField,
   ImageField,
   Modal,
+  NumberField,
   TokenStyleChoice,
 } from "@/shared/components/molecules";
 
@@ -50,6 +55,8 @@ export function ArenaTokenSettingsDialog({
     onNameChange,
     showName,
     setShowName,
+    initiativeBonus,
+    setInitiativeBonus,
     file,
     imageRemoved,
     imageError,
@@ -147,6 +154,20 @@ export function ArenaTokenSettingsDialog({
                 figureUrl={styleImageUrl}
                 figureDisabledReason={canPickStyle ? null : ARENA_PLACEMENT_TEXTS.styleNeedsImage}
               />
+              <FormField
+                id={`${formId}-initiative`}
+                label={ARENA_STATUS_TEXTS.initiativeBonus}
+                hint={ARENA_STATUS_TEXTS.initiativeBonusHint}
+              >
+                <NumberField
+                  id={`${formId}-initiative`}
+                  value={initiativeBonus}
+                  onValueChange={setInitiativeBonus}
+                  min={ARENA_INITIATIVE_BONUS_MIN}
+                  max={ARENA_INITIATIVE_BONUS_MAX}
+                  className="max-w-28"
+                />
+              </FormField>
             </>
           )}
           <div className="grid gap-1">

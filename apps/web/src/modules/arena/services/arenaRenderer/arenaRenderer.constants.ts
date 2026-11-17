@@ -29,6 +29,12 @@ export const ARENA_SETTLE_DISTANCE = 0.5;
 
 export const ARENA_LITE_FRAME_MS = 33;
 
+/** Pace of the loop while only the turn aura moves (its bob is slow and small, so ~20 fps is enough). */
+export const ARENA_TURN_FRAME_MS = 50;
+
+/** How the shadow of a floating token shrinks and fades per share of its size it rises. */
+export const ARENA_FLOAT_SHADOW = { shrink: 1.8, fade: 4 } as const;
+
 export const ARENA_TOKEN_TEXTURE_SIZE = 256;
 
 /** Isometric figures are drawn whole and larger than a round face, so they keep more detail. */

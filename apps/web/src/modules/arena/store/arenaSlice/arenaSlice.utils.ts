@@ -1,4 +1,5 @@
 import type {
+  IArenaTurnOrder,
   IArenaStatusEntry,
   IArenaToken,
   IArenaTokenStatus,
@@ -163,4 +164,21 @@ export function withCharacterStatus(
     next[token.id] = status;
   }
   return next;
+}
+
+/**
+ * Whether two turn orders are the same (the GM gets its own order twice: in the ack and in the broadcast).
+ */
+export function sameTurnOrder(a: IArenaTurnOrder | null, b: IArenaTurnOrder): boolean {
+  return (
+    a !== null &&
+    a.sceneId === b.sceneId &&
+    a.round === b.round &&
+    a.currentTokenId === b.currentTokenId &&
+    a.entries.length === b.entries.length &&
+    a.entries.every((entry, index) => {
+      const other = b.entries[index];
+      return other?.tokenId === entry.tokenId && other.initiative === entry.initiative;
+    })
+  );
 }

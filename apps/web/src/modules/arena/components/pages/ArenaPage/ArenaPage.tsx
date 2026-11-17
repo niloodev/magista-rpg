@@ -6,6 +6,7 @@ import {
   ARENA_MAP_ERROR,
   ARENA_NO_MAP_LABEL,
   ARENA_SELECTION_TEXTS,
+  ARENA_TURN_TEXTS,
 } from "@/modules/arena/arena.constants";
 import { ProfileDialog } from "@/modules/profile/components";
 import { Button, Icon } from "@/shared/components/atoms";
@@ -29,6 +30,7 @@ import {
   ArenaSkeleton,
   ArenaStage,
   ArenaTopBar,
+  ArenaTurnWindow,
   ArenaTokenSettingsDialog,
   ArenaEffectPickerDialog,
   NpcTokenDialog,
@@ -132,6 +134,12 @@ export function ArenaPage() {
     changeMenuInBar,
     effectPicker,
     tokenSettings,
+    turnWindow,
+    turnsButton,
+    turnTokenId,
+    confirmClearTurns,
+    onConfirmClearTurns,
+    onCancelClearTurns,
   } = useArenaPage();
   if (!desktop) return <ArenaMobileNotice />;
   const renderDocked = (characterId: string) => (
@@ -153,6 +161,7 @@ export function ArenaPage() {
         onGoLive={onGoLiveViewed}
         onBackToLive={onBackToLive}
         onOpenProfile={onOpenProfile}
+        turns={turnsButton}
       />
       <ArenaRollsPanel
         open={rollsOpen}
@@ -171,6 +180,7 @@ export function ArenaPage() {
           scene={stageScene}
           tokens={renderTokens}
           selectedTokenIds={selectedTokenIds}
+          turnTokenId={turnTokenId}
           controlsRef={controlsRef}
           label={stageLabel}
           onSelect={onSelect}
@@ -302,6 +312,15 @@ export function ArenaPage() {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+      <ConfirmDialog
+        open={confirmClearTurns}
+        title={ARENA_TURN_TEXTS.clearTitle}
+        message={ARENA_TURN_TEXTS.clearMessage}
+        confirmLabel={ARENA_TURN_TEXTS.clearConfirm}
+        onConfirm={onConfirmClearTurns}
+        onCancel={onCancelClearTurns}
+      />
+      {turnWindow && <ArenaTurnWindow {...turnWindow} />}
       <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
       <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
       {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}

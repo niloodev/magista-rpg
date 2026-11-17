@@ -16,6 +16,7 @@ interface ArenaTokenRow {
   size: number;
   hidden: boolean;
   position: number;
+  initiativeBonus: number;
   character: (ITokenCharacterImages & { name: string }) | null;
 }
 
@@ -81,6 +82,7 @@ export function toArenaToken(row: ArenaTokenRow): IArenaToken {
     size: row.size,
     hidden: row.hidden,
     position: row.position,
+    initiativeBonus: row.initiativeBonus,
   };
 }
 

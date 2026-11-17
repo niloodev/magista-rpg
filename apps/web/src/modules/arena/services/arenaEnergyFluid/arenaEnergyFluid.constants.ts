@@ -1,3 +1,5 @@
+import type { IEnergyFluidOptions } from "./arenaEnergyFluid.types";
+
 export const FLUID_DEFAULTS = {
   resolution: 640,
   simulation: 192,
@@ -374,3 +376,95 @@ void main() {
   finalColor = vec4(color * alpha * uGain * uAlpha, alpha * uAlpha);
 }
 `;
+
+/**
+ * What shows in water mode: the ink is the depth of a body of water, shaded as a glossy surface. Its height (the
+ * ink, with small ripples drifting over it) gives a normal; a light from above and to the left draws sharp white
+ * highlights on the slopes, a web of caustics shimmers inside it, white foam churns where it is thin and breaking
+ * at its edges, and the body goes from the palette's `uMid` where it is shallow to its `uDeep` where it is deep,
+ * translucent so the map shows through. Premultiplied for normal blending (the highlights add on top).
+ */
+export const FLUID_WATER_DISPLAY = `
+in vec2 vUV;
+out vec4 finalColor;
+uniform sampler2D uField;
+uniform vec2 uTexel;
+uniform float uTime;
+uniform float uGain;
+uniform float uAlpha;
+uniform float uSeed;
+uniform float uGrain;
+uniform float uThreads;
+uniform float uHaze;
+uniform vec2 uAspect;
+uniform vec3 uRim;
+uniform vec3 uMid;
+uniform vec3 uDeep;
+${NOISE}
+float border(vec2 uv) {
+  return smoothstep(0.0, 0.07, min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
+}
+
+float level(vec3 color) {
+  return max(max(color.r, color.g), color.b);
+}
+
+float depth(vec2 uv) {
+  return 1.0 - exp(-level(texture(uField, uv).rgb) * 1.3);
+}
+
+float ripple(vec2 p) {
+  return noise(p) * 0.65 + noise(p * 2.1 + vec2(3.1, 7.7)) * 0.35;
+}
+
+void main() {
+  vec2 texelStep = uTexel * 2.2;
+  float h = depth(vUV);
+  float hl = depth(vUV - vec2(texelStep.x, 0.0));
+  float hr = depth(vUV + vec2(texelStep.x, 0.0));
+  float hb = depth(vUV - vec2(0.0, texelStep.y));
+  float ht = depth(vUV + vec2(0.0, texelStep.y));
+  float body = (h * 2.0 + hl + hr + hb + ht) / 6.0;
+  if (body <= 0.03) {
+    finalColor = vec4(0.0);
+    return;
+  }
+  vec2 slope = vec2(hr - hl, ht - hb);
+  vec2 p = vUV * uAspect * uGrain * 1.1;
+  vec2 flow = vec2(uTime * 0.35 + uSeed, -uTime * 0.28) + body * 2.5;
+  float w = ripple(p + flow);
+  float wx = ripple(p + flow + vec2(0.06, 0.0));
+  float wy = ripple(p + flow + vec2(0.0, 0.06));
+  vec2 wave = vec2(wx - w, wy - w) * 1.6 * smoothstep(0.02, 0.3, body);
+  vec3 normal = normalize(vec3(-(slope * 7.0 + wave), 1.0));
+  vec3 light = normalize(vec3(-0.45, -0.55, 0.7));
+  vec3 bounce = reflect(-light, normal);
+  float shine = pow(max(bounce.z, 0.0), 36.0);
+  float sheen = pow(max(bounce.z, 0.0), 8.0);
+  float shade = clamp(dot(normal, light) * 0.6 + 0.45, 0.0, 1.0);
+  vec2 q = p * 1.3 + flow * 0.6 + wave * 1.5;
+  float web = 1.0 - abs(noise(q) * 2.0 - 1.0);
+  web *= 1.0 - abs(noise(q * 1.7 + vec2(5.2, 1.3)) * 2.0 - 1.0);
+  float caustic = smoothstep(0.55, 0.95, web) * smoothstep(0.05, 0.4, body) * (0.6 + 0.4 * uThreads / 4.0);
+  float steep = length(slope) * 12.0;
+  float churn = noise(p * 1.4 + flow * 1.2);
+  float edge = smoothstep(0.05, 0.16, body) * (1.0 - smoothstep(0.2, 0.42, body));
+  float foam = (smoothstep(0.4, 1.2, steep) * (1.0 - smoothstep(0.5, 0.85, body)) + edge * 0.45)
+    * smoothstep(0.35, 0.75, churn);
+  vec3 water = mix(uMid * 0.75, uDeep * 0.55, smoothstep(0.15, 0.9, body)) * shade;
+  water += uRim * caustic * 0.35 + uMid * sheen * 0.25;
+  float cover = clamp(smoothstep(0.03, 0.22, body) * (0.55 + 0.35 * body) * uHaze, 0.0, 0.92);
+  float fade = uAlpha * border(vUV);
+  vec3 highlight = vec3(1.0) * (shine * 0.8 + foam * 0.55) * smoothstep(0.04, 0.2, body) * uGain;
+  float alpha = clamp(cover + foam * 0.5 * cover, 0.0, 1.0);
+  finalColor = vec4((water * uGain * cover + highlight) * fade, alpha * fade);
+}
+`;
+
+/** The output shader of each look of the fluid. */
+export const FLUID_DISPLAYS: Record<NonNullable<IEnergyFluidOptions["mode"]>, string> = {
+  light: FLUID_DISPLAY,
+  shadow: FLUID_SHADOW_DISPLAY,
+  fire: FLUID_FIRE_DISPLAY,
+  water: FLUID_WATER_DISPLAY,
+};

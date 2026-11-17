@@ -152,10 +152,58 @@ const PAINTERS: Record<ArenaFxFrame, Painter> = {
     context.arc(half, half, size * 0.1, 0, Math.PI * 2);
     context.fill();
   },
+  butterfly: (context, size) => {
+    const half = size / 2;
+    const wings = (side: number, inset: number) => {
+      const x = (share: number) => half + side * (share - 0.5) * size * inset;
+      const y = (share: number) => size * 0.47 + (share - 0.47) * size * inset;
+      context.beginPath();
+      context.moveTo(x(0.52), y(0.36));
+      context.bezierCurveTo(x(0.62), y(0.08), x(0.9), y(0.02), x(0.97), y(0.12));
+      context.bezierCurveTo(x(1.0), y(0.3), x(0.84), y(0.46), x(0.53), y(0.5));
+      context.bezierCurveTo(x(0.8), y(0.52), x(0.9), y(0.7), x(0.8), y(0.86));
+      context.bezierCurveTo(x(0.7), y(0.96), x(0.56), y(0.8), x(0.52), y(0.6));
+      context.closePath();
+    };
+    context.fillStyle = "rgba(255,255,255,1)";
+    for (const side of [1, -1]) {
+      wings(side, 1);
+      context.fill();
+    }
+    context.globalCompositeOperation = "destination-out";
+    context.fillStyle = "rgba(255,255,255,0.42)";
+    for (const side of [1, -1]) {
+      wings(side, 0.72);
+      context.fill();
+    }
+    context.globalCompositeOperation = "source-over";
+    context.fillStyle = "rgba(255,255,255,1)";
+    for (const side of [1, -1]) {
+      context.beginPath();
+      context.arc(half + side * size * 0.29, size * 0.24, size * 0.045, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.beginPath();
+    context.ellipse(half, size * 0.5, size * 0.03, size * 0.2, 0, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = "rgba(255,255,255,0.8)";
+    context.lineWidth = size * 0.015;
+    for (const side of [1, -1]) {
+      context.beginPath();
+      context.moveTo(half, size * 0.32);
+      context.quadraticCurveTo(
+        half + side * size * 0.04,
+        size * 0.18,
+        half + side * size * 0.1,
+        size * 0.12,
+      );
+      context.stroke();
+    }
+  },
 };
 
 /**
- * The particle atlas of the Arena effects: soft glow, spark streak, shard, hot spark, smoke, petals, a light beam, a chain link and math glyphs, painted once
+ * The particle atlas of the Arena effects: soft glow, spark streak, shard, hot spark, smoke, petals, a light beam, a chain link, a butterfly and math glyphs, painted once
  * on a canvas (no image to download) and shared by every effect, since a ParticleContainer needs all its
  * particles on the same texture source.
  */

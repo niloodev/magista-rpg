@@ -1,6 +1,6 @@
 # Animações e VFX da Arena
 
-Guia para criar ou ajustar uma animação da Arena (`apps/web/src/modules/arena/services`): primeiro as boas práticas que valem para qualquer animação, depois o kit de energia e fluido (fios arcanos, luz divina, sombra viva, fogo, vidro quebrado, som). A arquitetura geral dos efeitos (catálogo, registro, parte de tela, grupo, `impactMs`) está em `docs/ARCH.md`.
+Guia para criar ou ajustar uma animação da Arena (`apps/web/src/modules/arena/services`): primeiro as boas práticas que valem para qualquer animação, depois o kit de energia e fluido (fios arcanos, luz divina, sombra viva, fogo, água, enxames, vidro quebrado, som). A arquitetura geral dos efeitos (catálogo, registro, parte de tela, grupo, `impactMs`) está em `docs/ARCH.md`.
 
 ## Boas práticas de animação
 
@@ -48,15 +48,16 @@ Energia bonita tem duas camadas: **fios finos e nítidos** que dão forma e rumo
 
 ## As peças
 
-| Peça                      | Pasta               | Para que serve                                                                                                                                             |
-| ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ArenaEnergyFluid`        | `arenaEnergyFluid`  | O fluido em GPU (Stable Fluids). Recebe tinta, leva, enrola, dissipa e mostra como névoa.                                                                  |
-| `ArenaEnergyTendril`      | `arenaEnergyFluid`  | Energia de um ponto a outro: fios trançados nítidos e o rastro que eles despejam no fluido.                                                                |
-| `ArenaEnergyChannel`      | `arenaEnergyFlow`   | Uma faixa de energia numa curva entre dois pontos. É a base do tendril; sozinha fica larga.                                                                |
-| `ArenaEnergyFlow`         | `arenaEnergyFlow`   | Faixa de energia em qualquer caminho, aberto ou fechado (`circlePath`): anéis, auréolas, contornos.                                                        |
-| `ENERGY_PALETTES`         | `arenaEnergyFlow`   | Paletas prontas (`core`, `mid`, `deep`): `gold`, `holy`, `ember`, `hextech`, `blood`, `scarlet`, `crimson`, `nox`, `dusk`, `shade`, `voodoo`, `voodooHot`. |
-| `ArenaGlassShatterFilter` | `arenaGlassShatter` | Vidro quebrado sobre o mapa: cacos que deslocam a imagem, rachaduras de luz, frestas.                                                                      |
-| `ArenaSoundWaveFilter`    | `arenaSoundWave`    | Som visível: ondas de ar comprimido que distorcem o mapa e os tokens por onde passam.                                                                      |
+| Peça                      | Pasta                 | Para que serve                                                                                                                                                                                    |
+| ------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ArenaEnergyFluid`        | `arenaEnergyFluid`    | O fluido em GPU (Stable Fluids). Recebe tinta, leva, enrola, dissipa e mostra como névoa.                                                                                                         |
+| `ArenaEnergyTendril`      | `arenaEnergyFluid`    | Energia de um ponto a outro: fios trançados nítidos e o rastro que eles despejam no fluido.                                                                                                       |
+| `ArenaEnergyChannel`      | `arenaEnergyFlow`     | Uma faixa de energia numa curva entre dois pontos. É a base do tendril; sozinha fica larga.                                                                                                       |
+| `ArenaEnergyFlow`         | `arenaEnergyFlow`     | Faixa de energia em qualquer caminho, aberto ou fechado (`circlePath`): anéis, auréolas, contornos.                                                                                               |
+| `ENERGY_PALETTES`         | `arenaEnergyFlow`     | Paletas prontas (`core`, `mid`, `deep`): `gold`, `holy`, `ember`, `hextech`, `blood`, `scarlet`, `crimson`, `nox`, `dusk`, `shade`, `voodoo`, `voodooHot`, `hellfire`, `abyss`, `tide`, `depths`. |
+| `ArenaButterflySwarm`     | `arenaButterflySwarm` | Um enxame de borboletas (ou qualquer coisa que voa batendo asas): cada uma segue o próprio caminho no tempo.                                                                                      |
+| `ArenaGlassShatterFilter` | `arenaGlassShatter`   | Vidro quebrado sobre o mapa: cacos que deslocam a imagem, rachaduras de luz, frestas.                                                                                                             |
+| `ArenaSoundWaveFilter`    | `arenaSoundWave`      | Som visível: ondas de ar comprimido que distorcem o mapa e os tokens por onde passam.                                                                                                             |
 
 Regra de escolha: energia que **viaja** usa `ArenaEnergyTendril`; energia que **fica num lugar** (anel, auréola, contorno) usa `ArenaEnergyFlow` e, se deve soltar névoa, entra também em `fluid.sources`.
 
@@ -173,6 +174,44 @@ fluid.update(delta, { inject: 7, bias: { drift: { x: 0, y: -r * 5.5 } } });
 - O branco fica só nas pontas mais quentes. Se o fogo vira uma bola branca, há tinta demais num ponto só: espalhe em mais fontes em vez de aumentar `inject`.
 - Para outras cores de fogo, monte uma paleta com `core` claro, `mid` saturado e `deep` na cor da ponta (o violeta do Vodu, um vermelho escuro para fogo comum, um azul para fogo frio).
 
+## Água
+
+O quarto modo do fluido é `mode: "water"`. A tinta vira a profundidade de um corpo de água, sombreado como uma superfície molhada: a altura (a tinta, com ondulações pequenas por cima) dá uma normal, uma luz do alto à esquerda desenha reflexos brancos nítidos nas encostas, uma rede de cáusticas brilha por dentro, espuma branca aparece onde a água é rasa e se quebra nas bordas, e o corpo vai do `mid` da paleta (raso) ao `deep` (fundo), translúcido para o mapa aparecer. É a água do Antropozohl (a Ultimate "Entre os mundos" e o "Fluxo do passar").
+
+```ts
+const fluid = new ArenaEnergyFluid(host, {
+  area,
+  palette: ENERGY_PALETTES.abyss,
+  mode: "water",
+  decay: 0.55,
+  turbulence: { scale: r * 1.8, force: r * 6 },
+  vorticity: 34,
+});
+fluid.update(delta, { inject: 4, bias: { center: floor, swirl: r * 4.6, radial: -r * 3.4 } });
+```
+
+- O que diz "água" não é a cor, é o brilho da superfície: reflexo nítido, cáustica e espuma. Névoa (`light`) ou fumaça (`shadow`) azuis parecem energia ou fumaça, nunca água.
+- Precisa de corpo: `inject` entre 4 e 4,5 e `decay` perto de 0,55. Com pouca tinta ela vira uma película rala.
+- Fontes de água são as mesmas fitas (`ArenaEnergyFlow`) em `fluid.sources`; por cima, uma fita fina e nítida (`tide`) dá a forma e o rumo (um rio, o braço de um redemoinho, a espiral de uma tromba d'água).
+- Movimentos de água: correntes (`ArenaEnergyTendril`), redemoinho (`swirl` forte com `radial` negativo e braços em espiral, `spiralPoint`), coluna ou tromba (`drift` para cima e braços em hélice que se abrem como funil), e a queda (`drift` para baixo e `radial` positivo no impacto).
+- Gotas e borrifos completam: partículas `streak` com gravidade forte, orientadas pela velocidade, de branco a azul.
+- As ondulações e a espuma têm o tamanho da turbulência. Se a água vira um chuvisco de pontinhos brancos, a área é grande para a escala: aumente `turbulence.scale`.
+- O mapa ondulando (`ArenaSoundWaveFilter` com anéis inteiros) vende o peso da água: um anel no impacto, outro maior quando ela desaba.
+
+## Enxames
+
+`ArenaButterflySwarm` (`arenaButterflySwarm`) voa um enxame planejado de uma vez: cada borboleta recebe um caminho em função do tempo (`path(time)`), nascimento, vida, envergadura e batidas por segundo. Ela bate as asas (o sprite estreita e abre), tremula fora do caminho, balança e vira a cabeça para onde o caminho vai (parada, olha para cima).
+
+```ts
+const swarm = new ArenaButterflySwarm(host.textures, reach);
+swarm.add({ path, born, life, size: r * 0.35, flap: 9, glowing: false, tint: () => navy, seed });
+swarm.update(seconds);
+```
+
+- Monte o caminho em partes no próprio efeito: chegar de fora numa curva (`curvePoint`, `easeInOut`), girar em volta do alvo, pousar num ponto de uma forma (as asas do deus são feitas das próprias borboletas), explodir para longe no impacto. Nada aleatório dentro do caminho: sorteie antes e feche os valores na função.
+- Misture silhuetas (`glowing: false`, cobrem a cena) e brilhantes (`glowing: true`, somam luz): um terço brilhante dá profundidade.
+- Até umas 150 borboletas por efeito são baratas (duas chamadas de desenho).
+
 ## Vidro quebrado na tela
 
 `ArenaGlassShatterFilter` (`arenaGlassShatter`) quebra a imagem do mapa como uma vidraça atingida num ponto. É um filtro sobre o mundo, não um desenho por cima: cada caco desloca a imagem atrás dele e reflete a luz no próprio ângulo, e as rachaduras são linhas finas de luz.
@@ -231,6 +270,17 @@ O que define cada um:
 - **Luz**: menos giro e mais subida. A névoa sobe como chama calma e some para cima. O branco fica nas peças nítidas (anel da auréola, coluna), não no fluido. Um bloom suave por cima das peças nítidas, nunca forte.
 - **Energia, plasma**: fios mais rápidos e com mais veios, névoa que dura menos (`decay` menor) e redemoinhos menores. Sem raios nem arcos elétricos.
 
+## Aura persistente (o token da vez)
+
+Um efeito que fica ligado enquanto algo dura (não uma animação que acaba) segue outras regras, porque o canvas só desenha quando algo muda: enquanto a aura existe o loop não para.
+
+- Fica numa unidade própria (`services/arenaTurnAura`, `ArenaTurnAura`), presa ao token pelo renderer (`setTurnToken`), não no `ARENA_EFFECT_PLAYERS`. Recebe o `IArenaFxHost` do renderer (o fluido roda no `screen`). Entra em fade e, ao sair (`leave`), apaga anel e fios e deixa o fluido escorrer com `inject: 0` por `TURN_FLUID_LINGER_MS` antes de `done`.
+- Montada como o Chamado Divino, com as duas camadas do kit, mas contida: um `ArenaEnergyFlow` fechado e nítido dá a forma (o anel girando no chão); uma fita mais larga no mesmo anel vai só para `fluid.sources`; o `ArenaEnergyFluid` em modo luz recebe a tinta com `swirl` forte e quase nenhum `radial`, pouca tinta (`inject` 1,6) e `decay` rápido (0,3), então a névoa fica colada no anel, gira com ele e nunca se alastra. Fios saindo para fora e empurrão radial deixaram a aura chamativa demais (o usuário pediu sutil). Nada de `Graphics` com contorno duro nem faixa solta: isso fica quadrado.
+- Flutuar: o renderer soma a altura ao `dy` do token e mantém no chão o que é do chão (`aura.ground` e a sombra, que encolhe e clareia ao subir). O que sobe com o token vai em `aura.back`.
+- O fluido tem área fixa: `layout` só remonta as peças quando o formato ou a proporção da imagem mudam; um tamanho novo (o Mestre arrastando a alça) só escala a camada já montada, sem recomeçar o fluido nem alocar memória de GPU a cada movimento.
+- Custo: só o token da vez tem aura (um fluido pequeno, 256 texels de tinta e 80 células, e o anel). Quando só ela se mexe, o loop roda a ~20 fps (`ARENA_TURN_FRAME_MS`, 50 ms), e qualquer coisa vinda de fora (mouse, dados, outro efeito) desenha na hora (`urgent`). Com o token da vez fora da tela a aura para e o mapa parado não desenha nada. No modo leve, um anel e um brilho parados, sem fluido nem shader, e o loop para.
+- Mantenha suave: a aura não pode competir com os efeitos de dano; flutuação de poucos por cento do tamanho do token, com teto em pixels do mapa (12 + 4 de balanço).
+
 ## Se ficou estranho
 
 | Parece             | Causa provável                              | O que mexer                                                         |
@@ -244,6 +294,8 @@ O que define cada um:
 | Some do nada       | fluido destruído com a parte de tela        | camada própria e `linger`                                           |
 | Parado             | `speed` baixo, sem `head` e `tail` animados | subir `speed`; revelar e esgotar os fios                            |
 | Vidro parece teia  | cacos grandes e regulares, linha grossa     | mais raios (`SPOKES`), linha perto de 1 px, menos brilho em volta   |
+| Água parece fumaça | modo `light` ou `shadow`                    | `mode: "water"`; mais `inject`                                      |
+| Água com chuvisco  | turbulência pequena para uma área grande    | `turbulence.scale` maior                                            |
 | Sobra no fim       | último quadro da parte de tela fica parado  | esconder a parte de tela e tirar os filtros ao começar o `linger`   |
 
 ## Como conferir

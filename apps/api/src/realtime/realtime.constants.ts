@@ -12,3 +12,10 @@ export const ARENA_THROTTLED_ERROR = "Calma! Muitos movimentos seguidos.";
 
 export const ARENA_CHANGE_THROTTLED_ERROR =
   "Calma! Muitas mudanças seguidas. Espere alguns segundos.";
+
+export const ARENA_TURN_LIMIT = 12;
+
+export const ARENA_TURN_WINDOW_MS = 5000;
+
+export const ARENA_TURN_THROTTLED_ERROR =
+  "Calma! Muitas mudanças na ordem de turnos seguidas. Espere alguns segundos.";

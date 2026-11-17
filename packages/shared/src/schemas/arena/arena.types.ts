@@ -25,6 +25,11 @@ import type {
   applyArenaChangeInputSchema,
 } from "./arena.schemas";
 import type {
+  arenaTurnCommandSchema,
+  arenaTurnEntrySchema,
+  arenaTurnOrderSchema,
+} from "./arena.turns";
+import type {
   ARENA_CHANGE_KINDS,
   ARENA_EFFECT_STYLES,
   ARENA_RESOURCE_KEYS,
@@ -143,4 +148,20 @@ export interface IArenaEffectEvent {
 export interface IArenaChangeResult {
   applied: string[];
   refused: string[];
+}
+
+export type IArenaTurnEntry = z.infer<typeof arenaTurnEntrySchema>;
+
+export type IArenaTurnOrder = z.infer<typeof arenaTurnOrderSchema>;
+
+export type IArenaTurnCommand = z.infer<typeof arenaTurnCommandSchema>;
+
+export type ArenaTurnAction = IArenaTurnCommand["action"];
+
+/** Initiatives being rolled for tokens of a scene: their turn order lines spin until the reveal. */
+export interface IArenaTurnPendingEvent {
+  sceneId: string;
+  tokenIds: string[];
+  /** How long until the values show, in ms (relative, so clocks out of sync do not matter). */
+  revealInMs: number;
 }

@@ -111,6 +111,7 @@ const copyMany: IArenaTokenModels["copyMany"] = async (sceneId, copies) => {
         sanityCurrent: source.sanityCurrent,
         sanityMax: source.sanityMax,
         statusPublic: source.statusPublic,
+        initiativeBonus: source.initiativeBonus,
       })),
     });
     const viewers = rows.flatMap(({ id, source }) =>

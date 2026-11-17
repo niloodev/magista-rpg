@@ -35,6 +35,7 @@ export function useArenaTokenActions({
   onToggleHidden,
   onOpenSheet,
   onRemove,
+  turnActions,
   onAnnounce,
   onError,
 }: UseArenaTokenActionsProps): IArenaTokenActions {
@@ -97,6 +98,27 @@ export function useArenaTokenActions({
         icon: "swords",
         onSelect: () => onApplyChange(anchor),
       });
+      if (turnActions?.canRoll)
+        items.push({
+          id: "roll-initiative",
+          label: ARENA_TOKEN_MENU_TEXTS.rollInitiative,
+          icon: "dices",
+          onSelect: turnActions.onRoll,
+        });
+      if (turnActions?.canAdd)
+        items.push({
+          id: "add-turn",
+          label: ARENA_TOKEN_MENU_TEXTS.addToTurns,
+          icon: "list-plus",
+          onSelect: turnActions.onAdd,
+        });
+      if (turnActions?.canRemove)
+        items.push({
+          id: "remove-turn",
+          label: ARENA_TOKEN_MENU_TEXTS.removeFromTurns,
+          icon: "list-x",
+          onSelect: turnActions.onRemove,
+        });
       if (isGm && tokens.length === 1)
         items.push({
           id: "configure",
@@ -165,6 +187,7 @@ export function useArenaTokenActions({
     allHidden,
     clipboardSize,
     onApplyChange,
+    turnActions,
     onConfigure,
     onOpenSheet,
     onToggleHidden,

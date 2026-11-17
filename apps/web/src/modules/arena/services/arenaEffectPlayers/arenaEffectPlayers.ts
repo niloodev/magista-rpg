@@ -8,6 +8,7 @@ import {
   CAST_HIT_MS,
   type ArenaCastPalette,
 } from "@/modules/arena/services/arenaCastEffect";
+import { ArenaBetweenWorldsEffect } from "@/modules/arena/services/arenaBetweenWorldsEffect";
 import { ArenaClarityEffect } from "@/modules/arena/services/arenaClarityEffect";
 import { ArenaEmberEffect } from "@/modules/arena/services/arenaEmberEffect";
 import {
@@ -34,6 +35,12 @@ import {
   type ArenaLungePalette,
 } from "@/modules/arena/services/arenaLungeEffect";
 import { ArenaNonEuclideanEffect } from "@/modules/arena/services/arenaNonEuclideanEffect";
+import {
+  ArenaPassageCastEffect,
+  PASSAGE_CALL_HIT_MS,
+  PASSAGE_FLOW_HIT_MS,
+} from "@/modules/arena/services/arenaPassageCastEffect";
+import { ArenaPassingFlowEffect } from "@/modules/arena/services/arenaPassingFlowEffect";
 import { ArenaShotEffect, SHOT_HIT_MS } from "@/modules/arena/services/arenaShotEffect";
 import {
   ArenaNoxShadowEffect,
@@ -183,6 +190,14 @@ export const ARENA_EFFECT_PLAYERS: Record<ArenaEffectStyle, IArenaEffectRegistra
       flies: false,
     }),
   },
+  betweenWorlds: {
+    target: (options, host) => new ArenaBetweenWorldsEffect(options, host),
+    attacker: (input, host) => ({
+      effect: new ArenaPassageCastEffect(input, host, "call"),
+      hitMs: PASSAGE_CALL_HIT_MS,
+      flies: false,
+    }),
+  },
   gunshot: {
     target: (options, host) => new ArenaGunshotEffect(options, host),
     attacker: shot,
@@ -212,6 +227,14 @@ export const ARENA_EFFECT_PLAYERS: Record<ArenaEffectStyle, IArenaEffectRegistra
     attacker: (input, host) => ({
       effect: new ArenaGeometryCastEffect(input, host),
       hitMs: GEOMETRY_HIT_MS,
+      flies: false,
+    }),
+  },
+  passingFlow: {
+    target: (options, host) => new ArenaPassingFlowEffect(options, host),
+    attacker: (input, host) => ({
+      effect: new ArenaPassageCastEffect(input, host, "flow"),
+      hitMs: PASSAGE_FLOW_HIT_MS,
       flies: false,
     }),
   },

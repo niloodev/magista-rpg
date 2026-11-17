@@ -28,25 +28,25 @@ model Account {
 }
 
 model Character {
-  id           String            @id @default(uuid()) @db.Uuid
-  name         String
-  folderId     String?           @db.Uuid
-  folder       CharacterFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  position     Int               @default(0)
-  access       CharacterAccess[]
-  avatarKey    String?
-  artKey       String?
-  figureKey    String?
-  tokenStyle   String            @default("portrait")
-  showTokenName Boolean          @default(false)
-  features     String[]          @default([])
-  markedShare  MarkedShare?
-  arenaTokens  ArenaToken[]
-  sheet        Json              @default("{}")
-  sheetVersion Int               @default(0)
-  legacy       Json?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  folderId      String?           @db.Uuid
+  folder        CharacterFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  position      Int               @default(0)
+  access        CharacterAccess[]
+  avatarKey     String?
+  artKey        String?
+  figureKey     String?
+  tokenStyle    String            @default("portrait")
+  showTokenName Boolean           @default(false)
+  features      String[]          @default([])
+  markedShare   MarkedShare?
+  arenaTokens   ArenaToken[]
+  sheet         Json              @default("{}")
+  sheetVersion  Int               @default(0)
+  legacy        Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@map("characters")
 }
@@ -118,6 +118,12 @@ model ArenaScene {
   position    Int               @default(0)
   tokens      ArenaToken[]
   activeState ArenaState?
+  turnEntries ArenaTurnEntry[]
+  /// Round of the turn order of the scene (starts at 1, grows when the order wraps).
+  turnRound   Int               @default(1)
+  /// Token whose turn it is (null: nobody).
+  turnTokenId String?           @unique @db.Uuid
+  turnToken   ArenaToken?       @relation("SceneTurnToken", fields: [turnTokenId], references: [id], onDelete: SetNull)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -126,32 +132,51 @@ model ArenaScene {
 }
 
 model ArenaToken {
-  id            String                   @id @default(uuid()) @db.Uuid
-  sceneId       String                   @db.Uuid
-  scene         ArenaScene               @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  characterId   String?                  @db.Uuid
-  character     Character?               @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  name          String?
-  imageKey      String?
-  tokenStyle    String                   @default("portrait")
-  showName      Boolean                  @default(true)
-  x             Float                    @default(0)
-  y             Float                    @default(0)
-  size          Int                      @default(140)
-  hidden        Boolean                  @default(false)
-  position      Int                      @default(0)
-  healthCurrent Int?
-  healthMax     Int?
-  sanityCurrent Int?
-  sanityMax     Int?
-  statusPublic  Boolean                  @default(false)
-  statusViewers ArenaTokenStatusViewer[]
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
+  id              String                   @id @default(uuid()) @db.Uuid
+  sceneId         String                   @db.Uuid
+  scene           ArenaScene               @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  characterId     String?                  @db.Uuid
+  character       Character?               @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name            String?
+  imageKey        String?
+  tokenStyle      String                   @default("portrait")
+  showName        Boolean                  @default(true)
+  x               Float                    @default(0)
+  y               Float                    @default(0)
+  size            Int                      @default(140)
+  hidden          Boolean                  @default(false)
+  position        Int                      @default(0)
+  healthCurrent   Int?
+  healthMax       Int?
+  sanityCurrent   Int?
+  sanityMax       Int?
+  statusPublic    Boolean                  @default(false)
+  statusViewers   ArenaTokenStatusViewer[]
+  /// Bonus added to 1d20 when the token rolls initiative from its menu (NPC tokens).
+  initiativeBonus Int                      @default(0)
+  turnEntry       ArenaTurnEntry?
+  turnOf          ArenaScene?              @relation("SceneTurnToken")
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([sceneId])
   @@index([characterId])
   @@map("arena_tokens")
+}
+
+model ArenaTurnEntry {
+  id         String     @id @default(uuid()) @db.Uuid
+  sceneId    String     @db.Uuid
+  scene      ArenaScene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  tokenId    String     @unique @db.Uuid
+  token      ArenaToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  initiative Int?
+  position   Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([sceneId])
+  @@map("arena_turn_entries")
 }
 
 model ArenaTokenStatusViewer {

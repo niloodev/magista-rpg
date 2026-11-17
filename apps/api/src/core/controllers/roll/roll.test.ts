@@ -68,6 +68,20 @@ const controller = createRollController(controllerDeps);
 const owner = { accountId: "owner", role: "PLAYER" as const };
 
 describe("roll controller", () => {
+  it("rolls a sheet initiative once per token, each for its own token", async () => {
+    const results = await controller.rollInitiatives(owner, character.id, ["t-a", "t-b"]);
+    expect(results.map((result) => [result.kind, result.tokenId])).toEqual([
+      ["initiative", "t-a"],
+      ["initiative", "t-b"],
+    ]);
+    expect(results[0]?.rows[0]?.outcome.total).toBe(22);
+    expect(
+      await controller.rollInitiatives({ accountId: "stranger", role: "PLAYER" }, character.id, [
+        "t-a",
+      ]),
+    ).toEqual([]);
+  });
+
   it("rolls initiative from the stored sheet", async () => {
     const result = await controller.roll(owner, {
       characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",

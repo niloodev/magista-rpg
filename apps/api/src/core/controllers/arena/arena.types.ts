@@ -18,6 +18,7 @@ import type {
 import type { IArenaSceneModels } from "@/core/models/arenaScene";
 import type { IArenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import type { IArenaTokenModels } from "@/core/models/arenaToken";
+import type { IArenaTurnModels } from "@/core/models/arenaTurn";
 import type { ICharacterModels } from "@/core/models/character";
 import type { IAccountModels } from "@/core/models/account";
 import type { IImageAssets } from "@/core/controllers/mediaAsset";
@@ -30,6 +31,7 @@ export interface IArenaControllerDeps {
   scenes: IArenaSceneModels;
   folders: IArenaSceneFolderModels;
   tokens: IArenaTokenModels;
+  turns: Pick<IArenaTurnModels, "findOrder" | "change">;
   characters: Pick<
     ICharacterModels,
     "exists" | "findSheetEffects" | "listAccessibleIds" | "changeResource"

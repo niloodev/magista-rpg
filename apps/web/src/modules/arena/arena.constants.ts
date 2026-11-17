@@ -119,6 +119,9 @@ export const ARENA_TOKEN_MENU_TEXTS = {
   copy: "Copiar",
   paste: "Colar aqui",
   remove: "Remover",
+  rollInitiative: "Rolar iniciativa",
+  addToTurns: "Adicionar à iniciativa",
+  removeFromTurns: "Remover da iniciativa",
   copied: (count: number) => (count === 1 ? "1 token copiado." : `${count} tokens copiados.`),
   pasted: (count: number) => (count === 1 ? "1 token colado." : `${count} tokens colados.`),
 } as const;
@@ -130,6 +133,58 @@ export const ARENA_SIDEBAR_WIDTH = { default: 360, min: 300, max: 560 } as const
 export const ARENA_ROLLS_WIDTH = { default: 340, min: 320, max: 520 } as const;
 
 export const ARENA_SIDEBAR_STORAGE_KEY = "magista:arena:sidebar";
+
+/** Whether the turn order window is open, saved per device. */
+export const ARENA_TURNS_STORAGE_KEY = "magista:arena:turns";
+
+export const ARENA_TURN_TEXTS = {
+  button: "Turnos",
+  buttonYourTurn: "sua vez",
+  windowTitle: "Turnos",
+  close: "Fechar turnos",
+  round: "Rodada",
+  roundLabel: (round: number) => `Rodada ${round}`,
+  turnOfLabel: "Vez de",
+  notStarted: "Aguardando o início",
+  listLabel: "Ordem de turnos",
+  start: "Começar",
+  next: "Próximo turno",
+  previous: "Turno anterior",
+  endTurn: "Encerrar meu turno",
+  sort: "Ordenar por iniciativa",
+  clear: "Limpar ordem",
+  clearTitle: "Limpar a ordem de turnos?",
+  clearMessage: "Todos saem da ordem e a rodada volta para 1.",
+  clearConfirm: "Limpar",
+  current: "Vez atual",
+  upNext: "A seguir",
+  rolling: "rolando",
+  initiative: (name: string) => `Iniciativa de ${name}`,
+  noValue: "·",
+  noValueLabel: "sem valor",
+  remove: (name: string) => `Tirar ${name} da ordem`,
+  rowActions: (name: string) => `Ações de ${name} na ordem`,
+  focus: (name: string) => `Passar a vez para ${name}`,
+  pick: (name: string) => `Mostrar ${name} no mapa`,
+  empty: "Role Iniciativa na ficha para entrar na ordem.",
+  emptyGm:
+    "Os jogadores entram ao rolar Iniciativa na ficha. Para NPCs, use Rolar iniciativa ou Adicionar à iniciativa no menu do token.",
+  turnOf: (name: string, round: number) => `Turno de ${name} (rodada ${round}).`,
+  yourTurn: (name: string) => `Sua vez: ${name}.`,
+  rolled: (count: number) =>
+    count === 1 ? "Rolando a iniciativa." : `Rolando a iniciativa de ${count} tokens.`,
+} as const;
+
+/** Turn order window: default size and spot (top right of the map area), below the sheet windows. */
+export const ARENA_TURN_WINDOW_LAYOUT = {
+  width: 320,
+  height: 420,
+  gap: 16,
+  top: 72,
+  min: { width: 260, height: 220 },
+  rectKey: "magista:arena:turns-window",
+  zIndex: 39,
+} as const;
 
 export const ARENA_FOLDERS_STORAGE_KEY = "magista:arena:expanded";
 
@@ -492,6 +547,14 @@ export const ARENA_EFFECT_CATALOG: Record<ArenaEffectStyle, IArenaEffectCatalogE
     accent: "bg-gold-400",
     attack: "cast",
   },
+  betweenWorlds: {
+    name: "Entre os mundos",
+    description:
+      "Antropozohl, o Deus das Passagens, abre a porta entre os mundos. A mesa afunda em água escura, correntes trazem um enxame de borboletas azuis e brancas que gira em volta do alvo, e do enxame se abrem as asas colossais do deus, com olhos que se abrem e o encaram; a água sob o alvo vira um redemoinho, as asas se fecham num estalo e o alvo é arrastado para o outro lado, cuspido de volta numa coluna de água enquanto o enxame se espalha.",
+    tags: ["ultimate", "free"],
+    accent: "bg-fx-abyss",
+    attack: "cast",
+  },
   gunshot: {
     name: "Magia completamente normal mágica",
     description:
@@ -556,6 +619,14 @@ export const ARENA_EFFECT_CATALOG: Record<ArenaEffectStyle, IArenaEffectCatalogE
     accent: "bg-fx-azure",
     attack: "cast",
   },
+  passingFlow: {
+    name: "Fluxo do passar",
+    description:
+      "Antropozohl lança uma torrente de água escura cheia de borboletas. Ela bate no alvo e se divide em volta dele, o mapa ondula, uma tromba d'água sobe girando e ergue o alvo afogado; então ela desaba e o esmaga contra o chão num segundo impacto ainda maior, e a água escoa num redemoinho escuro enquanto as borboletas se espalham.",
+    tags: ["free"],
+    accent: "bg-fx-abyss",
+    attack: "cast",
+  },
 };
 
 export const ARENA_CHANGE_QUICK_AMOUNTS = [1, 5, 10] as const;
@@ -594,5 +665,7 @@ export const ARENA_STATUS_TEXTS = {
   image: "Imagem",
   showName: "Mostrar nome no mapa",
   showNameHint: "Desmarcado, os jogadores não veem o nome; o Mestre o vê apagado.",
+  initiativeBonus: "Bônus de iniciativa",
+  initiativeBonusHint: "Somado ao 1d20 em Rolar iniciativa (menu do token).",
   imageFailed: "As configurações foram salvas, mas a imagem não.",
 } as const;

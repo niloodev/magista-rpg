@@ -7,14 +7,12 @@ import {
   FLUID_ADVECT,
   FLUID_CURL,
   FLUID_DEFAULTS,
-  FLUID_DISPLAY,
   FLUID_DIVERGENCE,
-  FLUID_FIRE_DISPLAY,
   FLUID_FORCES,
   FLUID_GRADIENT,
   FLUID_PRESSURE,
-  FLUID_SHADOW_DISPLAY,
   FLUID_VERTEX,
+  FLUID_DISPLAYS,
 } from "./arenaEnergyFluid.constants";
 import type { IEnergyFluidFrame, IEnergyFluidOptions } from "./arenaEnergyFluid.types";
 import { biasToCells, decayOver, fluidTexels } from "./arenaEnergyFluid.utils";
@@ -199,11 +197,7 @@ export class ArenaEnergyFluid {
     const second = options.secondary ?? options.palette;
     this.display = pass(
       quad(area.x, area.y, area.width, area.height),
-      options.mode === "shadow"
-        ? FLUID_SHADOW_DISPLAY
-        : options.mode === "fire"
-          ? FLUID_FIRE_DISPLAY
-          : FLUID_DISPLAY,
+      FLUID_DISPLAYS[options.mode ?? "light"],
       { uField: this.dye.read },
       {
         uTexel: vec2(inkTexel),
@@ -224,7 +218,7 @@ export class ArenaEnergyFluid {
       },
     );
     this.view = this.display.mesh;
-    this.view.blendMode = options.mode === "shadow" ? "normal" : "add";
+    this.view.blendMode = options.mode === "shadow" || options.mode === "water" ? "normal" : "add";
     this.view.eventMode = "none";
     const empty = new Container();
     for (const target of [

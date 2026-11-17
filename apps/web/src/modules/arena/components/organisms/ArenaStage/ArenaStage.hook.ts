@@ -23,6 +23,7 @@ export function useArenaStage({
   scene,
   tokens,
   selectedTokenIds,
+  turnTokenId,
   controlsRef,
   onSelect,
   onDrop,
@@ -120,6 +121,10 @@ export function useArenaStage({
   useEffect(() => {
     renderer?.setSelection(selectedTokenIds);
   }, [renderer, selectedTokenIds]);
+
+  useEffect(() => {
+    renderer?.setTurnToken(turnTokenId);
+  }, [renderer, turnTokenId]);
 
   useEffect(() => {
     renderer?.setResizable(resizable);

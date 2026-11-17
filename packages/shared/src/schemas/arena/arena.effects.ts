@@ -18,6 +18,7 @@ export const ARENA_EFFECT_STYLES = [
   "entropiaPoema",
   "deathRebirth",
   "divineCall",
+  "betweenWorlds",
   "gunshot",
   "shovel",
   "soulDrain",
@@ -26,6 +27,7 @@ export const ARENA_EFFECT_STYLES = [
   "voodooAxe",
   "voodooFire",
   "nonEuclidean",
+  "passingFlow",
 ] as const;
 
 export const arenaEffectStyleSchema = z.enum(ARENA_EFFECT_STYLES);

@@ -25,6 +25,9 @@ import type {
   IArenaToken,
   IArenaTokenRemovedEvent,
   IArenaMoveResult,
+  IArenaTurnCommand,
+  IArenaTurnOrder,
+  IArenaTurnPendingEvent,
   IMoveArenaTokensInput,
 } from "../schemas/arena";
 import type { ICharacter, ICharacterImages } from "../schemas/character";
@@ -80,6 +83,10 @@ export interface ServerToClientEvents {
   "arena:character-status": (event: IArenaCharacterStatusEvent) => void;
   /** Damage or healing applied to tokens, for the animation. */
   "arena:effect": (event: IArenaEffectEvent) => void;
+  /** New turn order of a scene (without the tokens the receivers cannot see). */
+  "arena:turns": (order: IArenaTurnOrder) => void;
+  /** Initiatives being rolled (their lines in the turn order spin until the values show). */
+  "arena:turn-pending": (event: IArenaTurnPendingEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -112,6 +119,10 @@ export interface ClientToServerEvents {
   "arena:apply": (
     request: IApplyArenaChangeInput,
     ack: (result: ControllerResult<IArenaChangeResult>) => void,
+  ) => void;
+  "arena:turn": (
+    request: IArenaTurnCommand,
+    ack: (result: ControllerResult<IArenaTurnOrder>) => void,
   ) => void;
 }
 

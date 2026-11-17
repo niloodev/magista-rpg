@@ -2,6 +2,8 @@ import { GM_ROOM, TABLE_ROOM } from "@magista/shared";
 import { describe, expect, it } from "vitest";
 
 import {
+  groupByCharacter,
+  withinGate,
   effectEmits,
   statusEmits,
   accountRoom,
@@ -83,6 +85,7 @@ describe("token batches", () => {
       size: 140,
       hidden: false,
       position: 0,
+      initiativeBonus: 0,
     }) as const;
 
   it("gives the players what they may see, the GM everything, and lists tokens that left the players' view", () => {
@@ -209,6 +212,26 @@ describe("effectEmits", () => {
         },
       },
       { audience: "gm", event: { sceneId: "s1", effects: [{ ...effect, tokenId: "c" }] } },
+    ]);
+  });
+});
+
+describe("turn roll helpers", () => {
+  it("lets through the leading items until the gate refuses", () => {
+    let left = 2;
+    const gate = () => left-- > 0;
+    expect(withinGate(["a", "b", "c"], gate)).toEqual(["a", "b"]);
+  });
+
+  it("groups token rolls by character", () => {
+    const groups = groupByCharacter([
+      { tokenId: "a", characterId: "c1" },
+      { tokenId: "b", characterId: "c2" },
+      { tokenId: "c", characterId: "c1" },
+    ]);
+    expect([...groups]).toEqual([
+      ["c1", ["a", "c"]],
+      ["c2", ["b"]],
     ]);
   });
 });

@@ -42,3 +42,9 @@ export interface IArenaBoardRequest {
   width: number;
   height?: number;
 }
+
+/** Whose turn it is and the round of a turn order. */
+export interface IArenaTurnPointer {
+  round: number;
+  currentTokenId: string | null;
+}

@@ -1,7 +1,7 @@
 import type { IArenaBounds, IArenaPoint, IArenaToken } from "@magista/shared";
 import type { RefObject } from "react";
 
-import type { IArenaStageControls } from "@/modules/arena/arena.types";
+import type { IArenaStageControls, IArenaTurnMenuActions } from "@/modules/arena/arena.types";
 import type { IArenaTokenMenuItem } from "@/modules/arena/components/molecules";
 
 export interface UseArenaTokenActionsProps {
@@ -22,6 +22,8 @@ export interface UseArenaTokenActionsProps {
   onToggleHidden: () => void;
   onOpenSheet: () => void;
   onRemove: () => void;
+  /** Initiative actions for the selection (roll, add to or take out of the turn order). */
+  turnActions: IArenaTurnMenuActions | null;
   onAnnounce: (message: string) => void;
   onError: (message: string | null) => void;
 }

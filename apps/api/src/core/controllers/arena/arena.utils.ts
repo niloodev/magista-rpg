@@ -53,6 +53,7 @@ export function tokenRowPatch(
   input: IUpdateArenaTokenInput,
 ): IUpdateArenaTokenRow {
   const { name, size, hidden, style, showName, status, statusPublic, statusViewerIds } = input;
+  const { initiativeBonus } = input;
   const npc = token.characterId === null;
   return {
     ...(size === undefined ? {} : { size }),
@@ -62,6 +63,7 @@ export function tokenRowPatch(
     ...(statusViewerIds === undefined ? {} : { statusViewerIds }),
     ...(npc && name !== undefined ? { name } : {}),
     ...(npc && style !== undefined ? { tokenStyle: style } : {}),
+    ...(npc && initiativeBonus !== undefined ? { initiativeBonus } : {}),
     ...(npc && status?.health
       ? { healthCurrent: status.health.current, healthMax: status.health.max }
       : {}),

@@ -18,6 +18,7 @@ function token(id: string, extra: Partial<IArenaToken> = {}): IArenaToken {
     size: 140,
     hidden: false,
     position: 0,
+    initiativeBonus: 0,
     ...extra,
   };
 }
@@ -39,6 +40,7 @@ const view: IArenaView = {
   tokens: [token("a", { position: 0 }), token("b", { position: 1, characterId: "c1" })],
   controllableCharacterIds: [],
   statuses: {},
+  turnOrder: { sceneId: "s1", round: 1, currentTokenId: null, entries: [] },
 };
 
 function loaded() {
@@ -49,6 +51,37 @@ function loaded() {
 }
 
 describe("arena slice", () => {
+  it("replaces the turn order of the scene on screen only", () => {
+    const store = loaded();
+    const order = {
+      sceneId: "s1",
+      round: 2,
+      currentTokenId: "a",
+      entries: [{ tokenId: "a", initiative: 14 }],
+    };
+    const view = store.getState().arena.view;
+    store.getState().applyArenaTurns({ ...order, sceneId: "other" });
+    expect(store.getState().arena.turnOrder?.round).toBe(1);
+    store.getState().applyArenaTurns(order);
+    expect(store.getState().arena.turnOrder).toEqual(order);
+    expect(store.getState().arena.view).toBe(view);
+    const before = store.getState().arena;
+    store.getState().applyArenaTurns({ ...order, entries: [...order.entries] });
+    expect(store.getState().arena).toBe(before);
+  });
+
+  it("spins the lines of tokens rolling initiative until their reveal", () => {
+    const store = loaded();
+    store.getState().markTurnRolling({ sceneId: "other", tokenIds: ["a"], revealInMs: 3000 }, 0);
+    expect(store.getState().arena.turnRolling).toEqual({});
+    store.getState().markTurnRolling({ sceneId: "s1", tokenIds: ["a", "b"], revealInMs: 3000 }, 0);
+    store.getState().markTurnRolling({ sceneId: "s1", tokenIds: ["b"], revealInMs: 3000 }, 1000);
+    store.getState().expireTurnRolling(3000);
+    expect(store.getState().arena.turnRolling).toEqual({ b: 4000 });
+    store.getState().expireTurnRolling(4000);
+    expect(store.getState().arena.turnRolling).toEqual({});
+  });
+
   it("loads once and refreshes without going back to loading", () => {
     const store = createAppStore();
     store.getState().startArenaLoad();

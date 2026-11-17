@@ -23,10 +23,14 @@ export const levelUpInputSchema = z.object({
   addToCurrent: z.boolean(),
 });
 
-export const rollRequestSchema = z.object({
-  characterId: z.uuid(),
-  roll: rollKindSchema,
-});
+export const rollRequestSchema = z
+  .object({
+    characterId: z.uuid(),
+    roll: rollKindSchema,
+    /** Arena token this initiative is for (only that token enters the turn order). */
+    tokenId: z.uuid().optional(),
+  })
+  .refine((request) => request.tokenId === undefined || request.roll.kind === "initiative");
 
 export const pingEntrySchema = z.object({
   kind: z.enum(["trait", "item"]),

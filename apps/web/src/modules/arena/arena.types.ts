@@ -144,3 +144,32 @@ export interface IArenaDockedTabs {
   onShow: (characterId: string | null) => void;
   render: (characterId: string) => ReactNode;
 }
+
+/** One line of the turn order window. */
+export interface IArenaTurnRow {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  style: TokenStyle;
+  /** Ruby for the viewer's own tokens, teal for the others (as on the map). */
+  tone: "own" | "other";
+  hidden: boolean;
+  initiative: number | null;
+  current: boolean;
+  /** Its turn comes right after the current one. */
+  upNext: boolean;
+  /** Its initiative is being rolled (the value spins until the dice reveal). */
+  rolling: boolean;
+}
+
+/** Turn order actions of the token menu for the selection. */
+export interface IArenaTurnMenuActions {
+  canRoll: boolean;
+  /** Some selected token is out of the order (GM). */
+  canAdd: boolean;
+  /** Some selected token is in the order (GM). */
+  canRemove: boolean;
+  onRoll: () => void;
+  onAdd: () => void;
+  onRemove: () => void;
+}

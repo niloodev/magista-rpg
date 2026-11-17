@@ -77,4 +77,6 @@ export interface IRollResult {
   rows: IRollResultRow[];
   notes: string[];
   createdAt: string;
+  /** Arena token an initiative was rolled for (from its menu); absent: every token of the sheet. */
+  tokenId?: string;
 }

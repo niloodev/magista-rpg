@@ -66,6 +66,7 @@ import {
   useArenaTokenActions,
   useArenaTokenPlacement,
   useArenaTokenStatus,
+  useArenaTurns,
 } from "@/modules/arena/hooks";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
@@ -497,6 +498,49 @@ export function useArenaPage() {
   const canRemove =
     selectedTokens.length > 0 &&
     (isGm || selectedTokens.every((token) => controllableIds.has(token.id)));
+  const turns = useArenaTurns({
+    isGm,
+    selectedTokens,
+    controllableIds,
+    onPickToken,
+    onAnnounce: setAnnouncement,
+    onError: setActionError,
+  });
+  const { open: turnsOpen, rows: turnRows, round, started, yourTurn, currentName } = turns;
+  const turnHandlers = turns.handlers;
+  const turnPanels = useStableCallback(() => windowPanels);
+  const turnWindow = useMemo(
+    () =>
+      turnsOpen && scene
+        ? {
+            isGm,
+            rows: turnRows,
+            round,
+            currentName,
+            started,
+            yourTurn,
+            initialPanels: turnPanels,
+            ...turnHandlers,
+          }
+        : null,
+    [
+      turnsOpen,
+      scene,
+      isGm,
+      turnRows,
+      round,
+      currentName,
+      started,
+      yourTurn,
+      turnPanels,
+      turnHandlers,
+    ],
+  );
+  const onToggleTurns = turns.toggle;
+  const turnsButton = useMemo(
+    () => (scene ? { open: turnsOpen, yourTurn, onToggle: onToggleTurns } : null),
+    [scene, turnsOpen, yourTurn, onToggleTurns],
+  );
   const onApplyChangeAt = useStableCallback((point: IArenaPoint) => openChangeMenu(null, point));
   const tokenActions = useArenaTokenActions({
     isGm,
@@ -513,6 +557,7 @@ export function useArenaPage() {
     onToggleHidden,
     onOpenSheet: onOpenSelectedSheet,
     onRemove: onRequestRemove,
+    turnActions: turns.menuActions,
     onAnnounce: setAnnouncement,
     onError: setActionError,
   });
@@ -731,5 +776,11 @@ export function useArenaPage() {
     onZoomIn,
     onZoomOut,
     onFit,
+    turnWindow,
+    turnsButton,
+    turnTokenId: turns.currentTokenId,
+    confirmClearTurns: turns.confirmClear,
+    onConfirmClearTurns: turns.onConfirmClear,
+    onCancelClearTurns: turns.onCancelClear,
   };
 }

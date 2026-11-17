@@ -95,6 +95,21 @@ describe("rolls", () => {
         roll: { kind: "initiative" },
       }).success,
     ).toBe(true);
+    const tokenId = "7a2d1c3e-9b54-4d5f-8c9e-3a4b2d6e8f01";
+    expect(
+      rollRequestSchema.safeParse({
+        characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
+        roll: { kind: "initiative" },
+        tokenId,
+      }).success,
+    ).toBe(true);
+    expect(
+      rollRequestSchema.safeParse({
+        characterId: "6f1c0b2e-8a43-4c4e-9b8d-2f3a1c5d7e90",
+        roll: { kind: "counterAttack" },
+        tokenId,
+      }).success,
+    ).toBe(false);
   });
 
   describe("ability attacks", () => {

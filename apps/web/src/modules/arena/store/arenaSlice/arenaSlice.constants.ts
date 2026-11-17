@@ -4,6 +4,7 @@ export const defaultArenaState: ArenaState = {
   arena: {
     status: "idle",
     view: null,
+    turnOrder: null,
     error: null,
     selectedTokenIds: [],
     viewSceneId: null,
@@ -14,5 +15,6 @@ export const defaultArenaState: ArenaState = {
     docked: { left: [], right: [] },
     dockTab: { left: null, right: null },
     tokenClipboard: [],
+    turnRolling: {},
   },
 };
