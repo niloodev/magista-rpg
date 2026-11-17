@@ -51,6 +51,7 @@ describe("folder tree utils", () => {
           figureThumbUrl: null,
           tokenStyle: "portrait",
           showTokenName: true,
+          effects: {},
           classKey: "sem-classe" as const,
           level: 1,
           accountIds: [],

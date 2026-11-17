@@ -18,15 +18,16 @@ export function useArenaEffectPickerDialog({
   kind,
   resource,
   value,
+  autoStyle,
   onChoose,
-}: Pick<ArenaEffectPickerDialogProps, "kind" | "resource" | "value" | "onChoose">) {
+}: Pick<ArenaEffectPickerDialogProps, "kind" | "resource" | "value" | "autoStyle" | "onChoose">) {
   const groupId = useId();
   const [draft, setDraft] = useState<ArenaEffectChoice>(value);
   const [withAttacker, setWithAttacker] = useState(true);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ArenaEffectFilter>("all");
   const lite = usePrefersReducedMotion();
-  const auto = autoEffectStyle(kind, resource);
+  const auto = autoStyle ?? autoEffectStyle(kind, resource);
   const style = draft === "auto" ? auto : draft;
   const shown = useMemo(
     () => filterEffects(ARENA_EFFECT_CATALOG, query, filter, kind, resource),

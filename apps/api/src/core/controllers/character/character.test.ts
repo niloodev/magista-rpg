@@ -44,6 +44,7 @@ const summary: ICharacterSummary = {
   position: 0,
   accountIds: ["owner"],
   features: [],
+  effects: {},
 };
 
 function buildController(
@@ -52,6 +53,7 @@ function buildController(
 ) {
   const characters: ICharacterModels = {
     findById: vi.fn().mockResolvedValue(character),
+    findSheetEffects: vi.fn().mockResolvedValue({}),
     exists: vi.fn().mockResolvedValue(true),
     hasAccess: vi.fn().mockImplementation(async (_id, accountId) => accountId === "owner"),
     listAccessibleIds: vi.fn().mockResolvedValue([CHARACTER_ID]),

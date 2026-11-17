@@ -10,6 +10,7 @@ import {
 } from "../../schemas/arena";
 import {
   autoEffectStyle,
+  resolveAutoEffect,
   applyResourceChange,
   canControlToken,
   canSeeTokenStatus,
@@ -246,5 +247,15 @@ describe("effect styles", () => {
     expect(autoEffectStyle("damage", "sanity")).toBe("fissure");
     expect(autoEffectStyle("heal", "health")).toBe("ember");
     expect(autoEffectStyle("heal", "sanity")).toBe("clarity");
+  });
+});
+
+describe("resolveAutoEffect", () => {
+  it("uses the attacking sheet's animation, else the default of the action", () => {
+    const effects = { damage: { health: "fissure" as const } };
+    expect(resolveAutoEffect("damage", "health", effects)).toBe("fissure");
+    expect(resolveAutoEffect("damage", "sanity", effects)).toBe("fissure");
+    expect(resolveAutoEffect("heal", "health", effects)).toBe("ember");
+    expect(resolveAutoEffect("heal", "sanity", null)).toBe("clarity");
   });
 });

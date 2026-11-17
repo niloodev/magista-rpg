@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext } from "@playwright/test";
 
 import { apiAs } from "../support/api";
 import {
@@ -13,6 +13,7 @@ import {
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs } from "../support/session";
+import { test } from "../support/test";
 
 const SCENE = "Arena de teste";
 

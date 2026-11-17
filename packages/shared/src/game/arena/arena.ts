@@ -3,7 +3,12 @@ import {
   ARENA_BOARD_MAX_SIDE,
   ARENA_BOARD_MIN_SIDE,
 } from "../../schemas/arena";
-import type { ArenaChangeKind, ArenaEffectStyle, ArenaResourceKey } from "../../schemas/arena";
+import type {
+  ArenaChangeKind,
+  ArenaEffectStyle,
+  ArenaResourceKey,
+  ISheetEffects,
+} from "../../schemas/arena";
 import { SHEET_LIMITS, type ISheetResource } from "../../schemas/character";
 import type {
   IArenaBoardRequest,
@@ -86,6 +91,18 @@ export function autoEffectStyle(
 ): ArenaEffectStyle {
   if (kind === "damage") return resource === "health" ? "strike" : "fissure";
   return resource === "health" ? "ember" : "clarity";
+}
+
+/**
+ * The animation "Automático" plays: the one the attacking sheet prefers for this action and attribute, else the
+ * default of the action.
+ */
+export function resolveAutoEffect(
+  kind: ArenaChangeKind,
+  resource: ArenaResourceKey,
+  effects?: ISheetEffects | null,
+): ArenaEffectStyle {
+  return effects?.[kind]?.[resource] ?? autoEffectStyle(kind, resource);
 }
 
 /**

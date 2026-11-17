@@ -1,4 +1,5 @@
 import type {
+  ArenaEffectStyle,
   IAccount,
   IArenaPoint,
   IArenaToken,
@@ -39,6 +40,8 @@ export interface IArenaTokenStatusControls {
   updateChange: (patch: Partial<Omit<IArenaChangePreference, "amount">>) => void;
   /** Name of the animation set ("Automático (Golpe)", "Fissura"). */
   effectLabel: string;
+  /** What "Automático" plays now: the attacking sheet's animation, else the action default. */
+  autoStyle: ArenaEffectStyle;
   /** Keeps the animation chosen in the picker and closes it. */
   chooseEffect: (choice: IArenaChangePreference["effect"]) => void;
   effectPickerOpen: boolean;

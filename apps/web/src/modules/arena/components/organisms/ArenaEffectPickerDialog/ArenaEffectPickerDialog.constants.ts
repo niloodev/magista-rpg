@@ -7,5 +7,9 @@ export const FILTER_CLASS =
 export const TAG_CLASS =
   "border border-white/10 px-1.5 font-sans text-xs leading-5 text-muted-strong";
 
+/** The "Ultimate" tag stands out in gold, like the signature spell it marks. */
+export const ULTIMATE_TAG_CLASS =
+  "border border-gold-400/60 bg-gold-400/10 px-1.5 font-sans text-xs leading-5 font-semibold tracking-[0.08em] text-gold-300 uppercase";
+
 /** Accent of the automatic choice. */
 export const AUTO_ACCENT = "bg-gold-400";

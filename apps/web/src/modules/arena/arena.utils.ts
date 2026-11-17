@@ -441,7 +441,8 @@ export function filterEffects(
     const tagged =
       filter === "all" ||
       (filter === "fits"
-        ? entry.tags.includes(kind) && entry.tags.includes(resource)
+        ? entry.tags.includes("free") ||
+          (entry.tags.includes(kind) && entry.tags.includes(resource))
         : entry.tags.includes(filter));
     return tagged && (matchesSearch(entry.name, query) || matchesSearch(entry.description, query));
   });

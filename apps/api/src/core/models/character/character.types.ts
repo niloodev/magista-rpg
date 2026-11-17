@@ -7,6 +7,7 @@ import type {
   ICharacterImages,
   ICharacterSheet,
   ICharacterSummary,
+  ISheetEffects,
   TokenStyle,
 } from "@magista/shared";
 
@@ -40,6 +41,8 @@ export interface ICharacterPortrait {
 
 export interface ICharacterModels {
   findById: (id: string) => Promise<ICharacter | null>;
+  /** Only the animations a sheet chose (`sheet.effects`), or null without the sheet or with an unreadable one. */
+  findSheetEffects: (id: string) => Promise<ISheetEffects | null>;
   exists: (id: string) => Promise<boolean>;
   hasAccess: (characterId: string, accountId: string) => Promise<boolean>;
   listAccessibleIds: (accountId: string) => Promise<string[]>;

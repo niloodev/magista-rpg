@@ -34,6 +34,7 @@ const character = (id: string, name: string, folderId: string | null, position: 
     figureThumbUrl: null,
     tokenStyle: "portrait",
     showTokenName: true,
+    effects: {},
     classKey: "arcanista",
     level: 3,
     accountIds: [],

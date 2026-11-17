@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { apiAs } from "../support/api";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { dismissRoll, loginAs, openSheet } from "../support/session";
+import { test } from "../support/test";
 
 test.describe("subida de nível", () => {
   test("jogador fica bloqueado na tela e na API", async ({ page }) => {

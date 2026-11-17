@@ -17,6 +17,7 @@ const character = (id: string, position: number) =>
     figureThumbUrl: null,
     tokenStyle: "portrait",
     showTokenName: true,
+    effects: {},
     classKey: "sem-classe",
     level: 1,
     accountIds: [],
@@ -68,6 +69,7 @@ describe("library slice", () => {
       figureThumbUrl: null,
       tokenStyle: "portrait",
       showTokenName: true,
+      effects: {},
     });
   });
 
@@ -116,5 +118,22 @@ describe("library slice without churn", () => {
     const before = store.getState().library;
     store.getState().applyLibraryFeatures({ id: "missing", features: [] });
     expect(store.getState().library).toBe(before);
+  });
+
+  it("keeps the same characters when the animation preferences did not change", () => {
+    const store = createAppStore();
+    store
+      .getState()
+      .finishLibraryLoad({ characters: [character("a", 0)], folders: [], accounts: [] });
+    const before = store.getState().library.characters;
+    store.getState().applyLibraryEffects("a", {});
+    expect(store.getState().library.characters).toBe(before);
+    store.getState().applyLibraryEffects("a", { damage: { health: "fissure" } });
+    expect(store.getState().library.characters[0]?.effects).toEqual({
+      damage: { health: "fissure" },
+    });
+    const changed = store.getState().library.characters;
+    store.getState().applyLibraryEffects("a", { damage: { health: "fissure" } });
+    expect(store.getState().library.characters).toBe(changed);
   });
 });

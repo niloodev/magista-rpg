@@ -5,6 +5,7 @@ import {
   createAttackerEffect,
   createTargetEffect,
 } from "@/modules/arena/services/arenaEffectPlayers";
+import { ArenaFxScreen } from "@/modules/arena/services/arenaFxScreen";
 import { ArenaFxTextures } from "@/modules/arena/services/arenaFxTextures";
 import type { IArenaEffectPlayer, IArenaFxHost } from "@/modules/arena/services/arenaTokenEffects";
 
@@ -33,11 +34,13 @@ interface IPreviewToken {
  */
 export class ArenaEffectPreview {
   private readonly ground = new Graphics();
+  private readonly world = new Container();
   private readonly attacker: IPreviewToken;
   private readonly target: IPreviewToken;
   private readonly textures = new ArenaFxTextures();
   private readonly shockwaves: ArenaShockwaves;
   private readonly host: IArenaFxHost;
+  private readonly screen: ArenaFxScreen;
   private current: IArenaEffectPreviewPlay | null = null;
   private restartAt = 0;
   private seed = 1;
@@ -49,10 +52,16 @@ export class ArenaEffectPreview {
     private readonly options: IArenaEffectPreviewOptions,
   ) {
     this.shockwaves = new ArenaShockwaves(app);
-    this.host = { textures: this.textures.frames, shockwave: this.shockwaves.add };
-    app.stage.addChild(this.ground);
+    this.world.addChild(this.ground);
+    app.stage.addChild(this.world);
     this.attacker = this.token("A", PREVIEW_COLORS.ruby, PREVIEW_ATTACKER_X);
     this.target = this.token("B", PREVIEW_COLORS.teal, PREVIEW_TARGET_X);
+    this.screen = new ArenaFxScreen(app, this.world, this.world);
+    this.host = {
+      textures: this.textures.frames,
+      shockwave: this.shockwaves.add,
+      screen: this.screen,
+    };
     this.drawGround();
     if (options.lite) app.ticker.maxFPS = 30;
     app.ticker.add(this.tick);
@@ -106,6 +115,7 @@ export class ArenaEffectPreview {
     this.clear(this.attacker);
     this.clear(this.target);
     this.shockwaves.destroy();
+    this.screen.destroy();
     this.textures.destroy();
     this.app.destroy({ removeView: true }, { children: true });
   }
@@ -128,7 +138,7 @@ export class ArenaEffectPreview {
     container.addChild(shape, letter);
     const home = { x: this.app.screen.width * share, y: this.app.screen.height * 0.58 };
     container.position.set(home.x, home.y);
-    this.app.stage.addChild(container);
+    this.world.addChild(container);
     return { container, home, effects: [] };
   }
 
@@ -168,8 +178,8 @@ export class ArenaEffectPreview {
       this.attacker.effects.push(attack.effect);
       if (attack.flies) this.attacker.container.addChildAt(attack.effect.container, 0);
       else this.attacker.container.addChild(attack.effect.container);
-      this.app.stage.addChild(this.attacker.container);
-      delayMs = attack.hitMs;
+      this.world.addChild(this.attacker.container);
+      delayMs = Math.max(attack.hitMs - (attack.leadMs ?? 0), 0);
     }
     const effect = createTargetEffect(
       {
@@ -182,6 +192,7 @@ export class ArenaEffectPreview {
         seed: seed + 1000,
         delayMs,
         style: play.style,
+        ...(play.withAttacker ? { incoming: { x: 1, y: 0 } } : {}),
       },
       this.host,
     );

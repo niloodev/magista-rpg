@@ -1,4 +1,4 @@
-import type { IArenaPoint } from "@magista/shared";
+import type { ArenaEffectStyle, IArenaPoint } from "@magista/shared";
 
 import type {
   IArenaAttackerOption,
@@ -18,6 +18,8 @@ export interface ArenaChangeMenuProps {
   onPreferenceChange: (patch: Partial<Omit<IArenaChangePreference, "amount">>) => void;
   /** Name of the animation that will play ("Automático (Golpe)" or "Fissura"). */
   effectLabel: string;
+  /** The animation "Automático" resolves to (the attacker's sheet preference or the default). */
+  autoStyle: ArenaEffectStyle;
   onPickEffect: () => void;
   /** The effect picker is open over it: no closing on outside clicks or Esc. */
   suspended: boolean;

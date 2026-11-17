@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
 import { readSheet, writeLists } from "../support/sheet";
+import { test } from "../support/test";
 
 const TRAIT = { id: "ping-trait", name: "Visão no escuro", description: "Enxerga no escuro." };
 const ITEM = {

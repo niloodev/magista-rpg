@@ -355,6 +355,7 @@ export const ARENA_CHANGE_TEXTS = {
   noAttackerHint: "Só o alvo anima.",
   attackerHint: (name: string) => `${name} avança e golpeia.`,
   casterHint: (name: string) => `${name} conjura e lança.`,
+  shooterHint: (name: string) => `${name} saca e atira.`,
   decrease: "Diminuir valor",
   increase: "Aumentar valor",
   effect: "Efeito",
@@ -399,6 +400,8 @@ export const ARENA_EFFECT_TAG_LABELS = {
   heal: "Cura",
   health: "Vida",
   sanity: "Sanidade",
+  free: "Livre",
+  ultimate: "Ultimate",
 } as const;
 
 /** Filters of the picker, in order; "fits" keeps the effects made for the action and attribute set. */
@@ -409,6 +412,8 @@ export const ARENA_EFFECT_FILTERS = [
   { value: "heal", label: "Cura" },
   { value: "health", label: "Vida" },
   { value: "sanity", label: "Sanidade" },
+  { value: "free", label: "Livres" },
+  { value: "ultimate", label: "Ultimates" },
 ] as const;
 
 /**
@@ -445,6 +450,110 @@ export const ARENA_EFFECT_CATALOG: Record<ArenaEffectStyle, IArenaEffectCatalogE
     description: "Ondas calmas, feixes de luz e runas subindo. Quem ataca lança um orbe claro.",
     tags: ["heal", "sanity"],
     accent: "bg-teal-400",
+    attack: "cast",
+  },
+  voxPopuli: {
+    name: "Vox Populi",
+    description:
+      "Quando Marion fala e todos acreditam, aquilo sempre foi verdade. O mundo silencia e sangra em vermelho, um vitral do rumor surge apagado sobre o alvo e acende pedaço por pedaço conforme as pessoas acreditam; completo, a realidade racha na tela inteira e o vitral desaba sobre o alvo em mil cacos.",
+    tags: ["ultimate", "free"],
+    accent: "bg-primary",
+    attack: "cast",
+  },
+  vitaeUnius: {
+    name: "Vitae Unius",
+    description:
+      "A vida de um, a identidade de todos. Tony toca e o dia nasce sobre a mesa: a Flor da Vida se tece em volta do alvo a cada batida do coração, raízes de luz brotam folhas e a luz de todos sobe até ele. Ao florescer, toda maldição se parte e queima em luz, raios giram pela tela e uma tempestade de pétalas toma tudo.",
+    tags: ["ultimate", "free"],
+    accent: "bg-gold-400",
+    attack: "cast",
+  },
+  entropiaPoema: {
+    name: "Entropia e Poema",
+    description:
+      "Tudo que nasce aprende a ruir. Selvarin abre um buraco negro sobre o alvo e o mundo escurece em vermelho e preto; a gravidade curva a imagem do mapa, correntes vêm de além da tela e prendem o alvo, o poema escrito em runas em volta do buraco é sugado em espiral e o alvo é esticado na direção do vazio, até o buraco colapsar e explodir.",
+    tags: ["ultimate", "free"],
+    accent: "bg-ruby-900",
+    attack: "cast",
+  },
+  deathRebirth: {
+    name: "Reencarnação da Morte",
+    description:
+      "A Morte vem e o alvo renasce. A noite cai em violeta sob um eclipse negro, sombras sobem do chão e se enrolam no alvo sobre um selo de Nox, o Olho do Fim racha sua alma em branco e a sombra espectral da pá da Morte desce e o esmaga; então ele renasce num pilar de fogo de Nox enquanto as almas libertas sobem.",
+    tags: ["ultimate", "free"],
+    accent: "bg-fx-nox",
+    attack: "cast",
+  },
+  divineCall: {
+    name: "Chamado Divino",
+    description:
+      "Heylel chama e os céus respondem. Uma auréola de energia dourada se forma no alto, correntes de luz descem em espiral, asas de energia se abrem atrás do alvo e uma coluna de luz desce sobre ele: na cura, uma bênção que o ergue e o ilumina por dentro; no dano, um julgamento que o atinge em branco puro.",
+    tags: ["ultimate", "free"],
+    accent: "bg-gold-400",
+    attack: "cast",
+  },
+  gunshot: {
+    name: "Magia completamente normal mágica",
+    description:
+      "Uma bola de fogo comum, dessas que todo mago aprende no primeiro ano. Totalmente arcana, nada de pólvora, nada de metal, nenhum barulho estranho. Se fizer BANG, é a magia. Livre para qualquer ação.",
+    tags: ["free"],
+    accent: "bg-gold-400",
+    attack: "shot",
+  },
+  shovel: {
+    name: "Pazada",
+    description:
+      "Uma boa e honesta pazada. Quem ataca avança com uma pá, ergue bem alto e desce de chapa no alvo: CLANG, faíscas de metal, poeira e pedrinhas voando, e o alvo achatado balançando de volta.",
+    tags: ["free"],
+    accent: "bg-fx-earth",
+    attack: "lunge",
+  },
+  soulDrain: {
+    name: "Sugada Espiritual",
+    description:
+      "Lorcan abre a boca e suga a alma do alvo. Uma boca espectral de presas violeta se abre ao lado de quem ataca, uma fita de alma é arrancada do alvo, que perde a cor, e flui até ela; no fim, um gole, e quem ataca brilha com a vida tomada.",
+    tags: ["free"],
+    accent: "bg-fx-nox",
+    attack: "cast",
+  },
+  floralStrike: {
+    name: "Golpe Floral",
+    description:
+      "Quem ataca avança soltando pétalas rosas pelo caminho; no golpe uma rajada de pétalas atravessa o alvo, uma grande flor rosa desabrocha sobre ele e explode numa tempestade de pétalas e pólen.",
+    tags: ["free"],
+    accent: "bg-fx-blossom",
+    attack: "lunge",
+  },
+  floralCast: {
+    name: "Conjuração Floral",
+    description:
+      "Pétalas giram até quem lança e formam um botão de flor que voa até o alvo; ali uma flor enorme desabrocha, pétalas chovem do alto e florzinhas brotam num anel no chão.",
+    tags: ["free"],
+    accent: "bg-fx-blossom",
+    attack: "cast",
+  },
+  voodooAxe: {
+    name: "Ataque Vodu",
+    description:
+      "Quem ataca avança envolto em chama verde e desce um machado em brasa: um arco de fogo verde, o corte e o alvo ardendo em labaredas.",
+    tags: ["free"],
+    accent: "bg-fx-verdant",
+    attack: "lunge",
+  },
+  voodooFire: {
+    name: "Conjuração Vodu",
+    description:
+      "Chamas verdes se juntam em quem ataca e uma bola de fogo verde voa até o alvo, que explode em anéis de fogo e fica queimando.",
+    tags: ["free"],
+    accent: "bg-fx-verdant",
+    attack: "cast",
+  },
+  nonEuclidean: {
+    name: "Colapso da Geometria Não Euclidiana",
+    description:
+      "Figuras impossíveis giram em volta de quem lança e uma hélice de símbolos matemáticos corre até o alvo; ali uma malha de polígonos azuis se dobra, implode num ponto e explode em luz.",
+    tags: ["free"],
+    accent: "bg-fx-azure",
     attack: "cast",
   },
 };

@@ -20,6 +20,7 @@ import {
 import { fetchMediaBlob } from "@/core/services/http";
 import { ARENA_EMPTY_BOUNDS } from "@/modules/arena/arena.constants";
 import { ArenaStatusBars } from "@/modules/arena/services/arenaStatusBars";
+import { ArenaFxScreen } from "@/modules/arena/services/arenaFxScreen";
 import { ArenaFxTextures } from "@/modules/arena/services/arenaFxTextures";
 import {
   ArenaShockwaves,
@@ -28,6 +29,7 @@ import {
 } from "@/modules/arena/services/arenaEffectPlayers";
 import {
   EFFECT_FLOAT_QUIET_MS,
+  EFFECT_LINGER_MS,
   EFFECT_MAX_PER_TOKEN,
   EFFECT_RICH_BUDGET,
   effectStyle,
@@ -78,6 +80,8 @@ import {
   screenToWorld,
   tokenExtents,
   tokensInRect,
+  groupOffsets,
+  unitDirection,
   visibleCenterPoint,
   zoomAt,
 } from "./arenaRenderer.utils";
@@ -227,6 +231,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private readonly tokenLayer = new Container();
   private readonly tokens = new Map<string, ITokenView>();
   private readonly portraits = new Map<string, Promise<Texture | null>>();
+  private fading: { effect: IArenaEffectPlayer; start: number }[] = [];
   private readonly pointers = new Map<number, IArenaPoint>();
   private readonly observer: ResizeObserver;
   private camera: IArenaCamera = { x: 0, y: 0, scale: 1 };
@@ -259,6 +264,7 @@ export class ArenaRenderer implements IArenaRenderer {
   private effectSeed = 1;
   private fxTextures: ArenaFxTextures | null = null;
   private shockwaves: ArenaShockwaves | null = null;
+  private fxScreen: ArenaFxScreen | null = null;
 
   private constructor(
     private readonly app: Application,
@@ -451,6 +457,11 @@ export class ArenaRenderer implements IArenaRenderer {
     for (const [id, view] of this.tokens) {
       if (seen.has(id)) continue;
       for (const effect of view.effects) effect.destroy();
+      this.fading = this.fading.filter(({ effect }) => {
+        if (effect.container.parent !== view.container) return true;
+        effect.destroy();
+        return false;
+      });
       view.bars.destroy();
       view.container.destroy({ children: true });
       this.tokens.delete(id);
@@ -537,10 +548,23 @@ export class ArenaRenderer implements IArenaRenderer {
     const now = performance.now();
     const delays = this.launchAttackers(effects);
     let budget = EFFECT_RICH_BUDGET;
+    const targets = effects.flatMap(({ tokenId }) => this.tokens.get(tokenId) ?? []);
     for (const { tokenId, kind, resource, amount, attackerTokenId, effect: style } of effects) {
       const view = this.tokens.get(tokenId);
       if (!view) continue;
-      const delayMs = attackerTokenId ? (delays.get(attackerTokenId) ?? 0) : 0;
+      const group =
+        targets.length > 1
+          ? groupOffsets(
+              view.display,
+              view.data.size / 2,
+              targets.map((target) => target.display),
+            )
+          : null;
+      const timing = attackerTokenId ? delays.get(attackerTokenId) : undefined;
+      const hitMs = timing?.hitMs ?? 0;
+      const delayMs = Math.max(hitMs - (timing?.leadMs ?? 0), 0);
+      const attacker = attackerTokenId ? this.tokens.get(attackerTokenId) : undefined;
+      const incoming = attacker ? unitDirection(attacker.display, view.display) : null;
       const rich = !this.options.lite && budget > 0 && this.isOnScreen(view);
       if (rich) budget -= 1;
       const effect = createTargetEffect(
@@ -554,12 +578,15 @@ export class ArenaRenderer implements IArenaRenderer {
           seed: this.effectSeed++,
           delayMs,
           ...(style ? { style } : {}),
+          ...(incoming ? { incoming } : {}),
+          ...(group ? { group } : {}),
         },
         this.fxHost(),
       );
       this.attachEffect(view, effect);
-      view.lastEffectAt = now + delayMs;
-      view.holdStatusUntil = now + delayMs;
+      const impact = Math.max(hitMs, delayMs + (effect.impactMs ?? 0));
+      view.lastEffectAt = now + impact;
+      view.holdStatusUntil = now + impact;
     }
     this.invalidate();
   };
@@ -582,10 +609,11 @@ export class ArenaRenderer implements IArenaRenderer {
   /**
    * Plays each attacker's part toward its targets (their center when there are several): a blow to health makes
    * it fly and strike (on top of the other tokens), anything else makes it cast an orb in an arc. Returns, per
-   * attacker, how long the targets wait for the hit. Nothing plays in the light mode.
+   * attacker, when the hit lands and how much earlier the target animation starts (its own wind-up). Nothing
+   * plays in the light mode.
    */
-  private launchAttackers(effects: IArenaEffect[]): Map<string, number> {
-    const delays = new Map<string, number>();
+  private launchAttackers(effects: IArenaEffect[]): Map<string, { hitMs: number; leadMs: number }> {
+    const delays = new Map<string, { hitMs: number; leadMs: number }>();
     if (this.options.lite) return delays;
     const targetsOf = new Map<string, ITokenView[]>();
     const styleOf = new Map<string, ReturnType<typeof effectStyle>>();
@@ -618,7 +646,7 @@ export class ArenaRenderer implements IArenaRenderer {
       this.attachEffect(attacker, play.effect);
       if (play.flies) attacker.container.addChildAt(play.effect.container, 0);
       this.tokenLayer.addChild(attacker.container);
-      delays.set(attackerId, play.hitMs);
+      delays.set(attackerId, { hitMs: play.hitMs, leadMs: play.leadMs ?? 0 });
     }
     return delays;
   }
@@ -626,7 +654,12 @@ export class ArenaRenderer implements IArenaRenderer {
   private fxHost(): IArenaFxHost {
     this.fxTextures ??= new ArenaFxTextures();
     this.shockwaves ??= new ArenaShockwaves(this.app);
-    return { textures: this.fxTextures.frames, shockwave: this.shockwaves.add };
+    this.fxScreen ??= new ArenaFxScreen(this.app, this.world, this.world);
+    return {
+      textures: this.fxTextures.frames,
+      shockwave: this.shockwaves.add,
+      screen: this.fxScreen,
+    };
   }
 
   retryMap = (): void => {
@@ -645,11 +678,18 @@ export class ArenaRenderer implements IArenaRenderer {
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onWindowBlur);
+    for (const view of this.tokens.values()) {
+      for (const effect of view.effects) effect.destroy();
+      view.effects = [];
+    }
+    for (const { effect } of this.fading) if (!effect.container.destroyed) effect.destroy();
+    this.fading = [];
     this.app.stage.removeChildren();
     this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
     destroyTexture(this.mapTexture);
     this.shockwaves?.destroy();
+    this.fxScreen?.destroy();
     this.fxTextures?.destroy();
     for (const pending of this.portraits.values())
       void pending.then((texture) => destroyTexture(texture));
@@ -705,6 +745,25 @@ export class ArenaRenderer implements IArenaRenderer {
     if (!same) view.container.filters = wanted.length > 0 ? wanted : null;
   }
 
+  /**
+   * What is left of the animations that ended fades out over `EFFECT_LINGER_MS` (a trace that dissipates instead of
+   * vanishing), then is destroyed. True while something is still fading.
+   */
+  private fadeEnded(now: number): boolean {
+    if (this.fading.length === 0) return false;
+    this.fading = this.fading.filter(({ effect, start }) => {
+      const left = 1 - (now - start) / EFFECT_LINGER_MS;
+      if (effect.container.destroyed) return false;
+      if (left > 0) {
+        effect.container.alpha = Math.min(effect.container.alpha, left);
+        return true;
+      }
+      effect.destroy();
+      return false;
+    });
+    return this.fading.length > 0;
+  }
+
   private stepTokens(now: number): boolean {
     let animating = false;
     const factor = this.options.lite ? 1 : ARENA_TOKEN_LERP;
@@ -728,7 +787,7 @@ export class ArenaRenderer implements IArenaRenderer {
         view.effects = view.effects.filter((effect) => {
           const { done, frame } = effect.step(now, this.camera.scale, view.bars.height);
           if (done) {
-            effect.destroy();
+            this.fading.push({ effect, start: now });
             return false;
           }
           dx += frame.dx;
@@ -743,7 +802,7 @@ export class ArenaRenderer implements IArenaRenderer {
       view.container.scale.set(scaleX, scaleY);
       if (view.effects.length > 0 || view.container.filters?.length) this.applyTokenFilters(view);
     }
-    return animating;
+    return this.fadeEnded(now) || animating;
   }
 
   private applyCamera(): void {

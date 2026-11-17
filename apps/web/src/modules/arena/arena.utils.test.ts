@@ -253,18 +253,35 @@ describe("arena utils: token status", () => {
 
 describe("arena utils: effect picker", () => {
   it("filters by tag, by what fits the action and by name or description", () => {
-    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "all", "damage", "health")).toHaveLength(4);
-    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "fits", "heal", "sanity")).toEqual(["clarity"]);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "all", "damage", "health")).toHaveLength(
+      Object.keys(ARENA_EFFECT_CATALOG).length,
+    );
+    const free = (
+      Object.keys(ARENA_EFFECT_CATALOG) as (keyof typeof ARENA_EFFECT_CATALOG)[]
+    ).filter((style) => ARENA_EFFECT_CATALOG[style].tags.includes("free"));
+    expect(free).toContain("gunshot");
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "fits", "heal", "sanity")).toEqual([
+      "clarity",
+      ...free,
+    ]);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "free", "heal", "sanity")).toEqual(free);
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "", "ultimate", "damage", "health")).toEqual([
+      "voxPopuli",
+      "vitaeUnius",
+      "entropiaPoema",
+      "deathRebirth",
+      "divineCall",
+    ]);
     expect(filterEffects(ARENA_EFFECT_CATALOG, "", "damage", "heal", "health")).toEqual([
       "strike",
       "fissure",
     ]);
-    expect(filterEffects(ARENA_EFFECT_CATALOG, "brasa", "all", "damage", "health")).toEqual([
+    expect(filterEffects(ARENA_EFFECT_CATALOG, "brasa viva", "all", "damage", "health")).toEqual([
       "ember",
     ]);
-    expect(filterEffects(ARENA_EFFECT_CATALOG, "petalas", "all", "damage", "health")).toEqual([
-      "ember",
-    ]);
+    expect(
+      filterEffects(ARENA_EFFECT_CATALOG, "brasas em espiral", "all", "damage", "health"),
+    ).toEqual(["ember"]);
   });
 });
 

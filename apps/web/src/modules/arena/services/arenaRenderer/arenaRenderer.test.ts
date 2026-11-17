@@ -12,6 +12,8 @@ import {
   screenToWorld,
   tokenExtents,
   tokensInRect,
+  groupOffsets,
+  unitDirection,
   zoomAt,
   isInVisibleArea,
   visibleCenterPoint,
@@ -143,5 +145,26 @@ describe("tokenExtents", () => {
 
   it("is square while the figure image is not loaded", () => {
     expect(tokenExtents(80, "figure", null)).toEqual({ halfWidth: 40, halfHeight: 40 });
+  });
+});
+
+describe("unitDirection", () => {
+  it("points from one token to the other, or nowhere when they overlap", () => {
+    expect(unitDirection({ x: 0, y: 0 }, { x: 30, y: 40 })).toEqual({ x: 0.6, y: 0.8 });
+    expect(unitDirection({ x: 5, y: 5 }, { x: 5, y: 5.5 })).toBeNull();
+  });
+});
+
+describe("groupOffsets", () => {
+  it("places every target from one of them, in its radii", () => {
+    expect(
+      groupOffsets({ x: 100, y: 100 }, 50, [
+        { x: 100, y: 100 },
+        { x: 200, y: 50 },
+      ]),
+    ).toEqual([
+      { x: 0, y: 0 },
+      { x: 2, y: -1 },
+    ]);
   });
 });

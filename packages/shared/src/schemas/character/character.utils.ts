@@ -23,6 +23,7 @@ export function createEmptySheet(): ICharacterSheet {
     innerRealm: [],
     inventory: { maxWeightGrams: null, items: [] },
     traits: [],
+    effects: {},
   };
 }
 

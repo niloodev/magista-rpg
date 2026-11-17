@@ -1,8 +1,10 @@
 import { Container, Graphics, Particle, ParticleContainer, Rectangle } from "pixi.js";
 
+import { ArenaFxParticles } from "@/modules/arena/services/arenaFxParticles";
 import {
   bladeOutline,
   mixColor,
+  mixStops,
   phase,
   seededRandom,
   type IArenaEffectFrame,
@@ -12,7 +14,9 @@ import {
 } from "@/modules/arena/services/arenaTokenEffects";
 
 import {
-  LUNGE_COLORS,
+  LUNGE_PALETTES,
+  LUNGE_PETAL_COLORS,
+  LUNGE_PETALS,
   LUNGE_DURATION_MS,
   LUNGE_GHOSTS,
   LUNGE_PHASES,
@@ -46,10 +50,12 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
     dynamicProperties: { position: true, rotation: true, vertex: true, color: true },
   });
   private readonly lines: IStreak[] = [];
+  private readonly petals: ArenaFxParticles | null;
   private readonly history: IArenaPoint2[] = [];
   private readonly direction: IArenaPoint2;
   private readonly reach: number;
   private readonly pullBack: number;
+  private readonly colors: (typeof LUNGE_PALETTES)[keyof typeof LUNGE_PALETTES];
   private start: number | null = null;
 
   constructor(
@@ -57,6 +63,7 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
     host: IArenaFxHost,
   ) {
     const radius = options.size / 2;
+    this.colors = LUNGE_PALETTES[options.palette ?? "ruby"];
     const distance = Math.hypot(options.toward.x, options.toward.y) || 1;
     this.direction = { x: options.toward.x / distance, y: options.toward.y / distance };
     this.reach = lungeReach(options.toward, radius, options.targetRadius);
@@ -66,14 +73,19 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
     this.streaks.blendMode = "add";
     const extent = this.reach + radius * 3;
     this.streaks.boundsArea = new Rectangle(-extent, -extent, extent * 2, extent * 2);
+    this.petals = options.palette === "floral" ? new ArenaFxParticles(extent, "normal") : null;
     this.container.addChild(this.trail, this.streaks);
+    if (this.petals) {
+      this.container.addChildAt(this.petals.container, 0);
+      this.shedPetals(host, radius, options.seed);
+    }
     const random = seededRandom(options.seed);
     for (let index = 0; index < LUNGE_STREAKS; index += 1) {
       const particle = new Particle({
         texture: host.textures.streak,
         anchorX: 1,
         anchorY: 0.5,
-        tint: LUNGE_COLORS.white,
+        tint: this.colors.white,
         alpha: 0,
       });
       this.streaks.addParticle(particle);
@@ -99,6 +111,10 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
     if (this.history.length > LUNGE_TRAIL_LENGTH) this.history.pop();
     this.drawTrail(t, offset, cameraScale > 0 ? cameraScale : 1);
     this.moveStreaks(t);
+    if (this.petals) {
+      this.petals.container.position.set(-offset.x, -offset.y);
+      this.petals.update((now - this.start) / 1000);
+    }
     const windup = phase(t, 0, LUNGE_PHASES.windup);
     const impact = phase(t, LUNGE_PHASES.hit, LUNGE_PHASES.hold);
     const grow = t < LUNGE_PHASES.windup ? 0.06 * windup : t < LUNGE_PHASES.hit ? 0.06 : 0;
@@ -111,6 +127,43 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
 
   destroy(): void {
     this.container.destroy({ children: true });
+  }
+
+  /** A floral lunge sheds petals where it passes: they flutter, turn and drift down, from light to deep pink. */
+  private shedPetals(host: IArenaFxHost, radius: number, seed: number): void {
+    if (!this.petals) return;
+    const random = seededRandom(seed + 7);
+    const normal = { x: -this.direction.y, y: this.direction.x };
+    for (let index = 0; index < LUNGE_PETALS; index += 1) {
+      const t = LUNGE_PHASES.windup + random() * (LUNGE_PHASES.hold - LUNGE_PHASES.windup);
+      const along = lungeDistance(t, this.reach, this.pullBack);
+      const side = (random() - 0.5) * radius * 1.4;
+      const size = radius * (0.22 + random() * 0.2);
+      const spin = (random() - 0.5) * 10;
+      const sway = random() * 6;
+      const tone = random();
+      this.petals.add({
+        texture: index % 6 === 0 ? host.textures.blossom : host.textures.petal,
+        spawn: {
+          x: this.direction.x * along + normal.x * side,
+          y: this.direction.y * along + normal.y * side,
+          vx: -this.direction.x * radius * (1 + random()),
+          vy: -this.direction.y * radius * (1 + random()) - radius * 0.6,
+          drag: 2.2,
+          gravity: radius * 1.6,
+          born: (t * LUNGE_DURATION_MS) / 1000,
+          life: 0.6 + random() * 0.4,
+        },
+        look: {
+          size: () => size,
+          height: (l) => size * (0.75 + 0.25 * Math.cos(l * 14 + sway)),
+          alpha: (l) => Math.min(l * 8, 1) * (1 - l * l),
+          tint: () => mixStops(LUNGE_PETAL_COLORS, tone),
+          rotation: (age) => sway + age * spin,
+          drift: (age) => ({ x: Math.sin(age * 6 + sway) * radius * 0.2, y: 0 }),
+        },
+      });
+    }
   }
 
   private drawTrail(t: number, offset: IArenaPoint2, scale: number): void {
@@ -126,11 +179,11 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
     const width = Math.max(radius * 1.5, 6 / scale);
     const beyond = { x: head.x * 2 - tail.x, y: head.y * 2 - tail.y };
     g.poly(bladeOutline(tail, beyond, 0, width, 0, 0.5)).fill({
-      color: LUNGE_COLORS.ruby,
+      color: this.colors.ruby,
       alpha: 0.45 * fade,
     });
     g.poly(bladeOutline(tail, beyond, 0, width * 0.35, 0, 0.5)).fill({
-      color: LUNGE_COLORS.white,
+      color: this.colors.white,
       alpha: 0.6 * fade,
     });
     for (let index = 1; index <= LUNGE_GHOSTS; index += 1) {
@@ -139,7 +192,7 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
       const alpha = (0.5 - index * 0.1) * fade;
       g.circle(point.x, point.y, radius * (1 - index * 0.06)).stroke({
         width: Math.max(radius * 0.08, 1.5 / scale),
-        color: mixColor(LUNGE_COLORS.rubyLight, LUNGE_COLORS.ruby, index / LUNGE_GHOSTS),
+        color: mixColor(this.colors.rubyLight, this.colors.ruby, index / LUNGE_GHOSTS),
         alpha,
       });
     }
@@ -162,7 +215,7 @@ export class ArenaLungeEffect implements IArenaEffectPlayer {
       particle.rotation = angle;
       particle.scaleX = line.length / FRAME;
       particle.scaleY = (radius * 0.07) / FRAME;
-      particle.tint = mixColor(LUNGE_COLORS.white, LUNGE_COLORS.rubyLight, life);
+      particle.tint = mixColor(this.colors.white, this.colors.rubyLight, life);
       particle.alpha = Math.sin(Math.PI * life) * 0.9;
     }
   }

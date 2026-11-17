@@ -3,6 +3,7 @@ import {
   characterPortrait,
   createEmptySheet,
   normalizeFeatures,
+  sheetEffectsSchema,
   sheetResourceOf,
 } from "@magista/shared";
 
@@ -17,6 +18,14 @@ import { toCharacter, toCharacterSummary } from "./character.utils";
 const findById: ICharacterModels["findById"] = async (id) => {
   const row = await getDatabase().character.findUnique({ where: { id } });
   return row ? toCharacter(row) : null;
+};
+
+const findSheetEffects: ICharacterModels["findSheetEffects"] = async (id) => {
+  const [row] = await getDatabase().$queryRaw<{ effects: unknown }[]>`
+    SELECT "sheet" -> 'effects' AS "effects" FROM "characters" WHERE "id" = ${id}::uuid`;
+  if (!row) return null;
+  const parsed = sheetEffectsSchema.safeParse(row.effects ?? {});
+  return parsed.success ? parsed.data : null;
 };
 
 const exists: ICharacterModels["exists"] = async (id) => {
@@ -286,6 +295,7 @@ const listByFeature: ICharacterModels["listByFeature"] = async (feature) => {
 export const characterModels: ICharacterModels = {
   setTokenSettings,
   findById,
+  findSheetEffects,
   exists,
   hasAccess,
   listAccessibleIds,

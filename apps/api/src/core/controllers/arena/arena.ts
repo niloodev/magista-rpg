@@ -9,6 +9,7 @@ import {
   arenaBoardInputSchema,
   arenaIdSchema,
   canControlToken,
+  resolveAutoEffect,
   canSeeTokenStatus,
   hasResource,
   clampToMap,
@@ -688,6 +689,13 @@ export function createArenaController({
           canControlToken(viewer, attacker, accessible);
         if (!allowed) return { error: arenaErrors.invalidAttacker };
       }
+      const attackerEffects =
+        !effect && attacker?.characterId
+          ? await characters.findSheetEffects(attacker.characterId)
+          : null;
+      const sheetStyle = attackerEffects
+        ? resolveAutoEffect(kind, resource, attackerEffects)
+        : undefined;
       const change = (value: Parameters<typeof applyResourceChange>[0]) =>
         hasResource(value) ? applyResourceChange(value, kind, amount) : null;
       const npcIds = visible.filter((token) => token.characterId === null).map((token) => token.id);
@@ -728,7 +736,7 @@ export function createArenaController({
               amount,
               audience,
               ...(showAttacker ? { attackerTokenId: attacker.id } : {}),
-              ...(effect ? { effect } : {}),
+              ...(effect ? { effect } : sheetStyle && showAttacker ? { effect: sheetStyle } : {}),
             };
           }),
           statuses,

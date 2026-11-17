@@ -47,8 +47,11 @@ export interface IArenaChangeAction {
   resource: ArenaResourceKey;
 }
 
-/** What an effect fits best (filters of the picker). */
-export type ArenaEffectTag = "damage" | "heal" | "health" | "sanity";
+/**
+ * What an effect fits best (filters of the picker). `free`: an effect with no action of its own (never the automatic one), usable for anything; `ultimate`: a
+ * character's signature spell, the biggest animations (they take over the whole screen).
+ */
+export type ArenaEffectTag = "damage" | "heal" | "health" | "sanity" | "free" | "ultimate";
 
 export type ArenaEffectFilter = ArenaEffectTag | "all" | "fits";
 
@@ -59,8 +62,8 @@ export interface IArenaEffectCatalogEntry {
   tags: ArenaEffectTag[];
   /** Tailwind background class of its mark in the list. */
   accent: string;
-  /** What the attacker does: flies and strikes, or casts an orb. */
-  attack: "lunge" | "cast";
+  /** What the attacker does: flies and strikes, casts an orb or shoots. */
+  attack: "lunge" | "cast" | "shot";
 }
 
 /** Animation picked for a change: one by name, or "auto" (the one of the action and attribute). */

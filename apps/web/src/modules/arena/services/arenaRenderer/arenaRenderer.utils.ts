@@ -214,3 +214,26 @@ export function tokenExtents(
     ? { halfWidth: half, halfHeight: half / aspect }
     : { halfWidth: half * aspect, halfHeight: half };
 }
+
+/**
+ * Unit vector from one point to another, or null when they are (almost) the same point.
+ */
+export function unitDirection(from: IArenaPoint, to: IArenaPoint): IArenaPoint | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  return length < 1 ? null : { x: dx / length, y: dy / length };
+}
+
+/** Where every target of a change is from `from`, in radii of a token of `radius` (the group of an area spell). */
+export function groupOffsets(
+  from: IArenaPoint,
+  radius: number,
+  targets: IArenaPoint[],
+): IArenaPoint[] {
+  const unit = radius > 0 ? radius : 1;
+  return targets.map((target) => ({
+    x: (target.x - from.x) / unit,
+    y: (target.y - from.y) / unit,
+  }));
+}

@@ -33,6 +33,11 @@
   --color-teal-400: var(--magista-teal-400);
   --color-gold-200: var(--magista-gold-200);
   --color-gold-300: var(--magista-gold-300);
+  --color-fx-blossom: var(--magista-fx-blossom);
+  --color-fx-verdant: var(--magista-fx-verdant);
+  --color-fx-azure: var(--magista-fx-azure);
+  --color-fx-earth: var(--magista-fx-earth);
+  --color-fx-nox: var(--magista-fx-nox);
   --color-gold-400: var(--magista-gold-400);
   --color-gold-500: var(--magista-gold-500);
   --color-gold-700: var(--magista-gold-700);

@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext } from "@playwright/test";
 
 import { apiAs, payloadOf } from "../support/api";
 import { createArenaScene, openArena, readArena, setLiveScene } from "../support/arena";
 import { GM, PLAYER } from "../support/env";
 import { e2eState } from "../support/fixtures";
 import { loginAs, openSheet } from "../support/session";
+import { test } from "../support/test";
 
 const SCENE = "Cripta de teste";
 const FOLDER = "Arco de teste";

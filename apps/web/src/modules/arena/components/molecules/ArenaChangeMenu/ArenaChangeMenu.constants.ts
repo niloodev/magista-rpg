@@ -1,4 +1,5 @@
 import { ARENA_CHANGE_TEXTS } from "@/modules/arena/arena.constants";
+import type { IArenaEffectCatalogEntry } from "@/modules/arena/arena.types";
 
 import type { IArenaSegment } from "./ArenaChangeMenu.types";
 
@@ -29,16 +30,24 @@ export const KIND_TONES = {
 } as const;
 
 export const SEGMENT_CLASS =
-  "flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 border border-white/10 bg-black/40 px-3 font-sans text-[15px] font-semibold text-muted-strong transition-[border-color,background-color,box-shadow,color] duration-200 hover:border-white/25 hover:text-label has-focus-visible:outline has-focus-visible:outline-2 has-focus-visible:outline-ruby-400";
+  "relative flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 border border-white/10 bg-black/40 px-3 font-sans text-[15px] font-semibold text-muted-strong transition-[border-color,background-color,box-shadow,color] duration-200 hover:border-white/25 hover:text-label has-focus-visible:outline has-focus-visible:outline-2 has-focus-visible:outline-ruby-400";
 
 export const SECTION_LABEL_CLASS =
   "font-sans text-xs font-semibold tracking-[0.14em] text-label uppercase";
 
 export const ATTACKER_CHOICE_CLASS =
-  "flex w-16 shrink-0 cursor-pointer flex-col items-center gap-1.5 px-1 py-1.5 transition-colors hover:bg-white/5 has-focus-visible:outline has-focus-visible:outline-2 has-focus-visible:outline-ruby-400";
+  "relative flex w-16 shrink-0 cursor-pointer flex-col items-center gap-1.5 px-1 py-1.5 transition-colors hover:bg-white/5 has-focus-visible:outline has-focus-visible:outline-2 has-focus-visible:outline-ruby-400";
 
 export const ATTACKER_RING_CLASS =
   "rounded-full ring-2 ring-transparent ring-offset-2 ring-offset-void-900 transition-shadow group-has-checked/attacker:ring-gold-400";
 
 export const STEP_BUTTON_CLASS =
   "flex size-10 items-center justify-center border border-white/10 bg-black/50 text-muted-strong transition-colors hover:border-gold-400/60 hover:text-label";
+
+/** What the menu says the attacker does, by how the chosen effect attacks. */
+export const ATTACKER_HINTS: Record<IArenaEffectCatalogEntry["attack"], (name: string) => string> =
+  {
+    lunge: ARENA_CHANGE_TEXTS.attackerHint,
+    cast: ARENA_CHANGE_TEXTS.casterHint,
+    shot: ARENA_CHANGE_TEXTS.shooterHint,
+  };

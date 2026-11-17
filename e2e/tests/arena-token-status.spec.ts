@@ -14,10 +14,6 @@ import { loginAs } from "../support/session";
 
 const NPC = "Goblin de teste";
 
-const ROLLS_PANEL = 340;
-
-const SIDEBAR = 360;
-
 interface StatusView {
   statuses: Record<string, { health: { current: number | null; max: number | null } }>;
 }
@@ -124,16 +120,8 @@ test.describe("arena: vida, sanidade e Aplicar mudança", () => {
       await loginAs(page, PLAYER);
       await openArena(page);
       await page.getByRole("navigation", { name: "Meus tokens" }).getByRole("button").click();
-      const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
-      const center = {
-        x: ROLLS_PANEL + (viewport.width - ROLLS_PANEL - SIDEBAR) / 2,
-        y: 56 + (viewport.height - 56) / 2,
-      };
-      await page.mouse.click(center.x, center.y, { button: "right" });
-      await page
-        .getByRole("menu", { name: /^Ações de/ })
-        .getByRole("menuitem", { name: "Aplicar mudança" })
-        .click();
+      const tokenMenu = await openTokenMenu(page);
+      await tokenMenu.getByRole("menuitem", { name: "Aplicar mudança" }).click();
       const menu = page.getByRole("dialog", { name: "Aplicar mudança" });
       await expect(menu).toBeVisible();
       await menu.getByText("Causar dano", { exact: true }).click();
@@ -154,7 +142,7 @@ test.describe("arena: vida, sanidade e Aplicar mudança", () => {
     const menu = page.getByRole("dialog", { name: "Aplicar mudança" });
     await menu.getByRole("button", { name: /Trocar efeito/ }).click();
     const picker = page.getByRole("dialog", { name: "Escolher efeito" });
-    await picker.getByRole("searchbox", { name: "Buscar efeito" }).fill("brasa");
+    await picker.getByRole("searchbox", { name: "Buscar efeito" }).fill("brasa viva");
     await expect(picker.getByText("1 efeito")).toBeVisible();
     await picker.getByText("Brasa viva", { exact: true }).first().click();
     await picker.getByRole("button", { name: "Usar efeito" }).click();

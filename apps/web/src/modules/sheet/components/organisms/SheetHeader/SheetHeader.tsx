@@ -13,13 +13,25 @@ import { EditorModal, Panel } from "@/shared/components/molecules";
 import { IDENTITY_FORM_ID } from "./SheetHeader.constants";
 import { useSheetHeader } from "./SheetHeader.hook";
 import type { SheetHeaderProps } from "./SheetHeader.types";
-import { ArtDialog } from "./subcomponents";
+import { ArtDialog, SHEET_EFFECTS_TEXTS, SheetEffectsDialog } from "./subcomponents";
 
 export function SheetHeader(props: SheetHeaderProps) {
   const { character, isGm, onLevelUp, headingAs = "h1" } = props;
   const { identity } = character.sheet;
-  const { draft, open, close, change, save, imagesOpen, openImages, closeImages } =
-    useSheetHeader(props);
+  const {
+    draft,
+    open,
+    close,
+    change,
+    save,
+    effectsOpen,
+    openEffects,
+    closeEffects,
+    saveEffects,
+    imagesOpen,
+    openImages,
+    closeImages,
+  } = useSheetHeader(props);
   const facts = [
     { label: "Classe", value: CLASSES[identity.class].name },
     { label: "Nível", value: String(identity.level) },
@@ -56,7 +68,7 @@ export function SheetHeader(props: SheetHeaderProps) {
               {character.name}
             </Text>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex basis-full flex-wrap gap-2 @min-[77rem]:basis-auto">
             <Button
               variant="secondary"
               size="sm"
@@ -64,6 +76,14 @@ export function SheetHeader(props: SheetHeaderProps) {
               icon={<Icon name="pen-line" size={14} />}
             >
               Editar identidade
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openEffects}
+              icon={<Icon name="wand-sparkles" size={14} />}
+            >
+              {SHEET_EFFECTS_TEXTS.button}
             </Button>
             {isGm && (
               <Button
@@ -130,6 +150,14 @@ export function SheetHeader(props: SheetHeaderProps) {
           />
         )}
       </EditorModal>
+      {effectsOpen && (
+        <SheetEffectsDialog
+          characterName={character.name}
+          effects={character.sheet.effects}
+          onSave={saveEffects}
+          onClose={closeEffects}
+        />
+      )}
       {imagesOpen && (
         <CharacterImagesDialog
           characterId={character.id}
