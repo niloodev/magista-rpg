@@ -9,6 +9,7 @@ import {
   type ICharacter,
   type ICharacterFeaturesEvent,
   type ICharacterImages,
+  type IArenaTurnEntry,
   type IMarkedShare,
   type IRollResult,
 } from "@magista/shared";
@@ -22,6 +23,12 @@ import {
   type IArenaTokenChange,
   type IArenaTokenRemoval,
 } from "@/core/controllers/arena";
+import {
+  arenaTurnController,
+  type IArenaTurnDelivery,
+  type IArenaTurnPendingDelivery,
+  type IArenaTurnRolls,
+} from "@/core/controllers/arenaTurn";
 import { characterController } from "@/core/controllers/character";
 import {
   buildMarkedController,
@@ -33,6 +40,7 @@ import { getEnv } from "@/core/services/env";
 
 import {
   registerArenaHandlers,
+  registerArenaTurnHandlers,
   registerMarkedHandlers,
   registerPresenceHandlers,
   registerRollHandlers,
@@ -126,6 +134,10 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
         for (const character of characters) emitCharacterUpdated(character, null);
         void broadcastCharacterStatuses(characters);
       },
+    });
+    registerArenaTurnHandlers(socket, {
+      onTurns: broadcastTurnOrder,
+      onRolling: startTurnRolls,
     });
   });
   io = server;
@@ -240,6 +252,57 @@ export function broadcastCharacterImages(images: ICharacterImages): void {
 export function broadcastRollResult(roll: IRollResult): void {
   io?.to(TABLE_ROOM).emit("roll:pending", pendingOf(roll, ROLL_REVEAL_DELAY_MS));
   setTimeout(() => publishToTable(roll), ROLL_REVEAL_DELAY_MS);
+  if (roll.kind === "initiative" && !roll.tokenId) void announceInitiative(roll.characterId);
+}
+
+/**
+ * A sheet initiative is in the air: the turn order lines of its tokens on the live scene start spinning.
+ */
+async function announceInitiative(characterId: string): Promise<void> {
+  try {
+    const pending = await arenaTurnController.initiativePending(characterId);
+    if (pending) emitTurnPending(pending);
+  } catch (error) {
+    console.error("announceInitiative failed:", error);
+  }
+}
+
+function emitTurnPending({ sceneId, gm, table }: IArenaTurnPendingDelivery): void {
+  const revealInMs = ROLL_REVEAL_DELAY_MS;
+  io?.to(GM_ROOM).emit("arena:turn-pending", { sceneId, tokenIds: gm, revealInMs });
+  if (table && table.length > 0) {
+    io?.to(TABLE_ROOM)
+      .except(GM_ROOM)
+      .emit("arena:turn-pending", { sceneId, tokenIds: table, revealInMs });
+  }
+}
+
+/**
+ * Initiatives rolled from the token menu: their lines spin at once, the open character rolls go through the
+ * feed (and reach the order on reveal), and the secret values reach the order when the dice would reveal.
+ */
+function startTurnRolls(rolls: IArenaTurnRolls, results: IRollResult[]): void {
+  emitTurnPending(rolls.pending);
+  for (const roll of results) broadcastRollResult(roll);
+  const open = results.flatMap((roll) => {
+    const total = roll.rows[0]?.outcome.total;
+    return roll.tokenId && total !== undefined
+      ? [{ tokenId: roll.tokenId, initiative: total }]
+      : [];
+  });
+  const entries = [...rolls.secret, ...open];
+  if (entries.length === 0) return;
+  setTimeout(() => void revealMenuInitiatives(rolls.sceneId, entries), ROLL_REVEAL_DELAY_MS);
+}
+
+/** Writes every initiative rolled from one token menu command at once (one transaction, one broadcast). */
+async function revealMenuInitiatives(sceneId: string, entries: IArenaTurnEntry[]): Promise<void> {
+  try {
+    const delivery = await arenaTurnController.recordRolled(sceneId, entries);
+    if (delivery) broadcastTurnOrder(delivery);
+  } catch (error) {
+    console.error("revealMenuInitiatives failed:", error);
+  }
 }
 
 /**
@@ -248,6 +311,45 @@ export function broadcastRollResult(roll: IRollResult): void {
 export function publishToTable(entry: IRollResult): void {
   recentRolls = [entry, ...recentRolls].slice(0, ROLL_HISTORY_LIMIT);
   io?.to(TABLE_ROOM).emit("roll:result", entry);
+  if (entry.kind === "initiative" && !entry.tokenId) void recordInitiative(entry);
+}
+
+/**
+ * Puts a revealed initiative into the turn order of the live scene (every token of that character there).
+ */
+async function recordInitiative(entry: IRollResult): Promise<void> {
+  const total = entry.rows[0]?.outcome.total;
+  if (total === undefined) return;
+  try {
+    const delivery = await arenaTurnController.recordInitiative(entry.characterId, total);
+    if (delivery) broadcastTurnOrder(delivery);
+  } catch (error) {
+    console.error("recordInitiative failed:", error);
+  }
+}
+
+/**
+ * Sends a turn order: the whole order to the GM and, for the live scene, the players' copy (without hidden
+ * tokens) to everyone else.
+ */
+export function broadcastTurnOrder({ gm, table }: IArenaTurnDelivery): void {
+  io?.to(GM_ROOM).emit("arena:turns", gm);
+  if (table) io?.to(TABLE_ROOM).except(GM_ROOM).emit("arena:turns", table);
+}
+
+/**
+ * Delivers again the turn order of scenes whose tokens were hidden, shown or removed (the players' copy follows
+ * what they may see).
+ */
+async function refreshTurnOrders(sceneIds: Iterable<string>): Promise<void> {
+  for (const sceneId of new Set(sceneIds)) {
+    try {
+      const delivery = await arenaTurnController.delivery(sceneId);
+      if (delivery) broadcastTurnOrder(delivery);
+    } catch (error) {
+      console.error("refreshTurnOrders failed:", error);
+    }
+  }
 }
 
 /**
@@ -306,6 +408,7 @@ export function broadcastArenaToken({
       .except(GM_ROOM)
       .emit("arena:token-removed", { id: token.id, sceneId: token.sceneId });
   }
+  if (audience !== previousAudience) void refreshTurnOrders([token.sceneId]);
   if (status) broadcastArenaStatuses([status]);
 }
 
@@ -345,6 +448,8 @@ export function broadcastArenaTokens(changes: IArenaTokenChange[]): void {
   if (gm.length > 0) io?.to(GM_ROOM).emit("arena:tokens", gm);
   if (hiddenFromTable.length > 0)
     io?.to(TABLE_ROOM).except(GM_ROOM).emit("arena:tokens-removed", hiddenFromTable);
+  const shown = changes.filter((change) => change.audience !== change.previousAudience);
+  if (shown.length > 0) void refreshTurnOrders(shown.map((change) => change.token.sceneId));
   broadcastArenaStatuses(changes.flatMap((change) => change.status ?? []));
 }
 
@@ -360,6 +465,7 @@ export function broadcastArenaTokensRemoved(removals: IArenaTokenRemoval[]): voi
   const groups = groupTokenRemovals(removals);
   if (groups.table.length > 0) io?.to(TABLE_ROOM).emit("arena:tokens-removed", groups.table);
   if (groups.gm.length > 0) io?.to(GM_ROOM).emit("arena:tokens-removed", groups.gm);
+  void refreshTurnOrders(removals.map((removal) => removal.event.sceneId));
 }
 
 /**
@@ -367,6 +473,7 @@ export function broadcastArenaTokensRemoved(removals: IArenaTokenRemoval[]): voi
  */
 export function broadcastArenaTokenRemoved({ event, audience }: IArenaTokenRemoval): void {
   io?.to(arenaRoom(audience)).emit("arena:token-removed", event);
+  void refreshTurnOrders([event.sceneId]);
 }
 
 /**

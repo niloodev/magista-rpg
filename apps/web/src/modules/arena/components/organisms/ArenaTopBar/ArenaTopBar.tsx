@@ -9,11 +9,17 @@ import {
   ARENA_MEMBERS_LABEL,
   ARENA_PREVIEW_TEXTS,
   ARENA_TITLE,
+  ARENA_TURN_TEXTS,
 } from "@/modules/arena/arena.constants";
 import { Button, Icon, Text } from "@/shared/components/atoms";
 
 import { ArenaConnectionStatus } from "../../molecules";
-import { ARENA_BACK_LINK_CLASSES, ARENA_TOP_BAR_CLASSES } from "./ArenaTopBar.constants";
+import {
+  ARENA_BACK_LINK_CLASSES,
+  ARENA_TOP_BAR_CLASSES,
+  ARENA_TURNS_BADGE_CLASSES,
+  ARENA_TURNS_BUTTON_OPEN,
+} from "./ArenaTopBar.constants";
 import type { ArenaTopBarProps } from "./ArenaTopBar.types";
 
 export const ArenaTopBar = memo(function ArenaTopBar({
@@ -24,6 +30,7 @@ export const ArenaTopBar = memo(function ArenaTopBar({
   onGoLive,
   onBackToLive,
   onOpenProfile,
+  turns,
 }: ArenaTopBarProps) {
   return (
     <header className={ARENA_TOP_BAR_CLASSES}>
@@ -73,6 +80,24 @@ export const ArenaTopBar = memo(function ArenaTopBar({
             </Button>
           )}
         </div>
+      )}
+      {turns && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={turns.onToggle}
+          aria-pressed={turns.open}
+          icon={<Icon name="list-ordered" size={12} />}
+          className={`relative shrink-0 ${turns.open ? ARENA_TURNS_BUTTON_OPEN : ""}`}
+        >
+          <span className="max-sm:sr-only">{ARENA_TURN_TEXTS.button}</span>
+          {turns.yourTurn && (
+            <>
+              <span aria-hidden="true" className={ARENA_TURNS_BADGE_CLASSES} />
+              <span className="sr-only"> ({ARENA_TURN_TEXTS.buttonYourTurn})</span>
+            </>
+          )}
+        </Button>
       )}
       <ArenaConnectionStatus status={status} />
       <span className="flex shrink-0 items-center gap-1.5 font-sans text-sm text-muted-strong">

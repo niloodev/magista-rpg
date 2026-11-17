@@ -12,6 +12,8 @@ import {
   type IAccount,
   type IApplyArenaChangeInput,
   type IArenaChangeResult,
+  type IArenaTurnCommand,
+  type IArenaTurnOrder,
   type IUpdateArenaTokenInput,
 } from "@magista/shared";
 
@@ -19,7 +21,11 @@ import { apiRequest } from "@/core/services/http";
 import type { TableSocket } from "@/core/services/socket";
 import { TABLE_ACK_TIMEOUT_MS, TABLE_OFFLINE_ERROR } from "@/modules/table/table.constants";
 
-import type { ApplyArenaChangeResult, MoveArenaTokensResult } from "./arenaRequests.types";
+import type {
+  ApplyArenaChangeResult,
+  ArenaTurnCommandResult,
+  MoveArenaTokensResult,
+} from "./arenaRequests.types";
 
 /**
  * Loads what this account sees in the Arena: the live scene (the GM may ask for another one) and its tokens.
@@ -143,6 +149,27 @@ export async function applyArenaChange(
     return isErrorResult(result)
       ? { ok: false, error: result.error }
       : { ok: true, applied: result.payload.applied, refused: result.payload.refused };
+  } catch {
+    return { ok: false, error: TABLE_OFFLINE_ERROR };
+  }
+}
+
+/**
+ * Sends a turn order command (pass the turn, add, roll, edit); the order this account sees comes back in the ack,
+ * everyone else gets it in "arena:turns".
+ */
+export async function sendArenaTurnCommand(
+  socket: TableSocket | null,
+  command: IArenaTurnCommand,
+): Promise<ArenaTurnCommandResult> {
+  if (!socket?.connected) return { ok: false, error: TABLE_OFFLINE_ERROR };
+  try {
+    const result: ControllerResult<IArenaTurnOrder> = await socket
+      .timeout(TABLE_ACK_TIMEOUT_MS)
+      .emitWithAck("arena:turn", command);
+    return isErrorResult(result)
+      ? { ok: false, error: result.error }
+      : { ok: true, order: result.payload };
   } catch {
     return { ok: false, error: TABLE_OFFLINE_ERROR };
   }

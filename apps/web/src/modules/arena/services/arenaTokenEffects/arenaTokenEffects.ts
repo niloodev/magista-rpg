@@ -186,6 +186,8 @@ const FLASH_COLORS: Record<ArenaEffectStyle, number> = {
   soulDrain: EFFECT_COLORS.nox,
   deathRebirth: EFFECT_COLORS.nox,
   divineCall: EFFECT_COLORS.gold,
+  betweenWorlds: EFFECT_COLORS.abyss,
+  passingFlow: EFFECT_COLORS.abyss,
   floralStrike: EFFECT_COLORS.rose,
   floralCast: EFFECT_COLORS.rose,
   voodooAxe: EFFECT_COLORS.voodoo,

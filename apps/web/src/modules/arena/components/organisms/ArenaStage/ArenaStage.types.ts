@@ -12,6 +12,8 @@ export interface ArenaStageHookProps {
   scene: IArenaRenderScene | null;
   tokens: IArenaRenderToken[];
   selectedTokenIds: string[];
+  /** Token whose turn it is (it floats with a soft aura), or null. */
+  turnTokenId: string | null;
   controlsRef: RefObject<IArenaStageControls | null>;
   onSelect: (tokenIds: string[], mode: ArenaSelectionMode) => void;
   onDrop: (moves: IMoveArenaTokenInput[]) => void;

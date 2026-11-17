@@ -19,6 +19,15 @@ export interface ILevelUpPayload {
 
 export interface IRollController {
   roll: (viewer: IViewer, input: unknown) => Promise<ControllerResult<IRollResult, RollError>>;
+  /**
+   * Rolls the sheet initiative of a character once per token (each its own roll, for that token), reading the
+   * sheet once; nothing when the viewer has no access.
+   */
+  rollInitiatives: (
+    viewer: IViewer,
+    characterId: string,
+    tokenIds: string[],
+  ) => Promise<IRollResult[]>;
   ping: (viewer: IViewer, input: unknown) => Promise<ControllerResult<IRollResult, RollError>>;
   levelUp: (
     viewer: IViewer,

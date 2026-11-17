@@ -22,6 +22,7 @@ import { ARENA_EMPTY_BOUNDS } from "@/modules/arena/arena.constants";
 import { ArenaStatusBars } from "@/modules/arena/services/arenaStatusBars";
 import { ArenaFxScreen } from "@/modules/arena/services/arenaFxScreen";
 import { ArenaFxTextures } from "@/modules/arena/services/arenaFxTextures";
+import { ArenaTurnAura } from "@/modules/arena/services/arenaTurnAura";
 import {
   ArenaShockwaves,
   createAttackerEffect,
@@ -48,6 +49,8 @@ import {
   ARENA_LABEL_GAP,
   ARENA_LABEL_MIN_SCREEN_PX,
   ARENA_LITE_FRAME_MS,
+  ARENA_TURN_FRAME_MS,
+  ARENA_FLOAT_SHADOW,
   ARENA_SETTLE_DISTANCE,
   ARENA_TOKEN_LERP,
   ARENA_MAP_TEXTURE_MAX,
@@ -109,6 +112,8 @@ interface ITokenView {
   /** A status that arrived before the hit of an incoming attacker; it shows when the hit lands. */
   pendingStatus: IArenaRenderToken["status"] | undefined;
   holdStatusUntil: number;
+  /** The turn mark (floating and the energy ring), on the token whose turn it is or fading off the last one. */
+  aura: ArenaTurnAura | null;
 }
 
 interface IDragState {
@@ -265,6 +270,11 @@ export class ArenaRenderer implements IArenaRenderer {
   private fxTextures: ArenaFxTextures | null = null;
   private shockwaves: ArenaShockwaves | null = null;
   private fxScreen: ArenaFxScreen | null = null;
+  private turnTokenId: string | null = null;
+  /** A frame was asked from outside the loop (input, data): draw it at once, even while only the aura moves. */
+  private urgent = true;
+  /** Only the turn aura moved in the last frame, so the loop may run at a calmer pace. */
+  private calmAura = false;
 
   private constructor(
     private readonly app: Application,
@@ -446,6 +456,7 @@ export class ArenaRenderer implements IArenaRenderer {
       if (portraitChanged) this.resetPortrait(view);
       if (!this.drag?.offsets.has(data.id)) view.target = { x: data.x, y: data.y };
       if (!existing) view.display = { ...view.target };
+      if (!existing && data.id === this.turnTokenId) this.attachAura(view);
       this.drawToken(view);
       if (!existing) this.tokenLayer.addChild(view.container);
     }
@@ -462,6 +473,7 @@ export class ArenaRenderer implements IArenaRenderer {
         effect.destroy();
         return false;
       });
+      view.aura?.destroy();
       view.bars.destroy();
       view.container.destroy({ children: true });
       this.tokens.delete(id);
@@ -474,6 +486,40 @@ export class ArenaRenderer implements IArenaRenderer {
     }
     this.invalidate();
   };
+
+  setTurnToken = (tokenId: string | null): void => {
+    if (tokenId === this.turnTokenId) return;
+    const now = performance.now();
+    const previous = this.turnTokenId ? this.tokens.get(this.turnTokenId) : undefined;
+    previous?.aura?.leave(now);
+    this.turnTokenId = tokenId;
+    const view = tokenId ? this.tokens.get(tokenId) : undefined;
+    if (view) {
+      if (view.aura?.leaving) this.detachAura(view);
+      if (!view.aura) this.attachAura(view);
+    }
+    this.invalidate();
+  };
+
+  private attachAura(view: ITokenView): void {
+    const aura = new ArenaTurnAura({
+      host: this.fxHost(),
+      lite: this.options.lite,
+      seed: this.effectSeed++,
+    });
+    view.aura = aura;
+    view.container.addChildAt(aura.ground, 0);
+    view.container.addChildAt(aura.back, 1);
+    aura.layout({ size: view.data.size, style: view.data.style, ...this.extentsOf(view) });
+  }
+
+  private detachAura(view: ITokenView): void {
+    view.aura?.destroy();
+    view.aura = null;
+    view.shadow.position.set(0, 0);
+    view.shadow.scale.set(1);
+    view.shadow.alpha = 1;
+  }
 
   setSelection = (tokenIds: string[]): void => {
     const next = new Set(tokenIds);
@@ -681,6 +727,8 @@ export class ArenaRenderer implements IArenaRenderer {
     for (const view of this.tokens.values()) {
       for (const effect of view.effects) effect.destroy();
       view.effects = [];
+      view.aura?.destroy();
+      view.aura = null;
     }
     for (const { effect } of this.fading) if (!effect.container.destroyed) effect.destroy();
     this.fading = [];
@@ -717,22 +765,38 @@ export class ArenaRenderer implements IArenaRenderer {
   }
 
   private invalidate = (): void => {
-    if (this.destroyed || this.frame) return;
-    this.frame = requestAnimationFrame(this.tick);
+    this.urgent = true;
+    this.schedule();
   };
 
+  private schedule(): void {
+    if (this.destroyed || this.frame) return;
+    this.frame = requestAnimationFrame(this.tick);
+  }
+
+  /**
+   * One frame. The light mode caps every frame at ~30 fps; otherwise, while only the turn aura moves (a slow bob
+   * and a calm ring), the loop also runs at ~30 fps, and anything else (input, data, effects) draws at once.
+   */
   private tick = (now: number): void => {
     this.frame = 0;
-    if (this.options.lite && now - this.lastFrame < ARENA_LITE_FRAME_MS) {
-      this.invalidate();
+    const pace = this.options.lite
+      ? ARENA_LITE_FRAME_MS
+      : this.calmAura && !this.urgent
+        ? ARENA_TURN_FRAME_MS
+        : 0;
+    if (pace > 0 && now - this.lastFrame < pace) {
+      this.schedule();
       return;
     }
+    this.urgent = false;
     this.lastFrame = now;
-    const animating = this.stepTokens(now);
+    const { animating, aura } = this.stepTokens(now);
     const rippling = this.shockwaves?.step(now) ?? false;
     this.drawSelectionFrame();
     this.app.render();
-    if (animating || rippling) this.invalidate();
+    this.calmAura = aura && !animating && !rippling;
+    if (animating || rippling || aura) this.schedule();
   };
 
   /** Puts on the token the filters its playing animations ask for (only when they change). */
@@ -764,8 +828,9 @@ export class ArenaRenderer implements IArenaRenderer {
     return this.fading.length > 0;
   }
 
-  private stepTokens(now: number): boolean {
+  private stepTokens(now: number): { animating: boolean; aura: boolean } {
     let animating = false;
+    let auraMoving = false;
     const factor = this.options.lite ? 1 : ARENA_TOKEN_LERP;
     for (const view of this.tokens.values()) {
       const { display, target } = view;
@@ -798,11 +863,34 @@ export class ArenaRenderer implements IArenaRenderer {
         });
         animating ||= view.effects.length > 0;
       }
+      if (view.aura && !this.isOnScreen(view)) {
+        if (view.aura.leaving) this.detachAura(view);
+      } else if (view.aura) {
+        const frame = view.aura.step(now);
+        if (frame.done) this.detachAura(view);
+        else {
+          this.floatToken(view, frame.lift);
+          dy -= frame.lift;
+          auraMoving ||= frame.animating;
+        }
+      }
       view.container.position.set(display.x + dx, display.y + dy);
       view.container.scale.set(scaleX, scaleY);
       if (view.effects.length > 0 || view.container.filters?.length) this.applyTokenFilters(view);
     }
-    return this.fadeEnded(now) || animating;
+    return { animating: this.fadeEnded(now) || animating, aura: auraMoving };
+  }
+
+  /**
+   * Keeps the ground pieces of a floating token on the floor while the token rises: its turn ring and its shadow
+   * (smaller and fainter the higher it floats).
+   */
+  private floatToken(view: ITokenView, lift: number): void {
+    if (view.aura) view.aura.ground.y = lift;
+    const rise = view.data.size > 0 ? lift / view.data.size : 0;
+    view.shadow.position.set(0, lift);
+    view.shadow.scale.set(Math.max(1 - rise * ARENA_FLOAT_SHADOW.shrink, 0.5));
+    view.shadow.alpha = Math.max(1 - rise * ARENA_FLOAT_SHADOW.fade, 0.3);
   }
 
   private applyCamera(): void {
@@ -892,6 +980,7 @@ export class ArenaRenderer implements IArenaRenderer {
       lastEffectAt: 0,
       pendingStatus: undefined,
       holdStatusUntil: 0,
+      aura: null,
     };
     this.tokens.set(data.id, view);
     void this.attachPortrait(view);
@@ -999,6 +1088,7 @@ export class ArenaRenderer implements IArenaRenderer {
     ].join("|");
     if (key === view.drawnKey) return;
     view.drawnKey = key;
+    view.aura?.layout({ size: data.size, style: data.style, halfWidth, halfHeight });
     const ringColor = selected
       ? ARENA_COLORS.gold400
       : data.tone === "own"

@@ -26,11 +26,14 @@ import {
   setActiveSceneInputSchema,
   updateArenaTokenInputSchema,
   updateArenaTokensInputSchema,
+  removeTurnEntries,
+  visibleTurnOrder,
 } from "@magista/shared";
 
 import { arenaSceneModels } from "@/core/models/arenaScene";
 import { arenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import { arenaTokenModels } from "@/core/models/arenaToken";
+import { arenaTurnModels } from "@/core/models/arenaTurn";
 import { characterModels } from "@/core/models/character";
 import { accountModels } from "@/core/models/account";
 import { imageAssets } from "@/core/controllers/mediaAsset";
@@ -63,6 +66,7 @@ export function createArenaController({
   scenes,
   folders,
   tokens,
+  turns,
   characters,
   accounts,
   images,
@@ -118,6 +122,22 @@ export function createArenaController({
     const visible = found.filter((token) => token.sceneId === activeSceneId && !token.hidden);
     const allowed = visible.filter((token) => canControlToken(viewer, token, accessible));
     return { allowed, forbidden: visible.length > allowed.length, activeSceneId };
+  };
+
+  /**
+   * Passes the turn on before tokens are removed, when one of them holds it (their entries go with them).
+   */
+  const passTurnsOf = async (removing: Pick<IArenaToken, "id" | "sceneId">[]) => {
+    for (const sceneId of new Set(removing.map((token) => token.sceneId))) {
+      const ids = removing.filter((token) => token.sceneId === sceneId).map((token) => token.id);
+      const current = (await turns.findOrder(sceneId))?.currentTokenId ?? null;
+      if (current === null || !ids.includes(current)) continue;
+      await turns.change(sceneId, (order) =>
+        order.currentTokenId !== null && ids.includes(order.currentTokenId)
+          ? { ...order, ...removeTurnEntries(order, ids) }
+          : null,
+      );
+    }
   };
 
   const validViewers = async (patches: IUpdateArenaTokenRow[]) => {
@@ -186,6 +206,10 @@ export function createArenaController({
           )
           .map((row) => [row.id, row.status]),
       );
+      const order = scene ? await turns.findOrder(scene.id) : null;
+      const turnOrder = order
+        ? visibleTurnOrder(order, new Set(list.map((item) => item.id)))
+        : null;
       return {
         message: "Arena carregada",
         payload: {
@@ -194,6 +218,7 @@ export function createArenaController({
           tokens: list,
           controllableCharacterIds,
           statuses,
+          turnOrder,
           ...(viewer.role === "GM"
             ? { statusAccess: Object.fromEntries(statusRows.map((row) => [row.id, row.access])) }
             : {}),
@@ -532,6 +557,7 @@ export function createArenaController({
         if (auth.allowed.length !== parsed.data.ids.length)
           return { error: arenaErrors.tokenNotFound };
       }
+      await passTurnsOf(await tokens.findManyByIds(parsed.data.ids));
       const removed = await tokens.removeMany(parsed.data.ids);
       if (removed.length === 0) return { error: arenaErrors.tokenNotFound };
       for (const { id } of removed) await cleanup(images.removeToken(id));
@@ -556,6 +582,7 @@ export function createArenaController({
         if (auth.forbidden) return { error: arenaErrors.forbidden };
         if (auth.allowed.length === 0) return { error: arenaErrors.tokenNotFound };
       }
+      await passTurnsOf(await tokens.findManyByIds([id]));
       const removed = await tokens.remove(id);
       if (!removed) return { error: arenaErrors.tokenNotFound };
       await cleanup(images.removeToken(id));
@@ -803,6 +830,7 @@ export const arenaController = createArenaController({
   scenes: arenaSceneModels,
   folders: arenaSceneFolderModels,
   tokens: arenaTokenModels,
+  turns: arenaTurnModels,
   characters: characterModels,
   accounts: accountModels,
   images: arenaImages,

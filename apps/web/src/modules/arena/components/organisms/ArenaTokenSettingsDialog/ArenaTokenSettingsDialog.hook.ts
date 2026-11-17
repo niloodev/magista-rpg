@@ -34,6 +34,9 @@ export function useArenaTokenSettingsDialog({
   const [name, setName] = useState(target.token.name);
   const [nameError, setNameError] = useState<string | null>(null);
   const [showName, setShowName] = useState(target.token.showName);
+  const [initiativeBonus, setInitiativeBonus] = useState<number | null>(
+    target.token.initiativeBonus,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -98,6 +101,9 @@ export function useArenaTokenSettingsDialog({
       ...(npc && Object.keys(status).length > 0 ? { status } : {}),
       ...(npc && trimmed !== target.token.name ? { name: trimmed } : {}),
       ...(showName !== target.token.showName ? { showName } : {}),
+      ...(npc && (initiativeBonus ?? 0) !== target.token.initiativeBonus
+        ? { initiativeBonus: initiativeBonus ?? 0 }
+        : {}),
       ...(npc && (canPickStyle ? style : "portrait") !== target.token.style
         ? { style: canPickStyle ? style : "portrait" }
         : {}),
@@ -131,6 +137,8 @@ export function useArenaTokenSettingsDialog({
     onNameChange,
     showName,
     setShowName,
+    initiativeBonus,
+    setInitiativeBonus,
     file,
     imageRemoved,
     imageError,

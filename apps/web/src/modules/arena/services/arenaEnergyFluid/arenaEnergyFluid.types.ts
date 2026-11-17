@@ -49,9 +49,10 @@ export interface IEnergyFluidOptions {
    * `light` (the default) shows the energy as glowing mist added to the scene; `shadow` shows it as a living
    * darkness covering the scene, with the veins of energy glowing through it; `fire` shows it as flames, the
    * ink as heat burning from white-hot through the palette's `core`, `mid` and `deep` (give it a strong rising
-   * drift and a fast `decay`).
+   * drift and a fast `decay`); `water` shows it as a body of water (the ink is its depth): glossy, with sharp
+   * highlights, caustics and foam at its broken edges, deep where the ink is dense and translucent where thin.
    */
-  mode?: "light" | "shadow" | "fire";
+  mode?: "light" | "shadow" | "fire" | "water";
   /** How many veins of light run through the mist, and how strong its haze is (0 none). */
   threads?: number;
   haze?: number;

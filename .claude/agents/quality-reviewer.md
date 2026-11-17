@@ -29,7 +29,7 @@ Escopo: `git status --short`, `git diff HEAD` e arquivos novos não rastreados. 
 - **Regras**: sem comentários fora de JSDoc, sem travessão em textos, código em inglês e textos de UI em português, sem `any`.
 - **Corretude**: bugs de lógica, estados de corrida (autosave, socket), casos limite, regras do jogo duplicadas entre web e api.
 - **Cobertura de testes**: unidades novas ou alteradas (controllers, regras do jogo, slices, utils) têm teste ao lado; fluxo de usuário novo ou alterado tem spec em `e2e/tests`. Aponte exatamente o que falta testar.
-- **Skeleton de carregamento**: só confira no código que quem espera a API usa skeleton (nada de "Carregando..." solto, spinner ou tela vazia). A fidelidade visual (medidas, moldura, tipografia) é do `design-reviewer`; não exija teste e2e de skeleton.
+- **Skeleton de carregamento**: só confira no código que quem espera a API usa skeleton (nada de "Carregando..." solto, spinner ou tela vazia). A fidelidade visual (medidas, moldura, tipografia) é conferida pelo usuário no navegador; não exija teste e2e de skeleton.
 - **Foco do e2e**: specs testam funcionalidade (fluxos, permissões, tempo real, dados salvos). Aponte como excesso testes e2e que medem layout ou detalhes visuais.
 - **Acessibilidade** (se mudou UI): rótulos, foco, contraste, alvos de toque, ordem de títulos.
 - **Docs**: se a mudança altera comandos, env, rotas, eventos, regras ou design, as docs correspondentes foram atualizadas.

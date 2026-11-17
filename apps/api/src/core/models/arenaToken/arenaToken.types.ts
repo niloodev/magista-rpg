@@ -37,6 +37,7 @@ export interface IUpdateArenaTokenRow {
   statusPublic?: boolean;
   /** Replaces the player accounts allowed to see the status. */
   statusViewerIds?: string[];
+  initiativeBonus?: number;
 }
 
 /** Status of a token (from its sheet or its own columns) plus who may see it. */

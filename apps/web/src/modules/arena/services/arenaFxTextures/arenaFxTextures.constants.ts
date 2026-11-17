@@ -13,6 +13,7 @@ export const FX_FRAMES: readonly ArenaFxFrame[] = [
   "blossom",
   "beam",
   "link",
+  "butterfly",
 ];
 
 /** Math symbols painted into the atlas after the shapes. */

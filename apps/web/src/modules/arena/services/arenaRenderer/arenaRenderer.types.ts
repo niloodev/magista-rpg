@@ -82,6 +82,8 @@ export interface IArenaRenderer {
   setScene: (scene: IArenaRenderScene | null) => Promise<void>;
   setTokens: (tokens: IArenaRenderToken[]) => void;
   setSelection: (tokenIds: string[]) => void;
+  /** Marks the token whose turn it is (it floats over a soft energy ring); null clears it. */
+  setTurnToken: (tokenId: string | null) => void;
   setResizable: (resizable: boolean) => void;
   /** Widths covered by the side panels, left out when fitting or centering. */
   setSideInsets: (left: number, right: number) => void;

@@ -8,6 +8,7 @@ import {
   ARENA_SIDEBAR_TEXTS,
   ARENA_SKELETON_LABEL,
   ARENA_TITLE,
+  ARENA_TURN_TEXTS,
   SCENE_TEXTS,
 } from "@/modules/arena/arena.constants";
 import { CharacterLibrarySkeleton } from "@/modules/library/components/organisms";
@@ -90,6 +91,15 @@ export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
                 </>
               )}
             </div>
+            {!noScene && (
+              <ButtonSkeleton
+                label={ARENA_TURN_TEXTS.button}
+                size="sm"
+                icon="list-ordered"
+                iconSize={12}
+                labelClassName="max-sm:sr-only"
+              />
+            )}
             <ArenaConnectionStatus status="connecting" />
             <span className="flex shrink-0 items-center gap-1.5 font-sans text-sm text-muted-strong">
               <Icon name="users" size={16} />

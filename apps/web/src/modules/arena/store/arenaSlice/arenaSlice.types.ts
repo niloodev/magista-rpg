@@ -8,6 +8,8 @@ import type {
   IArenaTokenRemovedEvent,
   IArenaView,
   IArenaTokenPatch,
+  IArenaTurnOrder,
+  IArenaTurnPendingEvent,
   IMoveArenaTokenInput,
 } from "@magista/shared";
 
@@ -19,6 +21,8 @@ export interface ArenaState {
   arena: {
     status: LoadStatus;
     view: IArenaView | null;
+    /** Turn order of the scene on screen (kept out of `view`, so passing turns does not rebuild the tokens). */
+    turnOrder: IArenaTurnOrder | null;
     error: string | null;
     selectedTokenIds: string[];
     /** Scene the GM is previewing (null follows the live scene). */
@@ -39,6 +43,8 @@ export interface ArenaState {
     dockTab: Record<ArenaDockSide, string | null>;
     /** Tokens copied with Ctrl+C (GM), kept for this tab even when changing scenes or leaving the Arena. */
     tokenClipboard: IArenaToken[];
+    /** Tokens of the scene on screen whose initiative is being rolled, with when it shows (ms, this clock). */
+    turnRolling: Record<string, number>;
   };
 }
 
@@ -56,6 +62,12 @@ export interface ArenaActions {
   patchArenaTokens: (patches: IArenaTokenPatch[]) => void;
   /** Applies token statuses sent to this tab (null drops one the viewer can no longer see). */
   applyArenaStatus: (event: IArenaStatusEvent) => void;
+  /** Replaces the turn order of the scene on screen (orders of other scenes are ignored). */
+  applyArenaTurns: (order: IArenaTurnOrder) => void;
+  /** Marks tokens of the scene on screen as rolling initiative until `now + revealInMs`. */
+  markTurnRolling: (event: IArenaTurnPendingEvent, now: number) => void;
+  /** Stops the spinning of the rolls that reveal by `now`. */
+  expireTurnRolling: (now: number) => void;
   /** Applies a character's new status to its tokens whose status this tab already sees. */
   applyCharacterStatus: (characterId: string, status: IArenaTokenStatus) => void;
   selectArenaTokens: (tokenIds: string[], mode: ArenaSelectionMode) => void;

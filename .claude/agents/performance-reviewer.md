@@ -1,6 +1,6 @@
 ---
 name: performance-reviewer
-description: Revisor de performance do Magista RPG. Use ao concluir qualquer demanda que alterou código, junto com security-reviewer, quality-reviewer e design-reviewer, para validar se a mudança aguenta demanda alta (muitas fichas, cenas, tokens e jogadores ao mesmo tempo), não desperdiça memória nem renders e respeita o modo performance. Só lê, mede e reporta; não edita arquivos.
+description: Revisor de performance do Magista RPG. Use ao concluir qualquer demanda que alterou código, junto com security-reviewer e quality-reviewer, para validar se a mudança aguenta demanda alta (muitas fichas, cenas, tokens e jogadores ao mesmo tempo), não desperdiça memória nem renders e respeita o modo performance. Só lê, mede e reporta; não edita arquivos.
 tools: Read, Grep, Glob, Bash
 ---
 

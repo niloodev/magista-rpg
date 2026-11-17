@@ -19,6 +19,11 @@ export const ENERGY_PALETTES = {
   voodoo: { core: 0xd8ff5a, mid: 0x22c94a, deep: 0x7c3aed },
   voodooHot: { core: 0xfdffe0, mid: 0x7dff3a, deep: 0x14b8a6 },
   hellfire: { core: 0xffd27a, mid: 0xff3b1f, deep: 0x7a0a2e },
+  abyss: { core: 0xdce9ff, mid: 0x3d6fe8, deep: 0x0c1f66 },
+  tide: { core: 0xffffff, mid: 0xa9d0ff, deep: 0x2453c9 },
+  depths: { core: 0x010309, mid: 0x040b22, deep: 0x2c5ee0 },
+  /** Soft ruby, calm (the aura of the token whose turn it is). */
+  turn: { core: 0xffd6e0, mid: 0xe42a63, deep: 0x7a0b24 },
 } as const satisfies Record<string, IEnergyPalette>;
 
 export const ENERGY_DEFAULTS = {

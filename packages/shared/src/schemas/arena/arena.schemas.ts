@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { resourceSchema, tokenStyleSchema } from "../character/character.schemas";
 import { ARENA_CHANGE_KINDS, ARENA_RESOURCE_KEYS, arenaEffectStyleSchema } from "./arena.effects";
+import { arenaInitiativeBonusSchema, arenaTurnOrderSchema } from "./arena.turns";
 
 export * from "./arena.effects";
+export * from "./arena.turns";
 
 export const ARENA_NAME_MAX_LENGTH = 60;
 
@@ -95,6 +97,8 @@ export const arenaTokenSchema = z.object({
   size: z.number().int(),
   hidden: z.boolean(),
   position: z.number().int(),
+  /** Bonus of the initiative rolled from the token menu (NPC tokens; a character token rolls its sheet). */
+  initiativeBonus: z.number().int(),
 });
 
 /** Health and sanity of a token: the sheet resources for a character token, its own values for an NPC. */
@@ -118,6 +122,8 @@ export const arenaViewSchema = z.object({
   statuses: z.record(z.string(), arenaTokenStatusSchema),
   /** Status permissions of every token, by token id (GM only). */
   statusAccess: z.record(z.string(), arenaTokenStatusAccessSchema).optional(),
+  /** Turn order of the scene, without the tokens the viewer cannot see (null without a scene). */
+  turnOrder: arenaTurnOrderSchema.nullable(),
 });
 
 export const createArenaSceneInputSchema = z.object({
@@ -196,6 +202,8 @@ const tokenEditFields = {
   status: tokenStatusPatchSchema.optional(),
   statusPublic: z.boolean().optional(),
   statusViewerIds: statusViewerIdsSchema.optional(),
+  /** Initiative bonus (NPC tokens only). */
+  initiativeBonus: arenaInitiativeBonusSchema.optional(),
 };
 
 const hasTokenEdit = (input: Record<string, unknown>) =>

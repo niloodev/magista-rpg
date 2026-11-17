@@ -11,6 +11,7 @@ export const EFFECT_COLORS = {
   voodoo: 0x22c94a,
   geometry: 0x3b82f6,
   nox: 0x8b5cf6,
+  abyss: 0x3d6fe8,
 } as const;
 
 /** Length of each animation, in milliseconds. */

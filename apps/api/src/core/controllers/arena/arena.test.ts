@@ -3,6 +3,7 @@ import {
   type IArenaFolder,
   type IArenaScene,
   type IArenaToken,
+  type IArenaTurnOrder,
   type ArenaResourceKey,
   type ICharacter,
   type ISheetEffects,
@@ -56,6 +57,7 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
     size: 140,
     hidden: false,
     position: 0,
+    initiativeBonus: 0,
     ...extra,
   };
 }
@@ -342,10 +344,25 @@ function build(
         }),
     ),
   };
+  const turns = {
+    findOrder: vi.fn(async (sceneId: string) => ({
+      sceneId,
+      round: 1,
+      currentTokenId: T_HIDDEN,
+      entries: [
+        { tokenId: T_HIDDEN, initiative: 15 },
+        { tokenId: T_ANA, initiative: 12 },
+      ],
+    })),
+    change: vi.fn(
+      async (_sceneId: string, _apply: (order: IArenaTurnOrder) => IArenaTurnOrder | null) => null,
+    ),
+  };
   const controller = createArenaController({
     scenes,
     folders,
     tokens,
+    turns,
     images,
     assets,
     characters,
@@ -355,7 +372,18 @@ function build(
       ),
     },
   });
-  return { controller, scenes, tokens, images, folders, assets, sheets, npcStatus, characters };
+  return {
+    controller,
+    scenes,
+    tokens,
+    images,
+    folders,
+    assets,
+    sheets,
+    npcStatus,
+    characters,
+    turns,
+  };
 }
 
 const png = Buffer.from("png-bytes");
@@ -368,6 +396,12 @@ describe("arena controller: view", () => {
     expect(result.payload.scene?.id).toBe(LIVE);
     expect(result.payload.tokens.map((entry) => entry.id)).toEqual([T_ANA, T_BRUNO, T_WOLF]);
     expect(result.payload.controllableCharacterIds).toEqual([ANA]);
+    expect(result.payload.turnOrder).toEqual({
+      sceneId: LIVE,
+      round: 1,
+      currentTokenId: null,
+      entries: [{ tokenId: T_ANA, initiative: 12 }],
+    });
   });
 
   it("lets the GM preview any scene, hidden tokens included", async () => {
@@ -375,6 +409,8 @@ describe("arena controller: view", () => {
     const live = await controller.getView(gm);
     if ("error" in live) throw new Error(live.error);
     expect(live.payload.tokens).toHaveLength(4);
+    expect(live.payload.turnOrder?.currentTokenId).toBe(T_HIDDEN);
+    expect(live.payload.turnOrder?.entries).toHaveLength(2);
     const preview = await controller.getView(gm, PREP);
     if ("error" in preview) throw new Error(preview.error);
     expect(preview.payload).toMatchObject({ activeSceneId: LIVE, scene: { id: PREP } });
@@ -392,6 +428,7 @@ describe("arena controller: view", () => {
       tokens: [],
       controllableCharacterIds: [ANA],
       statuses: {},
+      turnOrder: null,
     });
   });
 });
@@ -630,6 +667,12 @@ describe("arena controller: GM tools", () => {
     expect(tokens.updateMany).toHaveBeenLastCalledWith([
       { id: T_WOLF, patch: { tokenStyle: "figure" } },
     ]);
+    await controller.updateToken(gm, T_WOLF, { initiativeBonus: 3 });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([
+      { id: T_WOLF, patch: { initiativeBonus: 3 } },
+    ]);
+    await controller.updateToken(gm, T_ANA, { initiativeBonus: 3, showName: false });
+    expect(tokens.updateMany).toHaveBeenLastCalledWith([{ id: T_ANA, patch: { showName: false } }]);
     expect(await controller.updateToken(gm, T_ANA, { style: "figure" })).toMatchObject({
       error: expect.any(String),
     });
@@ -697,6 +740,27 @@ describe("arena controller: GM tools", () => {
       payload: { audience: "table" },
     });
     expect(await controller.deleteToken(gm, T_WOLF)).toEqual({ error: arenaErrors.tokenNotFound });
+  });
+
+  it("passes the turn on before removing the token whose turn it is", async () => {
+    const { controller, turns } = build();
+    await controller.deleteToken(gm, T_WOLF);
+    expect(turns.change).not.toHaveBeenCalled();
+    await controller.deleteTokens(gm, { ids: [T_HIDDEN] });
+    expect(turns.change).toHaveBeenCalledTimes(1);
+    const [sceneId, apply] = turns.change.mock.calls[0] ?? [];
+    expect(sceneId).toBe(LIVE);
+    const order = {
+      sceneId: LIVE,
+      round: 1,
+      currentTokenId: T_HIDDEN,
+      entries: [
+        { tokenId: T_HIDDEN, initiative: 15 },
+        { tokenId: T_ANA, initiative: 12 },
+      ],
+    };
+    expect(apply?.(order)).toMatchObject({ currentTokenId: T_ANA, entries: [order.entries[1]] });
+    expect(apply?.({ ...order, currentTokenId: T_ANA })).toBeNull();
   });
 
   it("gives own images only to NPC tokens", async () => {

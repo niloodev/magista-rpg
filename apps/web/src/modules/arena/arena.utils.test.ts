@@ -46,6 +46,7 @@ function token(id: string, characterId: string | null): IArenaToken {
     size: 140,
     hidden: false,
     position: 0,
+    initiativeBonus: 0,
   };
 }
 
@@ -66,6 +67,7 @@ const view: IArenaView = {
   tokens: [token("ana", "c-ana"), token("bruno", "c-bruno"), token("lobo", null)],
   controllableCharacterIds: ["c-ana"],
   statuses: { ana: { health: { current: 4, max: 10 }, sanity: { current: null, max: null } } },
+  turnOrder: null,
 };
 
 const media = (path: string | null) => (path ? `http://api${path}` : null);
@@ -271,6 +273,7 @@ describe("arena utils: effect picker", () => {
       "entropiaPoema",
       "deathRebirth",
       "divineCall",
+      "betweenWorlds",
     ]);
     expect(filterEffects(ARENA_EFFECT_CATALOG, "", "damage", "heal", "health")).toEqual([
       "strike",

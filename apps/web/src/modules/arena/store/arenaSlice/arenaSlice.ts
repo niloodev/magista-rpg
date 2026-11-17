@@ -9,6 +9,7 @@ import {
   clearDockTab,
   nextSelection,
   omitKey,
+  sameTurnOrder,
   slotsFor,
   upsertToken,
   upsertTokens,
@@ -36,6 +37,7 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
           ...state.arena,
           status: "ready",
           view,
+          turnOrder: view.turnOrder,
           error: null,
           selectedTokenIds: state.arena.selectedTokenIds.filter((id) => present.has(id)),
         },
@@ -144,6 +146,27 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
       const view = state.arena.view;
       if (!view || view.scene?.id !== sceneId || entries.length === 0) return state;
       return { arena: { ...state.arena, view: { ...view, ...withStatusEntries(view, entries) } } };
+    }),
+  applyArenaTurns: (order) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (view?.scene?.id !== order.sceneId || sameTurnOrder(state.arena.turnOrder, order))
+        return state;
+      return { arena: { ...state.arena, turnOrder: order } };
+    }),
+  markTurnRolling: ({ sceneId, tokenIds, revealInMs }, now) =>
+    set((state) => {
+      if (state.arena.view?.scene?.id !== sceneId || tokenIds.length === 0) return state;
+      const turnRolling = { ...state.arena.turnRolling };
+      for (const tokenId of tokenIds) turnRolling[tokenId] = now + revealInMs;
+      return { arena: { ...state.arena, turnRolling } };
+    }),
+  expireTurnRolling: (now) =>
+    set((state) => {
+      const entries = Object.entries(state.arena.turnRolling);
+      const kept = entries.filter(([, revealAt]) => revealAt > now);
+      if (kept.length === entries.length) return state;
+      return { arena: { ...state.arena, turnRolling: Object.fromEntries(kept) } };
     }),
   applyCharacterStatus: (characterId, status) =>
     set((state) => {

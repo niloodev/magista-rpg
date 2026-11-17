@@ -67,6 +67,12 @@ import {
   WandSparkles,
   Pause,
   Play,
+  ListOrdered,
+  ListPlus,
+  ListX,
+  SkipBack,
+  SkipForward,
+  ArrowDownWideNarrow,
 } from "lucide-react";
 
 export const ICONS = {
@@ -138,4 +144,10 @@ export const ICONS = {
   "wand-sparkles": WandSparkles,
   pause: Pause,
   play: Play,
+  "list-ordered": ListOrdered,
+  "list-plus": ListPlus,
+  "list-x": ListX,
+  "skip-back": SkipBack,
+  "skip-forward": SkipForward,
+  "arrow-down-wide-narrow": ArrowDownWideNarrow,
 } as const;

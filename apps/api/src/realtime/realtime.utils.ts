@@ -18,6 +18,8 @@ import type {
 import {
   ARENA_MOVE_LIMIT,
   ARENA_MOVE_WINDOW_MS,
+  ARENA_TURN_LIMIT,
+  ARENA_TURN_WINDOW_MS,
   ROLL_BURST_LIMIT,
   ROLL_BURST_WINDOW_MS,
 } from "./realtime.constants";
@@ -79,6 +81,36 @@ export const arenaMoveGateFor = createGateRegistry(ARENA_MOVE_LIMIT, ARENA_MOVE_
  * Per-account window for damage and healing applied in the Arena (same pace as the rolls, its own budget).
  */
 export const arenaChangeGateFor = createGateRegistry(ROLL_BURST_LIMIT, ROLL_BURST_WINDOW_MS);
+
+/**
+ * Per-account window for turn order commands (passing turns, editing the order).
+ */
+export const arenaTurnGateFor = createGateRegistry(ARENA_TURN_LIMIT, ARENA_TURN_WINDOW_MS);
+
+/**
+ * The leading items a rate gate lets through, one try per item; it stops at the first refusal.
+ */
+export function withinGate<T>(items: readonly T[], gate: () => boolean): T[] {
+  const passed: T[] = [];
+  for (const item of items) {
+    if (!gate()) break;
+    passed.push(item);
+  }
+  return passed;
+}
+
+/**
+ * Token ids grouped by the character they roll (each sheet is read once).
+ */
+export function groupByCharacter(
+  rolls: readonly { tokenId: string; characterId: string }[],
+): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const { characterId, tokenId } of rolls) {
+    groups.set(characterId, [...(groups.get(characterId) ?? []), tokenId]);
+  }
+  return groups;
+}
 
 /** One `arena:status` emit: to some rooms, except others. */
 export interface IArenaStatusEmit {

@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import {
   applyLevelUp,
@@ -18,7 +18,7 @@ import {
 } from "@magista/shared";
 
 import { characterModels } from "@/core/models/character";
-import { getEnv } from "@/core/services/env";
+import { serverRandomInt } from "@/core/services/dice";
 
 import type { IViewer } from "../controllers.types";
 import { canAccessCharacter } from "../controllers.utils";
@@ -66,10 +66,36 @@ export function createRollController(deps: IRollControllerDeps): IRollController
       if (!spec) return { error: rollErrors.notFound };
       const result = rollSpec(spec, parsed.data.roll.kind, character, viewer);
       if (!result) return { error: rollErrors.invalidExpression };
-      return { message: "Rolagem feita", payload: result };
+      const { tokenId } = parsed.data;
+      return { message: "Rolagem feita", payload: tokenId ? { ...result, tokenId } : result };
     } catch (error) {
       console.error("roll failed:", error);
       return { error: rollErrors.unexpected };
+    }
+  };
+
+  const rollInitiatives: IRollController["rollInitiatives"] = async (
+    viewer,
+    characterId,
+    tokenIds,
+  ) => {
+    try {
+      const character = await deps.characters.findById(characterId);
+      if (!character) return [];
+      if (!(await canAccessCharacter(viewer, character.id, deps.characters))) return [];
+      const spec = buildRollSpec(
+        character.sheet,
+        { kind: "initiative" },
+        { features: character.features },
+      );
+      if (!spec) return [];
+      return tokenIds.flatMap((tokenId) => {
+        const result = rollSpec(spec, "initiative", character, viewer);
+        return result ? [{ ...result, tokenId }] : [];
+      });
+    } catch (error) {
+      console.error("rollInitiatives failed:", error);
+      return [];
     }
   };
 
@@ -122,17 +148,7 @@ export function createRollController(deps: IRollControllerDeps): IRollController
     }
   };
 
-  return { roll, ping, levelUp };
-}
-
-/**
- * Server dice source. Outside production, DEV_FORCED_D20 makes every d20 land on that face (to preview crits/fumbles).
- */
-function serverRandomInt(min: number, max: number): number {
-  const env = getEnv();
-  const forced = env.NODE_ENV === "production" ? undefined : env.DEV_FORCED_D20;
-  if (forced !== undefined && min === 1 && max === 20) return forced;
-  return randomInt(min, max + 1);
+  return { roll, rollInitiatives, ping, levelUp };
 }
 
 export const rollController = createRollController({

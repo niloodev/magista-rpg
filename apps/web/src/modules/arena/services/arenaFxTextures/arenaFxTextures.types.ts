@@ -2,7 +2,16 @@ import type { Texture } from "pixi.js";
 
 /** Frames of the particle atlas (all in one texture, as a ParticleContainer needs). */
 export type ArenaFxFrame =
-  "glow" | "streak" | "shard" | "spark" | "smoke" | "petal" | "blossom" | "beam" | "link";
+  | "glow"
+  | "streak"
+  | "shard"
+  | "spark"
+  | "smoke"
+  | "petal"
+  | "blossom"
+  | "beam"
+  | "link"
+  | "butterfly";
 
 export type IArenaFxTextureSet = Record<ArenaFxFrame, Texture> & {
   /** Math symbols, white (tinted per particle), for the geometry spell. */
