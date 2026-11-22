@@ -4,6 +4,8 @@ export interface ArenaCharactersTabProps {
   isGm: boolean;
   /** A scene is open, so the GM can put tokens on it. */
   canPlace: boolean;
+  /** Why tokens cannot be placed right now, when it is not the missing scene (the world map). */
+  blockedHint?: string | null;
   onOpenCharacter: (characterId: string) => void;
   onPlaceCharacter: (character: ICharacterSummary) => void;
   onDropCharacter: (character: ICharacterSummary, point: { x: number; y: number }) => void;

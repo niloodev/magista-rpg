@@ -281,22 +281,38 @@ Um efeito que fica ligado enquanto algo dura (não uma animação que acaba) seg
 - Custo: só o token da vez tem aura (um fluido pequeno, 256 texels de tinta e 80 células, e o anel). Quando só ela se mexe, o loop roda a ~20 fps (`ARENA_TURN_FRAME_MS`, 50 ms), e qualquer coisa vinda de fora (mouse, dados, outro efeito) desenha na hora (`urgent`). Com o token da vez fora da tela a aura para e o mapa parado não desenha nada. No modo leve, um anel e um brilho parados, sem fluido nem shader, e o loop para.
 - Mantenha suave: a aura não pode competir com os efeitos de dano; flutuação de poucos por cento do tamanho do token, com teto em pixels do mapa (12 + 4 de balanço).
 
+## Nuvens (o Mapa Mundi)
+
+As nuvens do Mapa Mundi não usam o fluido: são um mar de nuvens brancas visto de cima, todo procedural num shader (`services/arenaWorldClouds`). Duas tentativas com o fluido (desenhado direto e lido pela cobertura) escorriam pelo mapa, criavam emendas nas bordas da área e não pareciam céu; o ruído bem montado dá mais controle e custa menos.
+
+- **O mar de nuvens** (`CLOUD_SEA`, compartilhado com a transição): massas grandes de ruído distorcido por ele mesmo que mudam de forma devagar, puffs menores e tufos finos mais rápidos por cima (o vento leva cada camada numa velocidade, o que dá profundidade). A luz vem do alto à esquerda (`WORLD_SUN`): compara-se a espessura com a de um ponto na direção do sol, e o lado virado para ele fica branco, o outro cinza-azulado, as dobras azuis (`WORLD_CLOUD_COLORS`).
+- **A cobertura garante.** Um `Mesh` no mundo, refeito no retângulo visível a cada mudança de câmera (nunca acaba), desenha o mar onde `cobertura = max(fora do mapa, névoa)`. A borda é um limiar: a cobertura suavizada (a grade da névoa desfocada em três raios, ou a distância até a borda do mapa) mais um "caroço" de ruído em `WORLD_PUFF_SCALE`, então a borda é feita de puffs que fervem com o vento e uma célula que cobre ou abre cresce ou derrete em forma de nuvem. O limiar é escalado para o miolo continuar opaco mesmo no pior caroço. Fora do mapa as nuvens invadem `WORLD_EDGE_FEATHER` da imagem, cobrindo a borda escura pintada nela.
+- **Ruído de fbm quase não varia.** A soma de oitavas fica perto de 0,5; para mexer numa borda, amplifique (`(n - 0.5) * 2`) e corte, senão a borda sai lisa.
+- **Sombra no chão.** Onde o mapa aparece, as nuvens projetam uma sombra macia para baixo e para a direita (a cobertura amostrada na direção do sol), o que faz o céu parecer acima do mapa.
+- Custo: só calcula a cor onde há nuvem; os pixels revelados saem cedo (no máximo a sombra). Com só as nuvens se mexendo o loop roda a ~30 fps (`ARENA_AMBIENT_FRAME_MS`). Modo performance: o céu fica parado e só desenha quando algo muda; a névoa troca em ~0,3 s.
+- Palavras reservadas do GLSL derrubam o shader inteiro (no console aparece só `useProgram: program not valid`): `cast` é uma delas.
+
+A passagem entre mapas (`services/arenaWorldTransition`, `ArenaWorldTransition`; toda troca de mapa, inclusive entre duas cenas, que sobe de uma e desce na outra) é um voo de câmera pelas nuvens, como o mapa de um jogo que puxa a câmera para o céu e mergulha de volta: entrando no mundo (`flight: "out"`) tudo só encolhe, saindo (`"in"`) tudo só cresce, nunca os dois. Na decolagem (`approach`) a câmera acelera (afasta-se do meio da vista, ou mergulha no token do grupo) enquanto as nuvens engrossam até a tela ficar branca; a tela segura branca enquanto o mapa novo carrega e mais `timing.hold`; no pouso (`depart`) a câmera começa no ponto mais alto ou mais baixo do novo mapa e desacelera até a câmera final enquanto as nuvens se dissipam devagar (as bordas da tela limpam por último). As nuvens são o mesmo mar do Mapa Mundi, escaladas na mesma direção do voo (`WORLD_TRANSITION_ZOOM`), com uma segunda camada mais rápida que dá a sensação de velocidade e as franjas clareadas, para nunca virarem fumaça cinza sobre o fundo escuro. No modo performance toca o mesmo voo, curto (`WORLD_TRANSITION_LITE_TIMING`). O renderer comanda tudo no `setScene` (`passageTo`: `fly` ou só `land`): segura os tokens novos até a tela estar branca (`heldTokens`) e interpola a câmera (`tweenCamera`, zoom em escala logarítmica, com aceleração na decolagem e desaceleração no pouso). O voo toca só para os jogadores (`setPassages`). Trocas rápidas interpolam: uma troca enquanto as nuvens engrossam deixa o voo seguir e pousar no mapa mais novo; uma troca enquanto elas clareiam chama `regather`, que as engrossa de novo a partir da densidade atual (a curva da decolagem é invertida, `approachElapsedFor`) e decola a câmera de onde ela está. O zoom das nuvens é integrado quadro a quadro num ritmo só (`stepCloudZoom`), então não para no meio branco nem salta quando o voo vira. O que engasgava no meio era o trabalho da troca (compilar shaders, subir a textura do mapa): o renderer faz isso ocioso, logo depois de abrir (`warmUp`), e guarda a textura do mundo. Para conferir quadro a quadro, congele o relógio só depois de chegar na Arena (`page.clock.install` e `pauseAt` antes do clique); instalar o relógio antes do login trava os prints.
+
 ## Se ficou estranho
 
-| Parece             | Causa provável                              | O que mexer                                                         |
-| ------------------ | ------------------------------------------- | ------------------------------------------------------------------- |
-| Tinta derramada    | fontes largas demais ou névoa forte demais  | afinar as fontes; baixar `haze` ou `inject`                         |
-| Brilhante demais   | muita tinta acumulada, bloom forte          | baixar `inject` e `gain`; baixar o `decay` para a névoa durar menos |
-| Grosso             | largura do tendril                          | `width` abaixo de 0,6 r; menos `wake`                               |
-| Fumaça             | sem rumo, só turbulência                    | `bias` mais forte que a turbulência; mais `vorticity`               |
-| Laser, linha reta  | pouco `bend`, pouco balanço, um fio só      | `bend` de 0,12 a 0,3 alternando o lado; 3 fios; mais `sway`         |
-| Glow de uma cor só | uma paleta só                               | alternar duas ou três paletas vizinhas                              |
-| Some do nada       | fluido destruído com a parte de tela        | camada própria e `linger`                                           |
-| Parado             | `speed` baixo, sem `head` e `tail` animados | subir `speed`; revelar e esgotar os fios                            |
-| Vidro parece teia  | cacos grandes e regulares, linha grossa     | mais raios (`SPOKES`), linha perto de 1 px, menos brilho em volta   |
-| Água parece fumaça | modo `light` ou `shadow`                    | `mode: "water"`; mais `inject`                                      |
-| Água com chuvisco  | turbulência pequena para uma área grande    | `turbulence.scale` maior                                            |
-| Sobra no fim       | último quadro da parte de tela fica parado  | esconder a parte de tela e tirar os filtros ao começar o `linger`   |
+| Parece              | Causa provável                              | O que mexer                                                         |
+| ------------------- | ------------------------------------------- | ------------------------------------------------------------------- |
+| Tinta derramada     | fontes largas demais ou névoa forte demais  | afinar as fontes; baixar `haze` ou `inject`                         |
+| Brilhante demais    | muita tinta acumulada, bloom forte          | baixar `inject` e `gain`; baixar o `decay` para a névoa durar menos |
+| Grosso              | largura do tendril                          | `width` abaixo de 0,6 r; menos `wake`                               |
+| Fumaça              | sem rumo, só turbulência                    | `bias` mais forte que a turbulência; mais `vorticity`               |
+| Laser, linha reta   | pouco `bend`, pouco balanço, um fio só      | `bend` de 0,12 a 0,3 alternando o lado; 3 fios; mais `sway`         |
+| Glow de uma cor só  | uma paleta só                               | alternar duas ou três paletas vizinhas                              |
+| Some do nada        | fluido destruído com a parte de tela        | camada própria e `linger`                                           |
+| Parado              | `speed` baixo, sem `head` e `tail` animados | subir `speed`; revelar e esgotar os fios                            |
+| Vidro parece teia   | cacos grandes e regulares, linha grossa     | mais raios (`SPOKES`), linha perto de 1 px, menos brilho em volta   |
+| Água parece fumaça  | modo `light` ou `shadow`                    | `mode: "water"`; mais `inject`                                      |
+| Água com chuvisco   | turbulência pequena para uma área grande    | `turbulence.scale` maior                                            |
+| Sobra no fim        | último quadro da parte de tela fica parado  | esconder a parte de tela e tirar os filtros ao começar o `linger`   |
+| Nuvem parece pedra  | luz forte em ruído fino                     | escala maior, luz com deslocamento maior e peso menor               |
+| Borda de nuvem lisa | ruído de fbm perto de 0,5                   | amplificar o ruído da borda e alargar a rampa da cobertura          |
+| Faixa reta          | textura com área cortando de repente        | esmaecer antes da borda da área (fluido, grade)                     |
 
 ## Como conferir
 

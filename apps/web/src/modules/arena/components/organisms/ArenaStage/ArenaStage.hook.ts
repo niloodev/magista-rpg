@@ -12,7 +12,7 @@ import type { IArenaRenderer } from "@/modules/arena/services/arenaRenderer";
 import { usePrefersReducedMotion } from "@/shared/hooks";
 
 import type { ArenaStageHookProps } from "./ArenaStage.types";
-import { readSerifFont } from "./ArenaStage.utils";
+import { deferredRenderer, readSerifFont } from "./ArenaStage.utils";
 
 /**
  * Owns the PixiJS board: loads the renderer on demand (keeping pixi.js out of every other page), recreates it
@@ -34,16 +34,41 @@ export function useArenaStage({
   onBounds,
   onMapError,
   onTokenMenu,
+  worldFog,
+  fogAlpha,
+  brush,
+  onFogStroke,
+  passages,
 }: ArenaStageHookProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<IArenaRenderer | null>(null);
-  const callbacksRef = useRef({ onSelect, onDrop, onResize, onBounds, onMapError, onTokenMenu });
+  const callbacksRef = useRef({
+    onSelect,
+    onDrop,
+    onResize,
+    onBounds,
+    onMapError,
+    onTokenMenu,
+    onFogStroke,
+  });
   const [renderer, setRenderer] = useState<IArenaRenderer | null>(null);
+  const readyRef = useRef<{
+    wait: Promise<IArenaRenderer | null>;
+    resolve: (r: IArenaRenderer | null) => void;
+  }>(deferredRenderer());
   const [status, setStatus] = useState<ArenaStageStatus>("loading");
   const lite = usePrefersReducedMotion();
 
   useEffect(() => {
-    callbacksRef.current = { onSelect, onDrop, onResize, onBounds, onMapError, onTokenMenu };
+    callbacksRef.current = {
+      onSelect,
+      onDrop,
+      onResize,
+      onBounds,
+      onMapError,
+      onTokenMenu,
+      onFogStroke,
+    };
   });
 
   useEffect(() => {
@@ -67,6 +92,7 @@ export function useArenaStage({
             onDrop: (moves) => callbacksRef.current.onDrop(moves),
             onResize: (updates) => callbacksRef.current.onResize(updates),
             onTokenMenu: (tokenId, client) => callbacksRef.current.onTokenMenu(tokenId, client),
+            onFogStroke: (stroke) => callbacksRef.current.onFogStroke(stroke),
             onMapError: (failed) => {
               if (!disposed) callbacksRef.current.onMapError(failed);
             },
@@ -86,12 +112,15 @@ export function useArenaStage({
         return;
       }
       rendererRef.current = created;
+      readyRef.current.resolve(created);
       setRenderer(created);
     };
     void start();
     return () => {
       disposed = true;
       created?.destroy();
+      readyRef.current.resolve(null);
+      readyRef.current = deferredRenderer();
       rendererRef.current = null;
       setRenderer(null);
       setStatus("loading");
@@ -99,6 +128,7 @@ export function useArenaStage({
   }, [lite]);
 
   const sceneId = scene?.id ?? null;
+  const sceneKind = scene?.kind ?? "scene";
   const mapUrl = scene?.mapUrl ?? null;
   const boardWidth = scene?.width ?? 0;
   const boardHeight = scene?.height ?? 0;
@@ -108,11 +138,28 @@ export function useArenaStage({
   }, [renderer, insetLeft, insetRight]);
 
   useEffect(() => {
+    renderer?.setPassages(passages);
+  }, [renderer, passages]);
+
+  useEffect(() => {
     if (!renderer) return;
     void renderer.setScene(
-      sceneId ? { id: sceneId, mapUrl, width: boardWidth, height: boardHeight } : null,
+      sceneId
+        ? { id: sceneId, kind: sceneKind, mapUrl, width: boardWidth, height: boardHeight }
+        : null,
     );
-  }, [renderer, sceneId, mapUrl, boardWidth, boardHeight]);
+  }, [renderer, sceneId, sceneKind, mapUrl, boardWidth, boardHeight]);
+
+  useEffect(() => {
+    renderer?.setWorldFog(worldFog, fogAlpha);
+  }, [renderer, worldFog, fogAlpha]);
+
+  const brushMode = brush?.mode ?? null;
+  const brushRadius = brush?.radius ?? 0;
+
+  useEffect(() => {
+    renderer?.setBrush(brushMode ? { mode: brushMode, radius: brushRadius } : null);
+  }, [renderer, brushMode, brushRadius]);
 
   useEffect(() => {
     renderer?.setTokens(tokens);
@@ -144,6 +191,11 @@ export function useArenaStage({
       zoom: () => rendererRef.current?.zoom() ?? 1,
       retryMap: () => rendererRef.current?.retryMap(),
       playEffects: (effects) => rendererRef.current?.playEffects(effects),
+      warmEffects: async (onProgress) => {
+        const ready = rendererRef.current ?? (await readyRef.current.wait);
+        if (ready) await ready.warmEffects(onProgress);
+        else onProgress(1);
+      },
     }),
     [],
   );

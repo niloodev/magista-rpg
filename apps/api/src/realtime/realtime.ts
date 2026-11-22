@@ -41,6 +41,7 @@ import { getEnv } from "@/core/services/env";
 import {
   registerArenaHandlers,
   registerArenaTurnHandlers,
+  registerArenaWorldHandlers,
   registerMarkedHandlers,
   registerPresenceHandlers,
   registerRollHandlers,
@@ -138,6 +139,14 @@ export function createRealtime(httpServer: HttpServer): RealtimeServer {
     registerArenaTurnHandlers(socket, {
       onTurns: broadcastTurnOrder,
       onRolling: startTurnRolls,
+    });
+    registerArenaWorldHandlers(socket, {
+      onPartyMoved: ({ value, audience }) => {
+        io?.to(arenaRoom(audience)).emit("arena:world-party", value);
+      },
+      onFogChanged: ({ value, audience }) => {
+        io?.to(arenaRoom(audience)).emit("arena:world-fog", value);
+      },
     });
   });
   io = server;

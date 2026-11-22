@@ -2,6 +2,7 @@ import { isErrorResult } from "@magista/shared";
 import { Router } from "express";
 
 import { arenaController, arenaErrors } from "@/core/controllers/arena";
+import { arenaWorldController } from "@/core/controllers/arenaWorld";
 import { requireAuth } from "@/middlewares";
 import {
   broadcastArenaScene,
@@ -12,7 +13,7 @@ import {
 } from "@/realtime";
 
 import { sendResult, viewerOf, type AuthedResponse } from "@/routes/routes.utils";
-import { ARENA_ERROR_STATUS } from "./arena.routes.constants";
+import { ARENA_ERROR_STATUS, ARENA_WORLD_ERROR_STATUS } from "./arena.routes.constants";
 import { readMapUpload, readTokenImageUpload } from "./arena.routes.utils";
 
 export const arenaRoutes = Router();
@@ -20,8 +21,12 @@ export const arenaRoutes = Router();
 arenaRoutes.use(requireAuth);
 
 arenaRoutes.get("/", async (req, res: AuthedResponse) => {
-  const result = await arenaController.getView(viewerOf(res), req.query.sceneId);
+  const result = await arenaController.getView(viewerOf(res), req.query.sceneId, req.query.world);
   sendResult(res, result, ARENA_ERROR_STATUS);
+});
+
+arenaRoutes.get("/maps", async (_req, res: AuthedResponse) => {
+  sendResult(res, await arenaController.listMapUrls(viewerOf(res)), ARENA_ERROR_STATUS);
 });
 
 arenaRoutes.get("/scenes", async (_req, res: AuthedResponse) => {
@@ -97,6 +102,12 @@ arenaRoutes.put("/active", async (req, res: AuthedResponse) => {
   const result = await arenaController.setActiveScene(viewerOf(res), req.body);
   const changed = sendResult(res, result, ARENA_ERROR_STATUS);
   if (changed) broadcastArenaScene(changed.activeSceneId, "table");
+});
+
+arenaRoutes.put("/world/live", async (req, res: AuthedResponse) => {
+  const result = await arenaWorldController.setLive(viewerOf(res), req.body);
+  const changed = sendResult(res, result, ARENA_WORLD_ERROR_STATUS);
+  if (changed) broadcastArenaScene(null, "table");
 });
 
 arenaRoutes.post("/scenes/:id/tokens", async (req, res: AuthedResponse) => {

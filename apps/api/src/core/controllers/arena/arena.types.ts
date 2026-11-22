@@ -22,6 +22,7 @@ import type { IArenaTurnModels } from "@/core/models/arenaTurn";
 import type { ICharacterModels } from "@/core/models/character";
 import type { IAccountModels } from "@/core/models/account";
 import type { IImageAssets } from "@/core/controllers/mediaAsset";
+import type { IArenaWorldModels } from "@/core/models/arenaWorld";
 import type { IArenaImageStore } from "@/core/services/media";
 
 import type { IViewer } from "../controllers.types";
@@ -39,6 +40,7 @@ export interface IArenaControllerDeps {
   accounts: Pick<IAccountModels, "countPlayersByIds">;
   images: IArenaImageStore;
   assets: Pick<IImageAssets, "ingest" | "release">;
+  worlds: Pick<IArenaWorldModels, "findWorld">;
 }
 
 /** Who may see a change: the whole table (visible token of the live scene) or only the GM. */
@@ -126,8 +128,17 @@ export interface IArenaMoveChanges {
 type Result<T> = Promise<ControllerResult<T, ArenaError>>;
 
 export interface IArenaController {
-  getView: (viewer: IViewer, sceneId?: unknown) => Result<IArenaView>;
+  /**
+   * The Arena as the viewer sees it: the live scene (or, for the GM, a previewed one with `sceneId`) or the world map
+   * (live, or a GM preview with `world` = "1").
+   */
+  getView: (viewer: IViewer, sceneId?: unknown, world?: unknown) => Result<IArenaView>;
   listScenes: (viewer: IViewer) => Result<IArenaScene[]>;
+  /**
+   * The map of every scene, only their URLs (no names), for any account: the table caches them all before the
+   * session so switching maps is smooth (seeing the maps ahead is accepted by the table).
+   */
+  listMapUrls: (viewer: IViewer) => Result<string[]>;
   listLibrary: (viewer: IViewer) => Result<IArenaLibrary>;
   createFolder: (viewer: IViewer, input: unknown) => Result<IArenaFolder>;
   renameFolder: (viewer: IViewer, id: string, input: unknown) => Result<IArenaFolder>;

@@ -11,6 +11,7 @@ import {
 import { ProfileDialog } from "@/modules/profile/components";
 import { Button, Icon } from "@/shared/components/atoms";
 import { ConfirmDialog } from "@/shared/components/molecules";
+import { AssetLoadingScreen } from "@/shared/components/organisms";
 
 import {
   ArenaChangeMenu,
@@ -18,6 +19,7 @@ import {
   ArenaNotice,
   ArenaSelectionBar,
   ArenaTokenTray,
+  ArenaWorldFogTools,
   ArenaZoomControls,
 } from "../../molecules";
 import {
@@ -41,10 +43,24 @@ import { useArenaPage } from "./ArenaPage.hook";
 
 export function ArenaPage() {
   const {
+    assetScreen,
+    contentInert,
     isGm,
     status,
     loadError,
     scene,
+    sceneName,
+    mapShown,
+    worldFog,
+    fogAlpha,
+    brush,
+    onFogStroke,
+    fogTools,
+    fillConfirm,
+    onConfirmFill,
+    onCancelFill,
+    worldRow,
+    placementBlocked,
     stageScene,
     stageLabel,
     renderTokens,
@@ -150,185 +166,216 @@ export function ArenaPage() {
       onClose={onCloseDocked}
     />
   );
-  if (status === "idle" || status === "loading") return <ArenaSkeleton gm={isGm} />;
+  const loadingScreen = assetScreen && <AssetLoadingScreen {...assetScreen} />;
+  if (status === "idle" || status === "loading") {
+    return (
+      <>
+        <ArenaSkeleton gm={isGm} />
+        {loadingScreen}
+      </>
+    );
+  }
   return (
-    <main className="relative isolate h-dvh overflow-hidden bg-void-900">
-      <ArenaTopBar
-        sceneName={scene?.name ?? null}
-        status={connection}
-        memberCount={memberCount}
-        broadcast={broadcast}
-        onGoLive={onGoLiveViewed}
-        onBackToLive={onBackToLive}
-        onOpenProfile={onOpenProfile}
-        turns={turnsButton}
-      />
-      <ArenaRollsPanel
-        open={rollsOpen}
-        rolls={rolls}
-        pending={pendingRolls}
-        loading={rollsLoading}
-        onOpenChange={onRollsOpen}
-        width={rollsWidth}
-        onResize={onRollsResize}
-        onResizeCommit={onRollsResizeCommit}
-        docked={{ ...dockedLeft, render: renderDocked }}
-      />
-      {scene && (
-        <ArenaStage
-          className="absolute inset-0"
-          scene={stageScene}
-          tokens={renderTokens}
-          selectedTokenIds={selectedTokenIds}
-          turnTokenId={turnTokenId}
-          controlsRef={controlsRef}
-          label={stageLabel}
-          onSelect={onSelect}
-          onDrop={onDrop}
-          onBounds={onBounds}
-          onResize={onResize}
-          resizable={isGm}
-          insetRight={stageInsetRight}
-          insetLeft={stageInsetLeft}
-          onMapError={onMapError}
-          onTokenMenu={onTokenMenu}
-          onDropFiles={onDropFiles}
-          onDropCharacterId={onDropCharacterId}
-          onKeyDown={onStageKeyDown}
+    <>
+      {loadingScreen}
+      <main inert={contentInert} className="relative isolate h-dvh overflow-hidden bg-void-900">
+        <ArenaTopBar
+          sceneName={sceneName}
+          status={connection}
+          memberCount={memberCount}
+          broadcast={broadcast}
+          onGoLive={onGoLiveViewed}
+          onBackToLive={onBackToLive}
+          onOpenProfile={onOpenProfile}
+          turns={turnsButton}
         />
-      )}
-      <div aria-hidden="true" className="arena-vignette pointer-events-none absolute inset-0" />
-      <div className="pointer-events-none absolute inset-y-0" style={hudStyle}>
-        {status === "error" && (
-          <ArenaNotice
-            icon="circle-x"
-            title={ARENA_LOAD_ERROR_TITLE}
-            body={loadError ?? ""}
-            className="pointer-events-auto absolute inset-0 pt-14"
-            action={
-              <Button variant="secondary" size="sm" onClick={onRetry}>
-                {ARENA_LOAD_RETRY_LABEL}
-              </Button>
-            }
+        <ArenaRollsPanel
+          open={rollsOpen}
+          rolls={rolls}
+          pending={pendingRolls}
+          loading={rollsLoading}
+          onOpenChange={onRollsOpen}
+          width={rollsWidth}
+          onResize={onRollsResize}
+          onResizeCommit={onRollsResizeCommit}
+          docked={{ ...dockedLeft, render: renderDocked }}
+        />
+        {mapShown && (
+          <ArenaStage
+            className="absolute inset-0"
+            scene={stageScene}
+            tokens={renderTokens}
+            selectedTokenIds={selectedTokenIds}
+            turnTokenId={turnTokenId}
+            controlsRef={controlsRef}
+            label={stageLabel}
+            onSelect={onSelect}
+            onDrop={onDrop}
+            onBounds={onBounds}
+            onResize={onResize}
+            resizable={isGm && Boolean(scene)}
+            worldFog={worldFog}
+            fogAlpha={fogAlpha}
+            brush={brush}
+            onFogStroke={onFogStroke}
+            passages={!isGm}
+            insetRight={stageInsetRight}
+            insetLeft={stageInsetLeft}
+            onMapError={onMapError}
+            onTokenMenu={onTokenMenu}
+            onDropFiles={onDropFiles}
+            onDropCharacterId={onDropCharacterId}
+            onKeyDown={onStageKeyDown}
           />
         )}
-        {status === "ready" && !scene && (
-          <ArenaNotice
-            icon="map"
-            title={empty.title}
-            body={empty.body}
-            className="pointer-events-auto absolute inset-0 pt-14"
-          />
-        )}
-        {scene && !scene.mapUrl && (
-          <p className="absolute top-[4.25rem] left-4 z-10 flex items-center gap-2 border border-white/10 bg-black/60 px-3 py-1.5 font-sans text-xs tracking-[0.12em] text-muted-strong uppercase">
-            <Icon name="image" size={14} aria-hidden="true" />
-            {ARENA_NO_MAP_LABEL}
-          </p>
-        )}
-        {(notice || mapFailed) && (
-          <div
-            role="alert"
-            className="pointer-events-auto absolute top-[4.25rem] left-1/2 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 border border-destructive/50 bg-black/80 px-4 py-2 font-sans text-sm text-error"
-          >
-            <span>{notice ?? ARENA_MAP_ERROR}</span>
-            {!notice && mapFailed && (
-              <Button variant="ghost" size="sm" onClick={onRetryMap}>
-                {ARENA_LOAD_RETRY_LABEL}
-              </Button>
-            )}
-          </div>
-        )}
-        {scene && trayTokens.length > 0 && (
-          <ArenaTokenTray
-            className="pointer-events-auto absolute bottom-4 left-4 z-10"
-            label={trayLabel}
-            tokens={trayTokens}
-            selectedId={selectedTokenId}
-            onPick={onPickToken}
-          />
-        )}
-        {scene && selection && (
-          <div className={selectionSlotClassName}>
-            {changeMenu && changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
-            <ArenaSelectionBar
-              className="pointer-events-auto"
-              label={selection.label}
-              isGm={isGm}
-              size={selection.size}
-              status={selection.status}
-              onSizeChange={onSizeChange}
+        <div aria-hidden="true" className="arena-vignette pointer-events-none absolute inset-0" />
+        <div className="pointer-events-none absolute inset-y-0" style={hudStyle}>
+          {status === "error" && (
+            <ArenaNotice
+              icon="circle-x"
+              title={ARENA_LOAD_ERROR_TITLE}
+              body={loadError ?? ""}
+              className="pointer-events-auto absolute inset-0 pt-14"
+              action={
+                <Button variant="secondary" size="sm" onClick={onRetry}>
+                  {ARENA_LOAD_RETRY_LABEL}
+                </Button>
+              }
             />
-          </div>
-        )}
-        {scene && (
-          <ArenaZoomControls
-            className="pointer-events-auto absolute right-4 bottom-4 z-10"
-            onZoomIn={onZoomIn}
-            onZoomOut={onZoomOut}
-            onFit={onFit}
-          />
-        )}
-      </div>
-      <ArenaSidebar
-        open={sidebarOpen}
-        tab={sidebarTab}
-        showScenes={isGm}
-        onTabChange={onSidebarTab}
-        onOpenChange={onSidebarOpen}
-        width={sidebarWidth}
-        onResize={onSidebarResize}
-        onResizeCommit={onSidebarResizeCommit}
-        docked={{ ...dockedRight, render: renderDocked }}
-        characters={
-          <ArenaCharactersTab
-            isGm={isGm}
-            canPlace={canPlace}
-            onOpenCharacter={onOpenCharacter}
-            onPlaceCharacter={onPlaceCharacter}
-            onDropCharacter={onDropCharacter}
-            onNewNpc={onNewNpc}
-            isOverMap={isOverMap}
-            tokenPreviewSize={tokenPreviewSize}
-          />
-        }
-        scenes={
-          <SceneLibrary
-            liveSceneId={liveSceneId}
-            viewingSceneId={viewingSceneId}
-            onPreview={onPreviewScene}
-            onGoLive={onGoLive}
-          />
-        }
-      />
-      <ConfirmDialog
-        open={confirmRemove}
-        title={confirmRemoveTitle}
-        message={confirmRemoveMessage}
-        confirmLabel={ARENA_SELECTION_TEXTS.remove}
-        onConfirm={onConfirmRemove}
-        onCancel={onCancelRemove}
-      />
-      <p aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
-      <ConfirmDialog
-        open={confirmClearTurns}
-        title={ARENA_TURN_TEXTS.clearTitle}
-        message={ARENA_TURN_TEXTS.clearMessage}
-        confirmLabel={ARENA_TURN_TEXTS.clearConfirm}
-        onConfirm={onConfirmClearTurns}
-        onCancel={onCancelClearTurns}
-      />
-      {turnWindow && <ArenaTurnWindow {...turnWindow} />}
-      <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
-      <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
-      {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
-      {isGm && imageDrop && <ArenaImageTokenDialog {...imageDrop} />}
-      {changeMenu && !changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
-      {tokenMenu && <ArenaTokenMenu {...tokenMenu} />}
-      {effectPicker && <ArenaEffectPickerDialog {...effectPicker} />}
-      {tokenSettings && <ArenaTokenSettingsDialog {...tokenSettings} />}
-    </main>
+          )}
+          {status === "ready" && !mapShown && (
+            <ArenaNotice
+              icon="map"
+              title={empty.title}
+              body={empty.body}
+              className="pointer-events-auto absolute inset-0 pt-14"
+            />
+          )}
+          {scene && !scene.mapUrl && (
+            <p className="absolute top-[4.25rem] left-4 z-10 flex items-center gap-2 border border-white/10 bg-black/60 px-3 py-1.5 font-sans text-xs tracking-[0.12em] text-muted-strong uppercase">
+              <Icon name="image" size={14} aria-hidden="true" />
+              {ARENA_NO_MAP_LABEL}
+            </p>
+          )}
+          {(notice || mapFailed) && (
+            <div
+              role="alert"
+              className="pointer-events-auto absolute top-[4.25rem] left-1/2 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 border border-destructive/50 bg-black/80 px-4 py-2 font-sans text-sm text-error"
+            >
+              <span>{notice ?? ARENA_MAP_ERROR}</span>
+              {!notice && mapFailed && (
+                <Button variant="ghost" size="sm" onClick={onRetryMap}>
+                  {ARENA_LOAD_RETRY_LABEL}
+                </Button>
+              )}
+            </div>
+          )}
+          {scene && trayTokens.length > 0 && (
+            <ArenaTokenTray
+              className="pointer-events-auto absolute bottom-4 left-4 z-10"
+              label={trayLabel}
+              tokens={trayTokens}
+              selectedId={selectedTokenId}
+              onPick={onPickToken}
+            />
+          )}
+          {scene && selection && (
+            <div className={selectionSlotClassName}>
+              {changeMenu && changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
+              <ArenaSelectionBar
+                className="pointer-events-auto"
+                label={selection.label}
+                isGm={isGm}
+                size={selection.size}
+                status={selection.status}
+                onSizeChange={onSizeChange}
+              />
+            </div>
+          )}
+          {fogTools && (
+            <div className={selectionSlotClassName}>
+              <ArenaWorldFogTools className="pointer-events-auto" {...fogTools} />
+            </div>
+          )}
+          {mapShown && (
+            <ArenaZoomControls
+              className="pointer-events-auto absolute right-4 bottom-4 z-10"
+              onZoomIn={onZoomIn}
+              onZoomOut={onZoomOut}
+              onFit={onFit}
+            />
+          )}
+        </div>
+        <ArenaSidebar
+          open={sidebarOpen}
+          tab={sidebarTab}
+          showScenes={isGm}
+          onTabChange={onSidebarTab}
+          onOpenChange={onSidebarOpen}
+          width={sidebarWidth}
+          onResize={onSidebarResize}
+          onResizeCommit={onSidebarResizeCommit}
+          docked={{ ...dockedRight, render: renderDocked }}
+          characters={
+            <ArenaCharactersTab
+              isGm={isGm}
+              canPlace={canPlace}
+              blockedHint={placementBlocked}
+              onOpenCharacter={onOpenCharacter}
+              onPlaceCharacter={onPlaceCharacter}
+              onDropCharacter={onDropCharacter}
+              onNewNpc={onNewNpc}
+              isOverMap={isOverMap}
+              tokenPreviewSize={tokenPreviewSize}
+            />
+          }
+          scenes={
+            <SceneLibrary
+              world={worldRow}
+              liveSceneId={liveSceneId}
+              viewingSceneId={viewingSceneId}
+              onPreview={onPreviewScene}
+              onGoLive={onGoLive}
+            />
+          }
+        />
+        <ConfirmDialog
+          open={confirmRemove}
+          title={confirmRemoveTitle}
+          message={confirmRemoveMessage}
+          confirmLabel={ARENA_SELECTION_TEXTS.remove}
+          onConfirm={onConfirmRemove}
+          onCancel={onCancelRemove}
+        />
+        <ConfirmDialog
+          open={fillConfirm !== null}
+          title={fillConfirm?.title ?? ""}
+          message={fillConfirm?.message ?? ""}
+          confirmLabel={fillConfirm?.confirmLabel ?? ""}
+          onConfirm={onConfirmFill}
+          onCancel={onCancelFill}
+        />
+        <p aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+        <ConfirmDialog
+          open={confirmClearTurns}
+          title={ARENA_TURN_TEXTS.clearTitle}
+          message={ARENA_TURN_TEXTS.clearMessage}
+          confirmLabel={ARENA_TURN_TEXTS.clearConfirm}
+          onConfirm={onConfirmClearTurns}
+          onCancel={onCancelClearTurns}
+        />
+        {turnWindow && <ArenaTurnWindow {...turnWindow} />}
+        <ArenaSheetWindows panels={windowPanels} onDock={onDock} />
+        <ProfileDialog open={profileOpen} onClose={onCloseProfile} />
+        {isGm && npcDialogOpen && <NpcTokenDialog onSubmit={onSubmitNpc} onClose={onCloseNpc} />}
+        {isGm && imageDrop && <ArenaImageTokenDialog {...imageDrop} />}
+        {changeMenu && !changeMenuInBar && <ArenaChangeMenu {...changeMenu} />}
+        {tokenMenu && <ArenaTokenMenu {...tokenMenu} />}
+        {effectPicker && <ArenaEffectPickerDialog {...effectPicker} />}
+        {tokenSettings && <ArenaTokenSettingsDialog {...tokenSettings} />}
+      </main>
+    </>
   );
 }

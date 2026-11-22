@@ -87,7 +87,7 @@ test.describe("imagens dos personagens (avatar e arte)", () => {
     await page.getByRole("button", { name: "Ver arte completa" }).click();
     await expect(page.getByRole("dialog").locator("img")).toHaveAttribute(
       "src",
-      new RegExp(`${created?.artUrl ?? "-"}$`),
+      new RegExp(`${created?.artUrl ?? "-"}(\\?v=[^&#]+)?$`),
     );
   });
 

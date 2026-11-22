@@ -13,6 +13,7 @@ import {
   tokenExtents,
   tokensInRect,
   groupOffsets,
+  tweenCamera,
   unitDirection,
   zoomAt,
   isInVisibleArea,
@@ -166,5 +167,19 @@ describe("groupOffsets", () => {
       { x: 0, y: 0 },
       { x: 2, y: -1 },
     ]);
+  });
+});
+
+describe("camera tween", () => {
+  it("starts at the first camera, ends at the second and zooms evenly in scale", () => {
+    const from = { x: 0, y: 0, scale: 4 };
+    const to = { x: 100, y: 50, scale: 1 };
+    const anchor = { x: 400, y: 300 };
+    expect(tweenCamera(from, to, 0, anchor)).toEqual(from);
+    const end = tweenCamera(from, to, 1, anchor);
+    expect(end.scale).toBeCloseTo(1);
+    expect(end.x).toBeCloseTo(100);
+    expect(end.y).toBeCloseTo(50);
+    expect(tweenCamera(from, to, 0.5, anchor).scale).toBeCloseTo(2);
   });
 });

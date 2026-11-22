@@ -114,6 +114,20 @@ export class ArenaFxScreen implements IArenaFxScreen {
     return granted;
   };
 
+  /**
+   * Forgets every claim and reservation and drops whatever an effect left behind (world filters, screen pieces):
+   * after the warm-up played each effect once out of sight, nothing of it may stay on the board.
+   */
+  forget(): void {
+    this.claims.clear();
+    this.reservations.clear();
+    this.filters.length = 0;
+    this.world.filters = null;
+    for (const child of this.layer.removeChildren()) {
+      if (!child.destroyed) child.destroy({ children: true });
+    }
+  }
+
   destroy(): void {
     this.world.filters = null;
     this.layer.destroy({ children: true });

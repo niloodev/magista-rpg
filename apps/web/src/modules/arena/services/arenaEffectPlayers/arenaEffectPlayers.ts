@@ -313,9 +313,11 @@ export class ArenaShockwaves {
     return alive.length > 0;
   }
 
+  /** Ends every wave and takes their filters off the stage (the stage keeps rendering without them). */
   destroy(): void {
     for (const wave of this.waves) wave.filter.destroy();
     this.waves = [];
+    if (!this.app.stage.destroyed) this.apply();
   }
 
   private apply(): void {

@@ -11,6 +11,8 @@ import type {
   IArenaTurnOrder,
   IArenaTurnPendingEvent,
   IMoveArenaTokenInput,
+  IArenaWorldFogEvent,
+  IWorldPoint,
 } from "@magista/shared";
 
 import type { ArenaDockSide, ArenaSelectionMode } from "@/modules/arena/arena.types";
@@ -71,6 +73,11 @@ export interface ArenaActions {
   /** Applies a character's new status to its tokens whose status this tab already sees. */
   applyCharacterStatus: (characterId: string, status: IArenaTokenStatus) => void;
   selectArenaTokens: (tokenIds: string[], mode: ArenaSelectionMode) => void;
+  /** Moves the party token of the world map on screen (ignored when the world map is not shown). */
+  applyWorldParty: (party: IWorldPoint) => void;
+  /** Replaces the world map fog when the version is newer than the one on screen. */
+  applyWorldFog: (event: IArenaWorldFogEvent) => void;
+  /** Scene the GM previews (`ARENA_WORLD_VIEW` for the world map; null follows what is live). */
   setArenaViewScene: (sceneId: string | null) => void;
   startArenaLibraryLoad: () => void;
   finishArenaLibraryLoad: (library: IArenaLibrary) => void;

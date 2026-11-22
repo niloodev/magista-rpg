@@ -1,4 +1,9 @@
-import type { IArenaBounds, IArenaPoint, IMoveArenaTokenInput } from "@magista/shared";
+import type {
+  IArenaBounds,
+  IArenaPoint,
+  IMoveArenaTokenInput,
+  IWorldFogStroke,
+} from "@magista/shared";
 import type { KeyboardEvent, RefObject } from "react";
 
 import type {
@@ -6,7 +11,11 @@ import type {
   IArenaSizeUpdate,
   IArenaStageControls,
 } from "@/modules/arena/arena.types";
-import type { IArenaRenderScene, IArenaRenderToken } from "@/modules/arena/services/arenaRenderer";
+import type {
+  IArenaRenderScene,
+  IArenaRenderToken,
+  IArenaWorldBrush,
+} from "@/modules/arena/services/arenaRenderer";
 
 export interface ArenaStageHookProps {
   scene: IArenaRenderScene | null;
@@ -24,6 +33,14 @@ export interface ArenaStageHookProps {
   onBounds: (bounds: IArenaBounds) => void;
   onMapError: (failed: boolean) => void;
   onTokenMenu: (tokenId: string | null, client: IArenaPoint) => void;
+  /** The world map fog (null off the world map) and how strongly it shows over the map. */
+  worldFog: Uint8Array | null;
+  fogAlpha: number;
+  /** The fog brush (GM painting the world map), or null. */
+  brush: IArenaWorldBrush | null;
+  onFogStroke: (stroke: IWorldFogStroke) => void;
+  /** Scene switches fly through the clouds (the players; the GM switches at once). */
+  passages: boolean;
 }
 
 export interface ArenaStageProps extends ArenaStageHookProps {

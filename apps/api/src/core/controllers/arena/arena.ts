@@ -28,12 +28,14 @@ import {
   updateArenaTokensInputSchema,
   removeTurnEntries,
   visibleTurnOrder,
+  encodeFogMask,
 } from "@magista/shared";
 
 import { arenaSceneModels } from "@/core/models/arenaScene";
 import { arenaSceneFolderModels } from "@/core/models/arenaSceneFolder";
 import { arenaTokenModels } from "@/core/models/arenaToken";
 import { arenaTurnModels } from "@/core/models/arenaTurn";
+import { arenaWorldModels } from "@/core/models/arenaWorld";
 import { characterModels } from "@/core/models/character";
 import { accountModels } from "@/core/models/account";
 import { imageAssets } from "@/core/controllers/mediaAsset";
@@ -71,6 +73,7 @@ export function createArenaController({
   accounts,
   images,
   assets,
+  worlds,
 }: IArenaControllerDeps): IArenaController {
   const failed = (action: string, error: unknown) => {
     console.error(`${action} failed:`, error);
@@ -175,26 +178,48 @@ export function createArenaController({
     }));
   };
 
-  const getView: IArenaController["getView"] = async (viewer, requestedSceneId) => {
-    const wantsScene =
-      viewer.role === "GM" && requestedSceneId !== undefined && requestedSceneId !== "";
+  const getView: IArenaController["getView"] = async (viewer, requestedSceneId, requestedWorld) => {
+    const isGm = viewer.role === "GM";
+    const wantsScene = isGm && requestedSceneId !== undefined && requestedSceneId !== "";
     const requestedId = wantsScene && isId(requestedSceneId) ? requestedSceneId : null;
     if (wantsScene && !requestedId) return { error: arenaErrors.sceneNotFound };
     try {
       await measureOldMaps();
-      const activeSceneId = await scenes.findActiveSceneId();
+      const live = await scenes.findLiveState();
+      const showWorld = isGm
+        ? requestedWorld === "1" || (!wantsScene && live.worldMapLive)
+        : live.worldMapLive;
+      const accessible = isGm ? [] : await characters.listAccessibleIds(viewer.accountId);
+      if (showWorld) {
+        const stored = await worlds.findWorld();
+        return {
+          message: "Arena carregada",
+          payload: {
+            activeSceneId: isGm ? live.sceneId : null,
+            scene: null,
+            tokens: [],
+            controllableCharacterIds: accessible,
+            statuses: {},
+            turnOrder: null,
+            worldLive: live.worldMapLive,
+            world: {
+              party: stored.party,
+              fog: encodeFogMask(stored.fog),
+              fogVersion: stored.fogVersion,
+            },
+            ...(isGm ? { statusAccess: {} } : {}),
+          },
+        };
+      }
+      const activeSceneId = live.worldMapLive ? null : live.sceneId;
       const targetId = requestedId ?? activeSceneId;
       const scene = targetId ? await scenes.findById(targetId) : null;
       if (requestedId && !scene) return { error: arenaErrors.sceneNotFound };
-      const list = scene
-        ? await tokens.listByScene(scene.id, { includeHidden: viewer.role === "GM" })
-        : [];
-      const accessible =
-        viewer.role === "GM" ? [] : await characters.listAccessibleIds(viewer.accountId);
+      const list = scene ? await tokens.listByScene(scene.id, { includeHidden: isGm }) : [];
       const controllableCharacterIds = accessible;
-      const shownScene = scene && viewer.role !== "GM" ? { ...scene, folderId: null } : scene;
+      const shownScene = scene && !isGm ? { ...scene, folderId: null } : scene;
       const statusRows = scene
-        ? await tokens.listStatuses({ sceneId: scene.id, includeHidden: viewer.role === "GM" })
+        ? await tokens.listStatuses({ sceneId: scene.id, includeHidden: isGm })
         : [];
       const statuses = Object.fromEntries(
         statusRows
@@ -213,13 +238,15 @@ export function createArenaController({
       return {
         message: "Arena carregada",
         payload: {
-          activeSceneId,
+          activeSceneId: isGm ? live.sceneId : activeSceneId,
           scene: shownScene,
           tokens: list,
           controllableCharacterIds,
           statuses,
           turnOrder,
-          ...(viewer.role === "GM"
+          worldLive: live.worldMapLive,
+          world: null,
+          ...(isGm
             ? { statusAccess: Object.fromEntries(statusRows.map((row) => [row.id, row.access])) }
             : {}),
         },
@@ -235,6 +262,19 @@ export function createArenaController({
       return { message: "Cenas carregadas", payload: await scenes.list() };
     } catch (error) {
       return failed("listScenes", error);
+    }
+  };
+
+  const listMapUrls: IArenaController["listMapUrls"] = async () => {
+    try {
+      const [all, live] = await Promise.all([scenes.list(), scenes.findLiveState()]);
+      const urls = new Set<string>();
+      const active = all.find((scene) => scene.id === live.sceneId)?.mapUrl;
+      if (active) urls.add(active);
+      for (const scene of all) if (scene.mapUrl) urls.add(scene.mapUrl);
+      return { message: "Mapas carregados", payload: [...urls] };
+    } catch (error) {
+      return failed("listMapUrls", error);
     }
   };
 
@@ -805,6 +845,7 @@ export function createArenaController({
     characterStatusDeliveries,
     getView,
     listScenes,
+    listMapUrls,
     listLibrary,
     createFolder,
     renameFolder,
@@ -835,4 +876,5 @@ export const arenaController = createArenaController({
   accounts: accountModels,
   images: arenaImages,
   assets: imageAssets,
+  worlds: arenaWorldModels,
 });

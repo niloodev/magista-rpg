@@ -1,6 +1,10 @@
 import type { IArenaFolder, IArenaScene } from "@magista/shared";
 
+import type { WorldMapRowProps } from "../../molecules";
+
 export interface SceneLibraryProps {
+  /** The world map row pinned above the scenes. */
+  world: Omit<WorldMapRowProps, "inert">;
   liveSceneId: string | null;
   viewingSceneId: string | null;
   onPreview: (sceneId: string) => void;

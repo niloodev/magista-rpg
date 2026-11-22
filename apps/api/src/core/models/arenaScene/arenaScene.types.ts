@@ -5,6 +5,11 @@ export interface IArenaSceneMapChange {
   previousKey: string | null;
 }
 
+export interface IArenaLiveState {
+  sceneId: string | null;
+  worldMapLive: boolean;
+}
+
 export interface IArenaSceneModels {
   list: () => Promise<IArenaScene[]>;
   findById: (id: string) => Promise<IArenaScene | null>;
@@ -27,6 +32,10 @@ export interface IArenaSceneModels {
   findUnmeasuredMaps: () => Promise<{ id: string; mapKey: string }[]>;
   /** Board of each scene found, by id. */
   findBoards: (ids: string[]) => Promise<Map<string, IArenaBounds>>;
+  /** The scene the players see: null while the world map is live. */
   findActiveSceneId: () => Promise<string | null>;
+  /** The stored scene chosen for the table and whether the world map is live in its place. */
+  findLiveState: () => Promise<IArenaLiveState>;
+  /** Puts a scene live (or nothing) and takes the world map off the air. */
   setActiveScene: (id: string | null) => Promise<void>;
 }

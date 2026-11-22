@@ -72,3 +72,31 @@ export const FIGURE_BRACKET_RATIO = 0.35;
 
 /** Opacity of a name hidden from the players, as the GM sees it. */
 export const ARENA_LABEL_FAINT_ALPHA = 0.4;
+
+/** Pace of the loop while only ambient things move (the clouds of the world map, the party token colors). */
+export const ARENA_AMBIENT_FRAME_MS = 33;
+
+/**
+ * The camera of the flight through the clouds: how far it pulls away taking off up (`rise`) or dives toward the
+ * party taking off down (`dive`), and where it starts landing: close over the party on the world map (`landAbove`)
+ * or high above a scene (`landBelow`), as zoom factors of its final camera.
+ */
+export const ARENA_PASSAGE_CAMERA = { rise: 0.3, dive: 4, landAbove: 5, landBelow: 0.3 } as const;
+
+/** Brush outline drawn under the pointer while painting the fog. */
+export const ARENA_BRUSH_CURSOR = { hide: 0xf07a9b, reveal: 0x2dd4bf, width: 1.5 } as const;
+
+/** Smallest and largest size of the party token on screen (pixels), whatever the zoom. */
+export const ARENA_PARTY_SCREEN = { min: 28, max: 44 } as const;
+
+/** How long after the board opens the world map shaders and texture are prepared (ms), out of the first frames. */
+export const ARENA_WARM_UP_DELAY_MS = 700;
+
+/** Largest side of the world map texture in the light mode (a quarter of the memory of the full one). */
+export const ARENA_WORLD_LITE_TEXTURE = 2048;
+
+/** Points of each animation's timeline (ms) the warm-up draws, so the pieces that start late are created too. */
+export const ARENA_WARM_STEPS_MS = [0, 250, 600, 1100, 1800, 2700, 3800] as const;
+
+/** Size of the stand-in token the warm-up plays the animations on (map pixels). */
+export const ARENA_WARM_TOKEN_SIZE = 140;

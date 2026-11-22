@@ -1,4 +1,4 @@
-import type { IArenaToken, IArenaView } from "@magista/shared";
+import { WORLD_PARTY_ID, type IArenaToken, type IArenaView } from "@magista/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -68,6 +68,8 @@ const view: IArenaView = {
   controllableCharacterIds: ["c-ana"],
   statuses: { ana: { health: { current: 4, max: 10 }, sanity: { current: null, max: null } } },
   turnOrder: null,
+  worldLive: false,
+  world: null,
 };
 
 const media = (path: string | null) => (path ? `http://api${path}` : null);
@@ -416,5 +418,30 @@ describe("pickAttacker", () => {
     expect(pickAttacker(options, "", false)).toBe("");
     expect(pickAttacker(options, "bruno", false)).toBe("bruno");
     expect(pickAttacker(options, "gone", false)).toBe("");
+  });
+});
+
+describe("toRenderTokens on the world map", () => {
+  const world: IArenaView = {
+    ...view,
+    scene: null,
+    tokens: [],
+    worldLive: false,
+    world: { party: { x: 40, y: 60 }, fog: "", fogVersion: 0 },
+  };
+
+  it("draws only the party token, movable by players only while the world map is live", () => {
+    const [party] = toRenderTokens(world, false, (path) => path);
+    expect(party).toMatchObject({
+      id: WORLD_PARTY_ID,
+      party: true,
+      x: 40,
+      y: 60,
+      controllable: false,
+    });
+    expect(
+      toRenderTokens({ ...world, worldLive: true }, false, (path) => path)[0]?.controllable,
+    ).toBe(true);
+    expect(toRenderTokens(world, true, (path) => path)[0]?.controllable).toBe(true);
   });
 });

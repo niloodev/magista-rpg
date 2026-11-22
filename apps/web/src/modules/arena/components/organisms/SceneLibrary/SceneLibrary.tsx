@@ -7,7 +7,7 @@ import { FolderTree } from "@/modules/library/components";
 import { Button, Icon } from "@/shared/components/atoms";
 import { ConfirmDialog } from "@/shared/components/molecules";
 
-import { SceneLibrarySkeleton } from "../../molecules";
+import { SceneLibrarySkeleton, WorldMapRow } from "../../molecules";
 import { SceneBoardDialog } from "../SceneBoardDialog";
 import { SceneFormDialog } from "../SceneFormDialog";
 import { useSceneLibrary } from "./SceneLibrary.hook";
@@ -63,6 +63,7 @@ export const SceneLibrary = memo(function SceneLibrary(props: SceneLibraryProps)
           {SCENE_TEXTS.newFolder}
         </Button>
       </div>
+      <WorldMapRow {...props.world} />
       {notice && (
         <p
           role="status"

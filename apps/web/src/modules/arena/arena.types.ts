@@ -39,6 +39,10 @@ export interface IArenaStageControls {
   pointerWorld: () => IArenaPoint | null;
   retryMap: () => void;
   playEffects: (effects: IArenaEffect[]) => void;
+  /**
+   * Warms every animation of the board out of sight (waits for the board to exist; resolves at once without one).
+   */
+  warmEffects: (onProgress: (ratio: number) => void) => Promise<void>;
 }
 
 /** One action of "Aplicar mudança". */
@@ -172,4 +176,19 @@ export interface IArenaTurnMenuActions {
   onRoll: () => void;
   onAdd: () => void;
   onRemove: () => void;
+}
+
+/** What the GM's left button does on the world map: move the party, or paint the fog. */
+export type WorldFogTool = "move" | "hide" | "reveal";
+
+/** The fog tools of the world map as the GM's panel shows them. */
+export interface IWorldFogTools {
+  tool: WorldFogTool;
+  radius: number;
+  playerView: boolean;
+  pending: boolean;
+  onTool: (tool: WorldFogTool) => void;
+  onRadius: (radius: number | null) => void;
+  onPlayerView: (playerView: boolean) => void;
+  onFill: (mode: "hide" | "reveal") => void;
 }

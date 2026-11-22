@@ -19,6 +19,7 @@ import {
 
 import { apiRequest } from "@/core/services/http";
 import type { TableSocket } from "@/core/services/socket";
+import { ARENA_WORLD_VIEW } from "@/modules/arena/arena.constants";
 import { TABLE_ACK_TIMEOUT_MS, TABLE_OFFLINE_ERROR } from "@/modules/table/table.constants";
 
 import type {
@@ -28,10 +29,16 @@ import type {
 } from "./arenaRequests.types";
 
 /**
- * Loads what this account sees in the Arena: the live scene (the GM may ask for another one) and its tokens.
+ * Loads what this account sees in the Arena: the live scene or the world map (the GM may ask for another scene,
+ * or for the world map with `ARENA_WORLD_VIEW`) and its tokens.
  */
 export function fetchArena(sceneId?: string): Promise<ControllerResult<IArenaView>> {
-  const query = sceneId ? `?sceneId=${encodeURIComponent(sceneId)}` : "";
+  const query =
+    sceneId === ARENA_WORLD_VIEW
+      ? "?world=1"
+      : sceneId
+        ? `?sceneId=${encodeURIComponent(sceneId)}`
+        : "";
   return apiRequest<IArenaView>(`/arena${query}`);
 }
 

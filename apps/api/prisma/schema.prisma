@@ -195,6 +195,11 @@ model ArenaState {
   singleton     Boolean     @unique @default(true)
   activeSceneId String?     @unique @db.Uuid
   activeScene   ArenaScene? @relation(fields: [activeSceneId], references: [id], onDelete: SetNull)
+  worldMapLive  Boolean     @default(false)
+  partyX        Float       @default(1000)
+  partyY        Float       @default(728.5)
+  fogMask       Bytes?
+  fogVersion    Int         @default(0)
   updatedAt     DateTime    @updatedAt
 
   @@map("arena_state")

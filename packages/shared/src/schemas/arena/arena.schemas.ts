@@ -3,9 +3,11 @@ import { z } from "zod";
 import { resourceSchema, tokenStyleSchema } from "../character/character.schemas";
 import { ARENA_CHANGE_KINDS, ARENA_RESOURCE_KEYS, arenaEffectStyleSchema } from "./arena.effects";
 import { arenaInitiativeBonusSchema, arenaTurnOrderSchema } from "./arena.turns";
+import { arenaWorldSchema } from "./arena.world";
 
 export * from "./arena.effects";
 export * from "./arena.turns";
+export * from "./arena.world";
 
 export const ARENA_NAME_MAX_LENGTH = 60;
 
@@ -124,6 +126,10 @@ export const arenaViewSchema = z.object({
   statusAccess: z.record(z.string(), arenaTokenStatusAccessSchema).optional(),
   /** Turn order of the scene, without the tokens the viewer cannot see (null without a scene). */
   turnOrder: arenaTurnOrderSchema.nullable(),
+  /** Whether the world map is live (it then takes the place of the live scene for the players). */
+  worldLive: z.boolean(),
+  /** The world map when this view shows it (then without scene, tokens and turn order). */
+  world: arenaWorldSchema.nullable(),
 });
 
 export const createArenaSceneInputSchema = z.object({

@@ -49,6 +49,8 @@ const view: IArenaView = {
       { tokenId: "bruno", initiative: null },
     ],
   },
+  worldLive: false,
+  world: null,
 };
 
 const media = (path: string | null) => (path ? `http://api${path}` : null);

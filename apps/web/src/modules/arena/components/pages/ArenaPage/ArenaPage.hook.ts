@@ -12,6 +12,8 @@ import {
   type IArenaSceneEvent,
   type IArenaTokenPatch,
   type IMoveArenaTokenInput,
+  WORLD_MAP_BOARD,
+  WORLD_PARTY_ID,
 } from "@magista/shared";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -32,6 +34,9 @@ import {
   ARENA_SELECTION_TEXTS,
   ARENA_SIZE_COMMIT_MS,
   ARENA_SELECTION_BAR_SLOT,
+  ARENA_WORLD_VIEW,
+  WORLD_MAP_URL,
+  WORLD_TEXTS,
 } from "@/modules/arena/arena.constants";
 import type {
   ArenaDockSide,
@@ -66,7 +71,9 @@ import {
   useArenaTokenActions,
   useArenaTokenPlacement,
   useArenaTokenStatus,
+  useArenaAssets,
   useArenaTurns,
+  useArenaWorld,
 } from "@/modules/arena/hooks";
 import { sheetNames } from "@/modules/sheet/store";
 import { useSkeletonHintActions } from "@/modules/shell/providers";
@@ -141,6 +148,17 @@ export function useArenaPage() {
     } else store.getState().finishArenaLoad(result.payload);
   }, [store]);
 
+  const { assetScreen } = useArenaAssets(desktop, controlsRef);
+  const reload = useStableCallback(() => void load());
+  const world = useArenaWorld({
+    isGm,
+    onAnnounce: setAnnouncement,
+    onError: setActionError,
+    onReload: reload,
+  });
+  const worldView = world.world;
+  const moveParty = world.moveParty;
+
   const updateSidebar = (patch: Partial<IArenaSidebarState>, persist = true) => {
     const next = { ...sidebar, ...patch };
     setSidebar(next);
@@ -213,7 +231,7 @@ export function useArenaPage() {
   const trayTokens = useMemo(
     () =>
       renderTokens
-        .filter((token) => !isGm && token.controllable)
+        .filter((token) => !isGm && token.controllable && !token.party)
         .map(({ id, name, imageUrl, style, tone, hidden }) => {
           const token = view?.tokens.find((entry) => entry.id === id);
           return {
@@ -228,7 +246,7 @@ export function useArenaPage() {
     [renderTokens, isGm, view],
   );
 
-  const sceneName = view?.scene?.name ?? null;
+  const sceneName = worldView ? WORLD_TEXTS.name : (view?.scene?.name ?? null);
   const trayCount = trayTokens.length;
 
   useEffect(() => {
@@ -243,9 +261,13 @@ export function useArenaPage() {
   const commitMoves = useCallback(
     async (moves: IMoveArenaTokenInput[]) => {
       if (moves.length === 0) return;
-      const rounded = moves.map((move) => ({ ...move, ...roundPoint(move) }));
-      for (const { tokenId } of rounded) pendingNudge.current.delete(tokenId);
+      const all = moves.map((move) => ({ ...move, ...roundPoint(move) }));
+      for (const { tokenId } of all) pendingNudge.current.delete(tokenId);
       if (pendingNudge.current.size === 0) window.clearTimeout(nudgeTimer.current);
+      const party = all.find((move) => move.tokenId === WORLD_PARTY_ID);
+      if (party) void moveParty(party);
+      const rounded = all.filter((move) => move.tokenId !== WORLD_PARTY_ID);
+      if (rounded.length === 0) return;
       store.getState().placeArenaTokens(rounded);
       const result = await moveArenaTokens(socket, { moves: rounded });
       if (!result.ok) {
@@ -259,7 +281,7 @@ export function useArenaPage() {
       if (first)
         setAnnouncement(ARENA_MOVED_LABEL(tokenDisplayName(first, isGm), result.tokens.length));
     },
-    [socket, store, load, isGm],
+    [socket, store, load, isGm, moveParty],
   );
 
   const onSelect = useCallback(
@@ -358,7 +380,9 @@ export function useArenaPage() {
         boundsRef.current,
       ),
     }));
-    store.getState().placeArenaTokens(moves);
+    const party = moves.find((move) => move.tokenId === WORLD_PARTY_ID);
+    if (party) store.getState().applyWorldParty({ x: party.x, y: party.y });
+    store.getState().placeArenaTokens(moves.filter((move) => move.tokenId !== WORLD_PARTY_ID));
     for (const { tokenId, x, y } of moves) pendingNudge.current.set(tokenId, { x, y });
     window.clearTimeout(nudgeTimer.current);
     nudgeTimer.current = window.setTimeout(() => {
@@ -368,7 +392,8 @@ export function useArenaPage() {
     return true;
   };
 
-  const liveSceneId = view?.activeSceneId ?? null;
+  const worldLive = view?.worldLive ?? false;
+  const liveSceneId = worldLive ? null : (view?.activeSceneId ?? null);
   const viewingSceneId = view?.scene?.id ?? null;
 
   const onPreviewScene = useStableCallback((sceneId: string) =>
@@ -386,9 +411,9 @@ export function useArenaPage() {
     setAnnouncement(ARENA_PREVIEW_TEXTS.wentLive);
   };
 
-  const broadcastLive = view?.scene ? view.scene.id === view.activeSceneId : false;
-  const broadcastHasLive = (view?.activeSceneId ?? null) !== null;
-  const broadcastShown = isGm && Boolean(view?.scene);
+  const broadcastLive = worldView ? worldLive : view?.scene ? view.scene.id === liveSceneId : false;
+  const broadcastHasLive = worldLive || liveSceneId !== null;
+  const broadcastShown = isGm && (Boolean(view?.scene) || Boolean(worldView));
   const broadcast = useMemo(
     () => (broadcastShown ? { live: broadcastLive, hasLive: broadcastHasLive } : null),
     [broadcastShown, broadcastLive, broadcastHasLive],
@@ -449,7 +474,8 @@ export function useArenaPage() {
   const onOpenProfile = useStableCallback(() => setProfileOpen(true));
   const onRequestRemove = useStableCallback(() => setConfirmRemove(true));
   const onGoLiveViewed = useStableCallback(() => {
-    if (viewingSceneId) void onGoLive(viewingSceneId);
+    if (worldView) void world.setLive(true);
+    else if (viewingSceneId) void onGoLive(viewingSceneId);
   });
   const onBackToLive = useStableCallback(() => store.getState().setArenaViewScene(null));
   const onZoomIn = useStableCallback(() => controlsRef.current?.zoomIn());
@@ -474,17 +500,27 @@ export function useArenaPage() {
       if (character) placement.dropCharacter(character, point);
     },
   );
+  const showsWorld = worldView !== null;
   const stageScene = useMemo(
     () =>
-      scene
+      showsWorld
         ? {
-            id: scene.id,
-            mapUrl: toMediaUrl(scene.mapUrl),
-            width: scene.width,
-            height: scene.height,
+            id: ARENA_WORLD_VIEW,
+            kind: "world" as const,
+            mapUrl: WORLD_MAP_URL,
+            width: WORLD_MAP_BOARD.width,
+            height: WORLD_MAP_BOARD.height,
           }
-        : null,
-    [scene],
+        : scene
+          ? {
+              id: scene.id,
+              kind: "scene" as const,
+              mapUrl: toMediaUrl(scene.mapUrl),
+              width: scene.width,
+              height: scene.height,
+            }
+          : null,
+    [scene, showsWorld],
   );
 
   const onOpenSelectedSheet = useStableCallback(() => {
@@ -561,9 +597,9 @@ export function useArenaPage() {
     onAnnounce: setAnnouncement,
     onError: setActionError,
   });
-  const onTokenMenu = useStableCallback((tokenId: string | null, client: IArenaPoint) =>
-    tokenActions.openMenu(tokenId, client),
-  );
+  const onTokenMenu = useStableCallback((tokenId: string | null, client: IArenaPoint) => {
+    if (!showsWorld) tokenActions.openMenu(tokenId, client);
+  });
 
   const onStageKeyDown = useStableCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const delta = arrowDelta(event.key);
@@ -623,13 +659,55 @@ export function useArenaPage() {
     action();
   });
 
+  const onWorldGoLive = useStableCallback(() => void world.setLive(true));
+  const onWorldReturn = useStableCallback(() => void world.setLive(false));
+  const canReturnToScene = worldLive && (view?.activeSceneId ?? null) !== null;
+  const worldRow = useMemo(
+    () => ({
+      live: worldLive,
+      viewing: showsWorld,
+      canReturn: canReturnToScene,
+      onPreview: world.previewWorld,
+      onGoLive: onWorldGoLive,
+      onReturn: onWorldReturn,
+    }),
+    [worldLive, showsWorld, canReturnToScene, world.previewWorld, onWorldGoLive, onWorldReturn],
+  );
+  const fillMode = world.confirmFill;
+  const fillConfirm = fillMode
+    ? {
+        title: fillMode === "hide" ? WORLD_TEXTS.confirmHideTitle : WORLD_TEXTS.confirmRevealTitle,
+        message:
+          fillMode === "hide" ? WORLD_TEXTS.confirmHideMessage : WORLD_TEXTS.confirmRevealMessage,
+        confirmLabel: fillMode === "hide" ? WORLD_TEXTS.hideAll : WORLD_TEXTS.revealAll,
+      }
+    : null;
+
   return {
+    assetScreen,
+    contentInert: assetScreen !== null && !assetScreen.closing,
     isGm,
     status,
     loadError: error,
     scene,
+    sceneName,
+    mapShown: Boolean(scene) || showsWorld,
     stageScene,
-    stageLabel: scene ? ARENA_STAGE_LABEL(scene.name, renderTokens.length) : "",
+    stageLabel: showsWorld
+      ? WORLD_TEXTS.stageLabel
+      : scene
+        ? ARENA_STAGE_LABEL(scene.name, renderTokens.length)
+        : "",
+    worldFog: world.worldFog,
+    fogAlpha: world.fogAlpha,
+    brush: world.brush,
+    onFogStroke: world.onFogStroke,
+    fogTools: world.fogTools,
+    fillConfirm,
+    onConfirmFill: () => void world.onConfirmFill(),
+    onCancelFill: world.onCancelFill,
+    worldRow,
+    placementBlocked: showsWorld ? WORLD_TEXTS.noTokens : null,
     empty: isGm ? ARENA_EMPTY_TEXTS.gm : ARENA_EMPTY_TEXTS.player,
     notice: actionError ?? (status === "ready" ? error : null),
     mapFailed,

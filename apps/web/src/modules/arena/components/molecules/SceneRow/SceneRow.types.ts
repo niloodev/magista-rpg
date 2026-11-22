@@ -15,4 +15,6 @@ export interface SceneRowProps {
   handle?: ReactNode;
   dropPosition?: DropPosition | null;
   dimmed?: boolean;
+  /** False draws the name without the `h3` (an inert copy inside a skeleton has no headings). */
+  heading?: boolean;
 }

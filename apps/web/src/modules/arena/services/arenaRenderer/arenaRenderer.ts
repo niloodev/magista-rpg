@@ -1,5 +1,10 @@
 import {
+  ARENA_EFFECT_STYLES,
+  WORLD_MAP_BOARD,
+  WORLD_PARTY_ID,
+  type ArenaEffectStyle,
   clampToMap,
+  clampToWorld,
   type IArenaBounds,
   type IArenaEffect,
   type IArenaPoint,
@@ -11,18 +16,33 @@ import {
   Container,
   type FederatedPointerEvent,
   Graphics,
+  ImageSource,
   Rectangle,
+  RenderTexture,
   Sprite,
   Text,
   Texture,
 } from "pixi.js";
 
+import { loadAsset } from "@/core/services/assets";
 import { fetchMediaBlob } from "@/core/services/http";
-import { ARENA_EMPTY_BOUNDS } from "@/modules/arena/arena.constants";
+import {
+  ARENA_EMPTY_BOUNDS,
+  WORLD_MAP_URL,
+  WORLD_PARTY_COLORS,
+} from "@/modules/arena/arena.constants";
 import { ArenaStatusBars } from "@/modules/arena/services/arenaStatusBars";
 import { ArenaFxScreen } from "@/modules/arena/services/arenaFxScreen";
 import { ArenaFxTextures } from "@/modules/arena/services/arenaFxTextures";
 import { ArenaTurnAura } from "@/modules/arena/services/arenaTurnAura";
+import { ArenaPartyToken } from "@/modules/arena/services/arenaPartyToken";
+import { ArenaWorldClouds } from "@/modules/arena/services/arenaWorldClouds";
+import {
+  ArenaWorldTransition,
+  easeInFlight,
+  easeOutFlight,
+  type WorldFlight,
+} from "@/modules/arena/services/arenaWorldTransition";
 import {
   ArenaShockwaves,
   createAttackerEffect,
@@ -59,9 +79,19 @@ import {
   FIGURE_BRACKET_RATIO,
   ARENA_LABEL_FAINT_ALPHA,
   ARENA_WHEEL_SENSITIVITY,
+  ARENA_AMBIENT_FRAME_MS,
+  ARENA_BRUSH_CURSOR,
+  ARENA_PASSAGE_CAMERA,
+  ARENA_PARTY_SCREEN,
+  ARENA_WARM_STEPS_MS,
+  ARENA_WARM_TOKEN_SIZE,
+  ARENA_WARM_UP_DELAY_MS,
+  ARENA_WORLD_LITE_TEXTURE,
 } from "./arenaRenderer.constants";
 import type {
+  ArenaSceneKind,
   IArenaCamera,
+  IArenaWorldBrush,
   IArenaRenderer,
   IArenaRendererOptions,
   IArenaRenderScene,
@@ -87,6 +117,7 @@ import {
   unitDirection,
   visibleCenterPoint,
   zoomAt,
+  tweenCamera,
 } from "./arenaRenderer.utils";
 
 interface ITokenView {
@@ -114,7 +145,33 @@ interface ITokenView {
   holdStatusUntil: number;
   /** The turn mark (floating and the energy ring), on the token whose turn it is or fading off the last one. */
   aura: ArenaTurnAura | null;
+  /** The rune of the party token (world map only). */
+  party: ArenaPartyToken | null;
+  /** Extra scale that keeps the party token between a smallest and a largest size on screen. */
+  screenScale: number;
 }
+
+interface ICameraTween {
+  from: IArenaCamera;
+  to: IArenaCamera;
+  start: number;
+  ms: number;
+  ease: (t: number) => number;
+  /** Screen point whose world point glides between the two cameras (the middle of the view by default). */
+  anchor: IArenaPoint;
+}
+
+interface IPaintState {
+  pointerId: number;
+  last: IArenaPoint;
+}
+
+/**
+ * How a scene switch plays: a flight through the clouds (scene and world map trade places), only the landing (the
+ * world map shown first), gathering the clouds again (a switch while they clear) or nothing new (a switch while
+ * they gather: the flight lands on the newest map).
+ */
+type ArenaPassage = "fly" | "land" | "regather" | "continue" | null;
 
 interface IDragState {
   pointerId: number;
@@ -215,6 +272,43 @@ async function loadTokenTexture(url: string, maxSide: number): Promise<Texture> 
 }
 
 /**
+ * Decodes a fixed image of the app (the world map) from the bytes the asset loader already downloaded for the
+ * loading screen, no larger than `maxSize`. The texture keeps mipmaps, so the map stays crisp (not grainy) when the
+ * camera pulls back to the whole world.
+ */
+async function loadStaticTexture(url: string, maxSize: number): Promise<ILoadedTexture<Texture>> {
+  const blob = await loadAsset(url);
+  const original = await createImageBitmap(blob);
+  const { width, height } = original;
+  const target = fitTextureSize(width, height, maxSize);
+  let bitmap = original;
+  if (target.scaled) {
+    try {
+      bitmap = await createImageBitmap(blob, {
+        resizeWidth: target.width,
+        resizeHeight: target.height,
+        resizeQuality: "high",
+      });
+    } finally {
+      original.close();
+    }
+  }
+  try {
+    const source = new ImageSource({
+      resource: bitmap,
+      autoGenerateMipmaps: true,
+      scaleMode: "linear",
+      mipmapFilter: "linear",
+      maxAnisotropy: 8,
+    });
+    return { texture: new Texture({ source }), width, height };
+  } catch (error) {
+    bitmap.close();
+    throw error;
+  }
+}
+
+/**
  * Destroys a texture and closes the decoded bitmap behind it (Pixi only drops its reference, leaving the
  * memory of a large map until the garbage collector runs).
  */
@@ -275,6 +369,31 @@ export class ArenaRenderer implements IArenaRenderer {
   private urgent = true;
   /** Only the turn aura moved in the last frame, so the loop may run at a calmer pace. */
   private calmAura = false;
+  /** Only ambient things (clouds, the party colors) moved in the last frame. */
+  private calmAmbient = false;
+  private sceneKind: ArenaSceneKind | null = null;
+  private clouds: ArenaWorldClouds | null = null;
+  private worldFog: Uint8Array | null = null;
+  private fogAlpha = 1;
+  private transition: ArenaWorldTransition | null = null;
+  /** Tokens set while the clouds close over the old map; they show once the new map is under the clouds. */
+  private heldTokens: IArenaRenderToken[] | null = null;
+  private cameraTween: ICameraTween | null = null;
+  private brush: IArenaWorldBrush | null = null;
+  private paint: IPaintState | null = null;
+  private readonly brushCursor = new Graphics();
+  private brushClient: IArenaPoint | null = null;
+  private wakeTimer = 0;
+  /** The world map texture, kept while the renderer lives (switching back to the world map uploads nothing). */
+  private worldTexture: Promise<ILoadedTexture<Texture> | null> | null = null;
+  private worldLoaded: ILoadedTexture<Texture> | null = null;
+  private warmTimer = 0;
+  /** Whether scene switches fly through the clouds (the players); the GM switches at once. */
+  private passagesEnabled = true;
+  private warmedWorld = false;
+  private warmedEffects: Promise<void> | null = null;
+  /** Real animations that arrived during the warm-up, played once it has cleaned up after itself. */
+  private heldEffects: IArenaEffect[][] | null = null;
 
   private constructor(
     private readonly app: Application,
@@ -283,7 +402,7 @@ export class ArenaRenderer implements IArenaRenderer {
     private readonly maxTextureSize: number,
   ) {
     this.world.addChild(this.mapLayer, this.tokenLayer);
-    this.uiLayer.addChild(this.selectionFrame, this.marqueeBox);
+    this.uiLayer.addChild(this.selectionFrame, this.marqueeBox, this.brushCursor);
     for (const corner of RESIZE_CORNERS) {
       const handle = new Graphics()
         .rect(-ARENA_HANDLE_SIZE / 2, -ARENA_HANDLE_SIZE / 2, ARENA_HANDLE_SIZE, ARENA_HANDLE_SIZE)
@@ -306,11 +425,13 @@ export class ArenaRenderer implements IArenaRenderer {
     app.stage.on("pointercancel", this.onPointerCancel);
     app.canvas.addEventListener("wheel", this.onWheel, { passive: false });
     app.canvas.addEventListener("contextmenu", this.preventMenu);
+    app.canvas.addEventListener("pointerleave", this.onCanvasLeave);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     window.addEventListener("blur", this.onWindowBlur);
     this.observer = new ResizeObserver(this.onResize);
     this.observer.observe(host);
+    this.warmTimer = window.setTimeout(this.warmUp, ARENA_WARM_UP_DELAY_MS);
   }
 
   /**
@@ -358,31 +479,463 @@ export class ArenaRenderer implements IArenaRenderer {
       return;
     }
     const version = ++this.sceneVersion;
+    const passage = sceneChanged ? this.passageTo(scene?.kind ?? null) : null;
+    if (passage === "fly") this.takeOff(this.sceneKind === "world" ? "in" : "out");
+    if (passage === "regather") this.regather();
+    if (passage === "land" && !this.transition) this.coverForLanding();
     this.scene = scene;
     this.loadingMap = true;
     this.sceneId = scene?.id ?? null;
     this.mapUrl = mapUrl;
     let loaded: ILoadedTexture<Texture> | null = null;
     if (mapUrl) {
-      loaded = await loadTexture(mapUrl, this.maxTextureSize).catch(() => null);
+      loaded =
+        scene?.kind === "world"
+          ? await this.loadWorldTexture(mapUrl)
+          : await loadTexture(mapUrl, this.maxTextureSize).catch(() => null);
       if (this.destroyed || version !== this.sceneVersion) {
-        destroyTexture(loaded?.texture);
+        if (loaded && !this.isWorldTexture(loaded.texture)) destroyTexture(loaded.texture);
         return;
       }
       if (!loaded) this.mapUrl = undefined;
+    }
+    if (this.transition) {
+      await this.transition.whenCovered();
+      if (this.destroyed || version !== this.sceneVersion) {
+        if (loaded && !this.isWorldTexture(loaded.texture)) destroyTexture(loaded.texture);
+        return;
+      }
     }
     this.loadingMap = false;
     const current = this.scene;
     this.options.callbacks.onMapError(Boolean(mapUrl) && !loaded);
     this.mapLayer.removeChildren().forEach((child) => child.destroy());
-    destroyTexture(this.mapTexture);
+    if (this.mapTexture && !this.isWorldTexture(this.mapTexture)) destroyTexture(this.mapTexture);
     this.mapTexture = loaded?.texture ?? null;
     this.bounds = current ? { width: current.width, height: current.height } : ARENA_EMPTY_BOUNDS;
     this.mapLayer.addChild(loaded ? new Sprite(loaded.texture) : new Graphics());
+    this.sceneKind = current?.kind ?? null;
+    this.syncClouds();
     this.drawBoard();
+    const held = this.heldTokens;
+    this.heldTokens = null;
+    if (held) this.setTokens(held);
     if (sceneChanged) this.camera = this.storedCamera() ?? this.fittedCamera();
-    this.applyCamera();
+    if (this.transition) this.land();
+    this.applyCamera(false);
     this.options.callbacks.onSceneReady(this.bounds);
+  };
+
+  /**
+   * The world map texture: decoded once from the downloaded bytes and sent to the GPU right away (with its
+   * mipmaps), so the frame where it first shows does not stall the flight through the clouds.
+   */
+  private loadWorldTexture(url: string): Promise<ILoadedTexture<Texture> | null> {
+    const maxSize = this.options.lite ? ARENA_WORLD_LITE_TEXTURE : this.maxTextureSize;
+    this.worldTexture ??= loadStaticTexture(url, maxSize)
+      .then((loaded) => {
+        if (this.destroyed) {
+          destroyTexture(loaded.texture);
+          return null;
+        }
+        const system: unknown = this.app.renderer.texture;
+        if (system && typeof system === "object" && "initSource" in system) {
+          (system as { initSource: (source: unknown) => void }).initSource(loaded.texture.source);
+        }
+        this.worldLoaded = loaded;
+        return loaded;
+      })
+      .catch(() => {
+        this.worldTexture = null;
+        return null;
+      });
+    return this.worldTexture;
+  }
+
+  private isWorldTexture(texture: Texture): boolean {
+    return this.worldLoaded?.texture === texture;
+  }
+
+  /**
+   * Gets the world map ready while the Arena is idle: compiles the shaders of the clouds, of the flight and of the
+   * party token (drawing them once off screen; the compiled programs are cached) and decodes and uploads the world
+   * map, so the first flight to the world map does not stall in the middle.
+   */
+  private warmUp = (): void => {
+    window.clearTimeout(this.warmTimer);
+    if (this.destroyed || this.warmedWorld) return;
+    this.warmedWorld = true;
+    const stage = new Container();
+    const clouds = new ArenaWorldClouds({
+      lite: this.options.lite,
+      board: WORLD_MAP_BOARD,
+      seed: 1,
+    });
+    clouds.fitView({ x: 0, y: 0, width: 8, height: 8 });
+    const flight = new ArenaWorldTransition({
+      seed: 1,
+      lite: this.options.lite,
+      flight: "out",
+      size: () => ({ width: 8, height: 8 }),
+    });
+    flight.step(performance.now());
+    const party = new ArenaPartyToken({
+      host: this.fxHost(),
+      lite: this.options.lite,
+      seed: 1,
+      colors: WORLD_PARTY_COLORS,
+    });
+    party.layout(8, false);
+    party.step(performance.now());
+    stage.addChild(clouds.layer, flight.layer, party.back, party.body);
+    const target = RenderTexture.create({ width: 8, height: 8, resolution: 1 });
+    this.app.renderer.render({ container: stage, target });
+    target.destroy(true);
+    clouds.destroy();
+    flight.destroy();
+    party.destroy();
+    stage.destroy();
+    void this.loadWorldTexture(WORLD_MAP_URL);
+  };
+
+  /**
+   * How a switch to a map of `kind` plays: every switch of map flies the camera through the clouds (up from a scene,
+   * down onto a scene; entering the world map it lands pulling away from the party, leaving it it dives into the
+   * party); the world map shown first lands from the clouds. A switch during a flight never cancels it: while the clouds gather it lands on the newest map,
+   * and while they clear they gather again from where they are. Only for the players (the GM switches at once).
+   */
+  private passageTo(kind: ArenaSceneKind | null): ArenaPassage {
+    if (!this.passagesEnabled || kind === null) return null;
+    if (this.transition) return this.transition.departing ? "regather" : "continue";
+    if (this.sceneKind !== null) return "fly";
+    if (this.sceneKind === null && kind === "world") return "land";
+    return null;
+  }
+
+  private newTransition(flight: WorldFlight): ArenaWorldTransition {
+    const transition = new ArenaWorldTransition({
+      seed: this.effectSeed++,
+      lite: this.options.lite,
+      flight,
+      size: () => this.viewport(),
+    });
+    this.transition = transition;
+    const stage = this.app.stage;
+    stage.addChildAt(transition.layer, stage.getChildIndex(this.uiLayer));
+    return transition;
+  }
+
+  /** Where the party token is on the screen now, when it is on the board. */
+  private partyOnScreen(): IArenaPoint | null {
+    const party = this.sceneKind === "world" ? this.tokens.get(WORLD_PARTY_ID) : undefined;
+    if (!party) return null;
+    return {
+      x: party.display.x * this.camera.scale + this.camera.x,
+      y: party.display.y * this.camera.scale + this.camera.y,
+    };
+  }
+
+  /**
+   * The camera takes off: flying up (`out`) it pulls away from the middle of the view, flying down (`in`) it dives
+   * toward the party token, picking up speed while the clouds thicken to white; the tokens of the next map wait
+   * until the screen is white.
+   */
+  private takeOff(flight: WorldFlight): ArenaWorldTransition {
+    const focus = this.partyOnScreen() ?? visibleCenterPoint(this.viewport(), this.insets());
+    const now = performance.now();
+    const transition = this.newTransition(flight);
+    transition.approach(focus, now);
+    this.heldTokens = [...this.tokens.values()].map((view) => view.data);
+    const factor = flight === "in" ? ARENA_PASSAGE_CAMERA.dive : ARENA_PASSAGE_CAMERA.rise;
+    this.cameraTween = {
+      from: { ...this.camera },
+      to: zoomAt(this.camera, factor, focus),
+      start: now,
+      ms: transition.timing.approach,
+      ease: easeInFlight,
+      anchor: focus,
+    };
+    this.invalidate();
+    return transition;
+  }
+
+  /**
+   * A new switch while the clouds clear over the map that just landed: they thicken again from where they are and
+   * the camera takes off once more from where it is (diving toward the party on the world map, pulling away from a
+   * scene), so a quick back and forth reads as one continuous flight.
+   */
+  private regather(): void {
+    const transition = this.transition;
+    if (!transition) return;
+    const now = performance.now();
+    const flight: WorldFlight = this.sceneKind === "world" ? "in" : "out";
+    const focus = this.partyOnScreen() ?? visibleCenterPoint(this.viewport(), this.insets());
+    transition.regather(flight, focus, now);
+    this.heldTokens = [...this.tokens.values()].map((view) => view.data);
+    this.cameraTween = {
+      from: { ...this.camera },
+      to: zoomAt(
+        this.camera,
+        flight === "in" ? ARENA_PASSAGE_CAMERA.dive : ARENA_PASSAGE_CAMERA.rise,
+        focus,
+      ),
+      start: now,
+      ms: transition.timing.approach,
+      ease: easeInFlight,
+      anchor: focus,
+    };
+    this.invalidate();
+  }
+
+  /** The world map shown first: the screen starts white and the camera lands as soon as the map is in. */
+  private coverForLanding(): void {
+    this.newTransition("out").cover(
+      visibleCenterPoint(this.viewport(), this.insets()),
+      performance.now(),
+    );
+    this.heldTokens = [...this.tokens.values()].map((view) => view.data);
+  }
+
+  /**
+   * The camera lands on the new map while the clouds thin out. Flying up onto the world map it starts close over
+   * the party token and keeps pulling away until the whole world shows; flying down onto a scene it starts high
+   * above it and comes down to its camera; both slow down as they arrive.
+   */
+  private land(): void {
+    const transition = this.transition;
+    if (!transition) return;
+    const now = performance.now();
+    const target = this.sceneKind === "world" ? this.fittedCamera() : this.camera;
+    const party = this.sceneKind === "world" ? this.tokens.get(WORLD_PARTY_ID) : undefined;
+    const focus = party
+      ? {
+          x: party.target.x * target.scale + target.x,
+          y: party.target.y * target.scale + target.y,
+        }
+      : visibleCenterPoint(this.viewport(), this.insets());
+    transition.flight = this.sceneKind === "world" ? "out" : "in";
+    const factor =
+      transition.flight === "out" ? ARENA_PASSAGE_CAMERA.landAbove : ARENA_PASSAGE_CAMERA.landBelow;
+    const from = zoomAt(target, factor, focus);
+    this.camera = from;
+    transition.depart(focus, now);
+    this.cameraTween = {
+      from,
+      to: target,
+      start: transition.departStart,
+      ms: transition.timing.depart,
+      ease: easeOutFlight,
+      anchor: focus,
+    };
+    this.invalidate();
+  }
+
+  /** Creates the clouds of the world map when it shows, and drops them when a scene takes its place. */
+  private syncClouds(): void {
+    if (this.sceneKind === "world" && !this.clouds) {
+      this.clouds = new ArenaWorldClouds({
+        lite: this.options.lite,
+        board: WORLD_MAP_BOARD,
+        seed: this.effectSeed++,
+      });
+      this.world.addChildAt(this.clouds.layer, this.world.getChildIndex(this.tokenLayer));
+      this.clouds.setFogAlpha(this.fogAlpha);
+      if (this.worldFog) this.clouds.setFog(this.worldFog);
+      this.fitClouds();
+    } else if (this.sceneKind !== "world" && this.clouds) {
+      this.clouds.destroy();
+      this.clouds = null;
+    }
+  }
+
+  /**
+   * Plays every damage and healing animation once, on the target and on the attacker, out of sight (the loading
+   * screen covers the board) and at a few points of its timeline, drawing each into a tiny texture: their shaders
+   * compile, their textures and filters are created and the effect code is warm, so the first real blow of the
+   * session does not stall. Prepares the world map too. Once per renderer; nothing to do in the light mode (it plays
+   * no rich animation).
+   */
+  warmEffects = (onProgress: (ratio: number) => void): Promise<void> => {
+    this.warmUp();
+    if (this.options.lite || this.destroyed) {
+      onProgress(1);
+      return Promise.resolve();
+    }
+    this.warmedEffects ??= this.playWarmEffects(onProgress);
+    return this.warmedEffects;
+  };
+
+  private async playWarmEffects(onProgress: (ratio: number) => void): Promise<void> {
+    this.heldEffects = [];
+    try {
+      await this.runWarmEffects(onProgress);
+    } finally {
+      const held = this.heldEffects;
+      this.heldEffects = null;
+      if (!this.destroyed) for (const effects of held) this.playEffects(effects);
+    }
+  }
+
+  private async runWarmEffects(onProgress: (ratio: number) => void): Promise<void> {
+    const host = this.fxHost();
+    const target = RenderTexture.create({ width: 64, height: 64, resolution: 1 });
+    const holder = new Container();
+    const center = screenToWorld(this.camera, visibleCenterPoint(this.viewport(), this.insets()));
+    holder.position.set(center.x, center.y);
+    this.world.addChild(holder);
+    const parts = ARENA_EFFECT_STYLES.flatMap((style) => [
+      { style, attacker: false },
+      { style, attacker: true },
+    ]);
+    for (const [index, part] of parts.entries()) {
+      if (this.destroyed) break;
+      try {
+        this.warmEffect(part.style, part.attacker, holder, target, host);
+      } catch (error) {
+        console.warn(`Aquecimento do efeito ${part.style} falhou:`, error);
+      }
+      onProgress((index + 1) / parts.length);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    target.destroy(true);
+    if (!this.destroyed) {
+      holder.destroy({ children: true });
+      this.fxScreen?.forget();
+      this.shockwaves?.destroy();
+      this.shockwaves = null;
+      this.invalidate();
+    }
+  }
+
+  private warmEffect(
+    style: ArenaEffectStyle,
+    attacker: boolean,
+    holder: Container,
+    target: RenderTexture,
+    host: IArenaFxHost,
+  ): void {
+    const seed = this.effectSeed++;
+    const effect = attacker
+      ? createAttackerEffect(
+          {
+            style,
+            size: ARENA_WARM_TOKEN_SIZE,
+            toward: { x: ARENA_WARM_TOKEN_SIZE * 2, y: 0 },
+            targetRadius: ARENA_WARM_TOKEN_SIZE / 2,
+            seed,
+          },
+          host,
+        ).effect
+      : createTargetEffect(
+          {
+            kind: "damage",
+            resource: "health",
+            amount: 1,
+            size: ARENA_WARM_TOKEN_SIZE,
+            fontFamily: this.options.fontFamily,
+            lite: false,
+            seed,
+            style,
+          },
+          host,
+        );
+    holder.addChild(effect.container);
+    const start = performance.now();
+    this.mapLayer.visible = false;
+    this.tokenLayer.visible = false;
+    try {
+      for (const at of ARENA_WARM_STEPS_MS) {
+        const { done } = effect.step(start + at, this.camera.scale, 0);
+        this.app.renderer.render({ container: this.app.stage, target });
+        if (done) break;
+      }
+    } finally {
+      effect.destroy();
+      this.mapLayer.visible = true;
+      this.tokenLayer.visible = true;
+    }
+  }
+
+  setPassages = (enabled: boolean): void => {
+    this.passagesEnabled = enabled;
+  };
+
+  setWorldFog = (fog: Uint8Array | null, alpha: number): void => {
+    const changed = fog !== this.worldFog;
+    this.worldFog = fog;
+    this.fogAlpha = alpha;
+    if (this.clouds) {
+      if (changed && fog) this.clouds.setFog(fog);
+      this.clouds.setFogAlpha(alpha);
+    }
+    this.invalidate();
+  };
+
+  setBrush = (brush: IArenaWorldBrush | null): void => {
+    this.brush = brush;
+    if (!brush) this.paint = null;
+    this.drawBrushCursor();
+    this.app.canvas.style.cursor = brush ? "crosshair" : "";
+    this.invalidate();
+  };
+
+  /** Keeps the cloud cover on the part of the world on screen. */
+  private fitClouds(): void {
+    if (!this.clouds) return;
+    const { width, height } = this.viewport();
+    const topLeft = screenToWorld(this.camera, { x: 0, y: 0 });
+    const bottomRight = screenToWorld(this.camera, { x: width, y: height });
+    this.clouds.fitView({
+      x: topLeft.x,
+      y: topLeft.y,
+      width: bottomRight.x - topLeft.x,
+      height: bottomRight.y - topLeft.y,
+    });
+  }
+
+  private drawBrushCursor(): void {
+    this.brushCursor.clear();
+    const brush = this.brush;
+    const client = this.brushClient;
+    if (!brush || !client || this.sceneKind !== "world") return;
+    const rect = this.app.canvas.getBoundingClientRect();
+    this.brushCursor
+      .circle(client.x - rect.left, client.y - rect.top, brush.radius * this.camera.scale)
+      .stroke({
+        width: ARENA_BRUSH_CURSOR.width,
+        color: brush.mode === "hide" ? ARENA_BRUSH_CURSOR.hide : ARENA_BRUSH_CURSOR.reveal,
+        alpha: 0.9,
+      });
+  }
+
+  /** Paints the fog from the last brush point to `point` (locally at once, and reported to the page). */
+  private paintTo(point: IArenaPoint, first: boolean): void {
+    const brush = this.brush;
+    const paint = this.paint;
+    if (!brush || !paint || !this.clouds) return;
+    const next = clampToWorld(point);
+    if (!first && distance(next, paint.last) < brush.radius * 0.2) return;
+    const stroke = {
+      mode: brush.mode,
+      radius: brush.radius,
+      points: first ? [next] : [paint.last, next],
+    };
+    paint.last = next;
+    this.clouds.paint(stroke);
+    this.options.callbacks.onFogStroke(stroke);
+    this.invalidate();
+  }
+
+  private startPaint(event: FederatedPointerEvent): void {
+    const point = this.worldPoint(event);
+    this.paint = { pointerId: event.pointerId, last: clampToWorld(point) };
+    this.paintTo(point, true);
+  }
+
+  private onCanvasLeave = (): void => {
+    this.brushClient = null;
+    this.drawBrushCursor();
+    this.invalidate();
   };
 
   /**
@@ -428,6 +981,10 @@ export class ArenaRenderer implements IArenaRenderer {
   }
 
   setTokens = (list: IArenaRenderToken[]): void => {
+    if (this.heldTokens) {
+      this.heldTokens = list;
+      return;
+    }
     const seen = new Set<string>();
     for (const data of list) {
       seen.add(data.id);
@@ -474,6 +1031,7 @@ export class ArenaRenderer implements IArenaRenderer {
         return false;
       });
       view.aura?.destroy();
+      view.party?.destroy();
       view.bars.destroy();
       view.container.destroy({ children: true });
       this.tokens.delete(id);
@@ -545,12 +1103,14 @@ export class ArenaRenderer implements IArenaRenderer {
   };
 
   zoomBy = (factor: number): void => {
+    this.cameraTween = null;
     const viewport = this.viewport();
     this.camera = zoomAt(this.camera, factor, { x: viewport.width / 2, y: viewport.height / 2 });
     this.applyCamera();
   };
 
   fitToMap = (): void => {
+    this.cameraTween = null;
     this.camera = this.fittedCamera();
     this.applyCamera();
   };
@@ -558,6 +1118,7 @@ export class ArenaRenderer implements IArenaRenderer {
   centerOn = (tokenId: string): void => {
     const view = this.tokens.get(tokenId);
     if (!view) return;
+    this.cameraTween = null;
     this.camera = centerCamera(
       this.camera,
       view.target,
@@ -591,6 +1152,10 @@ export class ArenaRenderer implements IArenaRenderer {
    * attack does not stack dozens of particle systems and filters on the GPU.
    */
   playEffects = (effects: IArenaEffect[]): void => {
+    if (this.heldEffects) {
+      this.heldEffects.push(effects);
+      return;
+    }
     const now = performance.now();
     const delays = this.launchAttackers(effects);
     let budget = EFFECT_RICH_BUDGET;
@@ -717,8 +1282,11 @@ export class ArenaRenderer implements IArenaRenderer {
     this.destroyed = true;
     cancelAnimationFrame(this.frame);
     window.clearTimeout(this.saveTimer);
+    window.clearTimeout(this.wakeTimer);
+    window.clearTimeout(this.warmTimer);
     this.saveCamera();
     this.observer.disconnect();
+    this.app.canvas.removeEventListener("pointerleave", this.onCanvasLeave);
     this.app.canvas.removeEventListener("wheel", this.onWheel);
     this.app.canvas.removeEventListener("contextmenu", this.preventMenu);
     window.removeEventListener("keydown", this.onKeyDown);
@@ -729,13 +1297,23 @@ export class ArenaRenderer implements IArenaRenderer {
       view.effects = [];
       view.aura?.destroy();
       view.aura = null;
+      view.party?.destroy();
+      view.party = null;
     }
+    this.clouds?.destroy();
+    this.clouds = null;
+    this.transition?.destroy();
+    this.transition = null;
     for (const { effect } of this.fading) if (!effect.container.destroyed) effect.destroy();
     this.fading = [];
     this.app.stage.removeChildren();
     this.uiLayer.destroy({ children: true });
     this.world.destroy({ children: true });
     destroyTexture(this.mapTexture);
+    if (this.worldLoaded && this.worldLoaded.texture !== this.mapTexture) {
+      destroyTexture(this.worldLoaded.texture);
+    }
+    this.worldLoaded = null;
     this.shockwaves?.destroy();
     this.fxScreen?.destroy();
     this.fxTextures?.destroy();
@@ -782,22 +1360,60 @@ export class ArenaRenderer implements IArenaRenderer {
     this.frame = 0;
     const pace = this.options.lite
       ? ARENA_LITE_FRAME_MS
-      : this.calmAura && !this.urgent
-        ? ARENA_TURN_FRAME_MS
-        : 0;
+      : this.urgent
+        ? 0
+        : this.calmAura
+          ? ARENA_TURN_FRAME_MS
+          : this.calmAmbient
+            ? ARENA_AMBIENT_FRAME_MS
+            : 0;
     if (pace > 0 && now - this.lastFrame < pace) {
       this.schedule();
       return;
     }
     this.urgent = false;
     this.lastFrame = now;
-    const { animating, aura } = this.stepTokens(now);
+    const passing = this.stepPassage(now);
+    const { animating, aura, ambient: partyAmbient } = this.stepTokens(now);
     const rippling = this.shockwaves?.step(now) ?? false;
+    const clouds = this.clouds?.step(now).animating ?? false;
     this.drawSelectionFrame();
     this.app.render();
-    this.calmAura = aura && !animating && !rippling;
-    if (animating || rippling || aura) this.schedule();
+    const busy = animating || rippling || passing;
+    const ambient = clouds || partyAmbient;
+    this.calmAura = aura && !busy && !ambient;
+    this.calmAmbient = ambient && !busy;
+    if (busy || aura || ambient) this.schedule();
   };
+
+  /**
+   * Moves the camera tween and the cloud passage on; true while either still runs. While the clouds fill the screen
+   * and the next map still loads, the old board is not drawn (the new one draws under the white, so its texture
+   * reaches the GPU before it shows).
+   */
+  private stepPassage(now: number): boolean {
+    let running = false;
+    const tween = this.cameraTween;
+    if (tween) {
+      const t = Math.min(Math.max((now - tween.start) / tween.ms, 0), 1);
+      this.camera = tweenCamera(tween.from, tween.to, tween.ease(t), tween.anchor);
+      if (t >= 1) {
+        this.camera = { ...tween.to };
+        this.cameraTween = null;
+      }
+      this.applyCamera(false);
+      running = true;
+    }
+    const transition = this.transition;
+    if (transition) {
+      if (transition.step(now).done) {
+        transition.destroy();
+        this.transition = null;
+      } else running = true;
+    }
+    this.world.visible = !(this.loadingMap && this.transition?.opaque);
+    return running;
+  }
 
   /** Puts on the token the filters its playing animations ask for (only when they change). */
   private applyTokenFilters(view: ITokenView): void {
@@ -828,9 +1444,10 @@ export class ArenaRenderer implements IArenaRenderer {
     return this.fading.length > 0;
   }
 
-  private stepTokens(now: number): { animating: boolean; aura: boolean } {
+  private stepTokens(now: number): { animating: boolean; aura: boolean; ambient: boolean } {
     let animating = false;
     let auraMoving = false;
+    let ambient = false;
     const factor = this.options.lite ? 1 : ARENA_TOKEN_LERP;
     for (const view of this.tokens.values()) {
       const { display, target } = view;
@@ -874,11 +1491,22 @@ export class ArenaRenderer implements IArenaRenderer {
           auraMoving ||= frame.animating;
         }
       }
+      if (view.party) {
+        const frame = view.party.step(now);
+        ambient ||= frame.animating;
+        if (frame.wakeInMs !== null) this.wakeIn(frame.wakeInMs);
+      }
       view.container.position.set(display.x + dx, display.y + dy);
-      view.container.scale.set(scaleX, scaleY);
+      view.container.scale.set(scaleX * view.screenScale, scaleY * view.screenScale);
       if (view.effects.length > 0 || view.container.filters?.length) this.applyTokenFilters(view);
     }
-    return { animating: this.fadeEnded(now) || animating, aura: auraMoving };
+    return { animating: this.fadeEnded(now) || animating, aura: auraMoving, ambient };
+  }
+
+  /** Draws again in `ms` (the light mode's party token steps its color without a running loop). */
+  private wakeIn(ms: number): void {
+    window.clearTimeout(this.wakeTimer);
+    this.wakeTimer = window.setTimeout(this.invalidate, Math.max(ms, 16));
   }
 
   /**
@@ -893,14 +1521,21 @@ export class ArenaRenderer implements IArenaRenderer {
     view.shadow.alpha = Math.max(1 - rise * ARENA_FLOAT_SHADOW.fade, 0.3);
   }
 
-  private applyCamera(): void {
+  private applyCamera(userMove = true): void {
+    if (userMove) this.cameraTween = null;
     const now = performance.now();
+    const flying = this.cameraTween !== null;
     for (const view of this.tokens.values()) {
+      if (view.data.party) this.fitPartyScreen(view);
       this.scaleLabel(view);
-      view.bars.layout(view.data.size, this.camera.scale, now, this.extentsOf(view).halfHeight);
+      if (!flying) {
+        view.bars.layout(view.data.size, this.camera.scale, now, this.extentsOf(view).halfHeight);
+      }
     }
     this.world.scale.set(this.camera.scale);
     this.world.position.set(this.camera.x, this.camera.y);
+    this.fitClouds();
+    this.drawBrushCursor();
     this.scheduleCameraSave();
     this.invalidate();
   }
@@ -921,10 +1556,16 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private scheduleCameraSave(): void {
     window.clearTimeout(this.saveTimer);
+    if (this.loadingMap || this.cameraTween) return;
     this.saveTimer = window.setTimeout(() => this.saveCamera(), ARENA_CAMERA_SAVE_DELAY_MS);
   }
 
+  /**
+   * Saves the camera of the scene on screen. Never while a map loads or the camera flies: the camera then still
+   * frames the previous map while `sceneId` already names the next one (it is saved once the flight lands).
+   */
   private saveCamera(): void {
+    if (this.loadingMap || this.cameraTween) return;
     const key = this.storageKey();
     if (!key) return;
     try {
@@ -981,6 +1622,8 @@ export class ArenaRenderer implements IArenaRenderer {
       pendingStatus: undefined,
       holdStatusUntil: 0,
       aura: null,
+      party: null,
+      screenScale: 1,
     };
     this.tokens.set(data.id, view);
     void this.attachPortrait(view);
@@ -1088,6 +1731,10 @@ export class ArenaRenderer implements IArenaRenderer {
     ].join("|");
     if (key === view.drawnKey) return;
     view.drawnKey = key;
+    if (data.party) {
+      this.drawParty(view, selected);
+      return;
+    }
     view.aura?.layout({ size: data.size, style: data.style, halfWidth, halfHeight });
     const ringColor = selected
       ? ARENA_COLORS.gold400
@@ -1120,6 +1767,41 @@ export class ArenaRenderer implements IArenaRenderer {
         ? new Rectangle(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2)
         : new Circle(0, 0, data.size / 2);
     view.container.cursor = data.controllable ? "grab" : "pointer";
+  }
+
+  /** The party token: the cycling Othala rune instead of a portrait, with its name under it. */
+  private drawParty(view: ITokenView, selected: boolean): void {
+    const { data } = view;
+    view.shadow
+      .clear()
+      .circle(0, data.size * 0.05, data.size / 2 + 2)
+      .fill({ color: ARENA_COLORS.black, alpha: 0.45 });
+    view.base.clear();
+    view.mask.clear();
+    view.ring.clear();
+    view.initial?.destroy();
+    view.initial = null;
+    if (!view.party) {
+      view.party = new ArenaPartyToken({
+        host: this.fxHost(),
+        lite: this.options.lite,
+        seed: this.effectSeed++,
+        colors: WORLD_PARTY_COLORS,
+      });
+      view.container.addChildAt(view.party.back, 0);
+      view.container.addChildAt(view.party.body, view.container.getChildIndex(view.ring));
+    }
+    view.party.layout(data.size, selected);
+    this.fitPartyScreen(view);
+    view.label.text = data.name;
+    view.label.style.fontSize = 14;
+    view.label.position.set(0, data.size / 2 + ARENA_LABEL_GAP / 2);
+    view.label.visible = data.label !== "hidden";
+    view.label.alpha = 1;
+    this.scaleLabel(view);
+    view.container.alpha = 1;
+    view.container.hitArea = new Circle(0, 0, data.size / 2);
+    view.container.cursor = this.brush ? "crosshair" : data.controllable ? "grab" : "pointer";
   }
 
   private drawPortrait(view: ITokenView, ringColor: number, selected: boolean): void {
@@ -1195,7 +1877,15 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private scaleLabel(view: ITokenView): void {
     const fontSize = Number(view.label.style.fontSize) || ARENA_LABEL_MIN_SCREEN_PX;
-    view.label.scale.set(labelScale(fontSize, this.camera.scale));
+    view.label.scale.set(labelScale(fontSize, this.camera.scale) / view.screenScale);
+  }
+
+  /** Keeps the party token readable when the camera is far and small when it is close. */
+  private fitPartyScreen(view: ITokenView): void {
+    const screen = view.data.size * this.camera.scale;
+    const fitted = Math.min(Math.max(screen, ARENA_PARTY_SCREEN.min), ARENA_PARTY_SCREEN.max);
+    view.screenScale = screen > 0 ? fitted / screen : 1;
+    view.container.scale.set(view.screenScale);
   }
 
   private worldPoint(event: FederatedPointerEvent): IArenaPoint {
@@ -1241,6 +1931,10 @@ export class ArenaRenderer implements IArenaRenderer {
       return;
     }
     if (event.button !== 0) return;
+    if (this.brush && this.clouds) {
+      this.startPaint(event);
+      return;
+    }
     if (togglesSelection(event)) {
       this.options.callbacks.onSelect([tokenId], "toggle");
       return;
@@ -1278,6 +1972,10 @@ export class ArenaRenderer implements IArenaRenderer {
       return;
     }
     if (event.button !== 0) return;
+    if (this.brush && this.clouds) {
+      this.startPaint(event);
+      return;
+    }
     if (event.pointerType === "touch") {
       this.startPan(event);
       return;
@@ -1294,6 +1992,16 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private onPointerMove = (event: FederatedPointerEvent): void => {
     this.lastClient = { x: event.client.x, y: event.client.y };
+    if (this.brush) {
+      this.brushClient = this.lastClient;
+      this.drawBrushCursor();
+      this.invalidate();
+    }
+    const paint = this.paint;
+    if (paint && paint.pointerId === event.pointerId) {
+      this.paintTo(this.worldPoint(event), false);
+      return;
+    }
     if (this.pointers.has(event.pointerId))
       this.pointers.set(event.pointerId, { x: event.global.x, y: event.global.y });
     if (this.pinch && this.pointers.size === 2) {
@@ -1349,6 +2057,10 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private onPointerUp = (event: FederatedPointerEvent): void => {
     this.pointers.delete(event.pointerId);
+    if (this.paint && this.paint.pointerId === event.pointerId) {
+      this.paint = null;
+      return;
+    }
     if (this.pinch) {
       if (this.pointers.size < 2) this.pinch = null;
       return;
@@ -1513,6 +2225,7 @@ export class ArenaRenderer implements IArenaRenderer {
     }
     this.drag = null;
     this.pan = null;
+    this.paint = null;
     this.marquee = null;
     this.marqueeBox.clear();
     this.restoreCursor();
@@ -1533,7 +2246,7 @@ export class ArenaRenderer implements IArenaRenderer {
   }
 
   private restoreCursor(): void {
-    this.app.canvas.style.cursor = this.spaceHeld ? "grab" : "";
+    this.app.canvas.style.cursor = this.spaceHeld ? "grab" : this.brush ? "crosshair" : "";
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
@@ -1560,6 +2273,7 @@ export class ArenaRenderer implements IArenaRenderer {
 
   private onWheel = (event: WheelEvent): void => {
     event.preventDefault();
+    this.cameraTween = null;
     const rect = this.app.canvas.getBoundingClientRect();
     const factor = Math.exp(-event.deltaY * ARENA_WHEEL_SENSITIVITY);
     this.camera = zoomAt(this.camera, factor, {
@@ -1591,6 +2305,7 @@ export class ArenaRenderer implements IArenaRenderer {
     const height = Math.max(this.host.clientHeight, 1);
     if (width === this.app.screen.width && height === this.app.screen.height) return;
     this.app.renderer.resize(width, height);
+    this.fitClouds();
     this.invalidate();
   };
 }

@@ -21,7 +21,9 @@ export function SceneRow({
   handle,
   dropPosition = null,
   dimmed = false,
+  heading = true,
 }: SceneRowProps) {
+  const Title = heading ? "h3" : "div";
   return (
     <div
       className={`group relative flex min-h-14 items-center gap-2.5 border py-1.5 pr-1.5 pl-1.5 transition-[border-color,background-color,opacity] duration-200 focus-within:z-20 focus-within:border-primary/60 hover:border-primary/50 ${viewing ? "border-gold-400/60 bg-[linear-gradient(90deg,rgba(120,72,6,0.22),rgba(0,0,0,0.5))]" : "border-white/10 bg-gradient-to-r from-void-700/70 to-black/50"} ${dimmed ? "opacity-40" : ""}`}
@@ -46,7 +48,7 @@ export function SceneRow({
         )}
       </span>
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-serif text-[15px] tracking-wide text-foreground">
+        <Title className="truncate font-serif text-[15px] tracking-wide text-foreground">
           <button
             type="button"
             onClick={onOpen}
@@ -56,7 +58,7 @@ export function SceneRow({
           >
             {name}
           </button>
-        </h3>
+        </Title>
         <p className="flex items-center gap-2 font-sans text-xs text-muted-strong">
           {live && (
             <span className="inline-flex items-center gap-1.5 font-semibold tracking-wider text-teal-300 uppercase">

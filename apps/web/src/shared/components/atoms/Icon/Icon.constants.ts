@@ -73,6 +73,11 @@ import {
   SkipBack,
   SkipForward,
   ArrowDownWideNarrow,
+  CloudFog,
+  Eraser,
+  Globe,
+  Move,
+  Undo2,
 } from "lucide-react";
 
 export const ICONS = {
@@ -150,4 +155,9 @@ export const ICONS = {
   "skip-back": SkipBack,
   "skip-forward": SkipForward,
   "arrow-down-wide-narrow": ArrowDownWideNarrow,
+  "cloud-fog": CloudFog,
+  eraser: Eraser,
+  globe: Globe,
+  move: Move,
+  "undo-2": Undo2,
 } as const;

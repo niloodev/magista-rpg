@@ -1,4 +1,11 @@
-import type { IArenaToken, IArenaView } from "@magista/shared";
+import {
+  WORLD_PARTY_ID,
+  emptyFogMask,
+  encodeFogMask,
+  fillFog,
+  type IArenaToken,
+  type IArenaView,
+} from "@magista/shared";
 import { describe, expect, it } from "vitest";
 
 import { createAppStore } from "@/modules/shell/store/appSlice/appSlice";
@@ -41,6 +48,8 @@ const view: IArenaView = {
   controllableCharacterIds: [],
   statuses: {},
   turnOrder: { sceneId: "s1", round: 1, currentTokenId: null, entries: [] },
+  worldLive: false,
+  world: null,
 };
 
 function loaded() {
@@ -312,5 +321,42 @@ describe("arena slice: token status", () => {
     store.getState().resetArena();
     expect(store.getState().arena.view).toBeNull();
     expect(store.getState().arena.tokenClipboard.map((copied) => copied.id)).toEqual(["a"]);
+  });
+});
+
+describe("arena slice: world map", () => {
+  const world: IArenaView = {
+    ...view,
+    scene: null,
+    tokens: [],
+    turnOrder: null,
+    worldLive: true,
+    world: { party: { x: 100, y: 100 }, fog: encodeFogMask(emptyFogMask()), fogVersion: 2 },
+  };
+
+  it("keeps the party selected across reloads and moves it", () => {
+    const store = createAppStore();
+    store.getState().finishArenaLoad(world);
+    store.getState().selectArenaTokens([WORLD_PARTY_ID], "replace");
+    store.getState().finishArenaLoad(world);
+    expect(store.getState().arena.selectedTokenIds).toEqual([WORLD_PARTY_ID]);
+    store.getState().applyWorldParty({ x: 300, y: 40 });
+    expect(store.getState().arena.view?.world?.party).toEqual({ x: 300, y: 40 });
+  });
+
+  it("applies only newer fog versions", () => {
+    const store = createAppStore();
+    store.getState().finishArenaLoad(world);
+    const hidden = encodeFogMask(fillFog("hide"));
+    store.getState().applyWorldFog({ fog: hidden, fogVersion: 2 });
+    expect(store.getState().arena.view?.world?.fog).toBe(encodeFogMask(emptyFogMask()));
+    store.getState().applyWorldFog({ fog: hidden, fogVersion: 3 });
+    expect(store.getState().arena.view?.world).toMatchObject({ fog: hidden, fogVersion: 3 });
+  });
+
+  it("ignores world events while a scene is shown", () => {
+    const store = loaded();
+    store.getState().applyWorldParty({ x: 1, y: 1 });
+    expect(store.getState().arena.view?.world).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ Monorepo npm workspaces, Node 24 (`nvm use`):
 
 - `npm run db:up` sobe o Postgres (docker, porta 5434) e o storage de imagens SeaweedFS (porta 8333, só localhost) · `npm run db:migrate` · `npm run db:seed`
 - `npm run dev` sobe api (:3333) e web (:3000)
+- `npm run version:bump` sobe a versão do app (web): todos os assets e mídias são baixados de novo pelos aparelhos na próxima abertura
 - `npm run lint` · `npm run typecheck` · `npm test` (unitários: shared, api, web) · `npm run test:e2e` (precisa de `npm run dev` e do seed) · `npm run format`
 - `npm run import:roll20 -- "<pasta>" [--force]` importa exports do Roll20 · `npm run import:roll20-pages -- "<pasta-pages>" [--only 2,12] [--folders nomes.json] [--folders-template] [--force]` importa as páginas (mapas, tamanho e pastas) como cenas da Arena · `npm run account:password -- "<login>" [senha]` define/gera senha
 - `npm run storage:dump -- "<pasta>"` · `npm run storage:restore -- "<pasta>"` backup das imagens · `npm run media:migrate-local -- "<pasta>"` sobe a antiga `MEDIA_DIR` uma vez · `npm run media:assets` move as imagens antigas para assets (WebP, miniatura, sem duplicatas) e apaga as sem uso

@@ -1,4 +1,5 @@
 import { arenaErrors, type ArenaError } from "@/core/controllers/arena";
+import { arenaWorldErrors, type ArenaWorldError } from "@/core/controllers/arenaWorld";
 
 export const ARENA_ERROR_STATUS: Record<ArenaError, number> = {
   [arenaErrors.gmOnly]: 403,
@@ -29,4 +30,13 @@ export const ARENA_ERROR_STATUS: Record<ArenaError, number> = {
   [arenaErrors.mapTooLarge]: 413,
   [arenaErrors.imageTooLarge]: 413,
   [arenaErrors.unexpected]: 500,
+};
+
+export const ARENA_WORLD_ERROR_STATUS: Record<ArenaWorldError, number> = {
+  [arenaWorldErrors.gmOnly]: 403,
+  [arenaWorldErrors.invalidMove]: 400,
+  [arenaWorldErrors.invalidPaint]: 400,
+  [arenaWorldErrors.invalidLive]: 400,
+  [arenaWorldErrors.notLive]: 409,
+  [arenaWorldErrors.unexpected]: 500,
 };
