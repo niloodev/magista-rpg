@@ -1,5 +1,7 @@
 import { CLIENT_ID_HEADER, type ControllerResult } from "@magista/shared";
 
+import { versionedUrl } from "@/core/services/version";
+
 import { API_URL, CLIENT_ID, NETWORK_ERROR } from "./http.constants";
 import type { IApiRequestOptions } from "./http.types";
 
@@ -29,7 +31,7 @@ export async function apiRequest<T>(
  * Turns a media path stored by the API ("/media/...") into an absolute URL.
  */
 export function toMediaUrl(path: string | null): string | null {
-  return path ? `${API_URL}${path}` : null;
+  return path ? versionedUrl(`${API_URL}${path}`) : null;
 }
 
 /**

@@ -18,6 +18,9 @@ import {
   type ICopyArenaTokensInput,
   ARENA_UNIT_PX,
   ARENA_TOKEN_SIZE_DEFAULT,
+  WORLD_PARTY_ID,
+  WORLD_PARTY_SIZE,
+  canMoveParty,
 } from "@magista/shared";
 
 import {
@@ -35,6 +38,7 @@ import {
   ARENA_SIDEBAR_STORAGE_KEY,
   ARENA_SIDEBAR_WIDTH,
   DEFAULT_SIDEBAR,
+  WORLD_TEXTS,
 } from "@/modules/arena/arena.constants";
 import type {
   ArenaEffectFilter,
@@ -62,6 +66,25 @@ export function toRenderTokens(
   mediaUrl: (path: string | null) => string | null,
 ): IArenaRenderToken[] {
   const viewer = { role: isGm ? ("GM" as const) : ("PLAYER" as const) };
+  if (view.world) {
+    return [
+      {
+        id: WORLD_PARTY_ID,
+        name: WORLD_TEXTS.party,
+        imageUrl: null,
+        style: "portrait",
+        x: view.world.party.x,
+        y: view.world.party.y,
+        size: WORLD_PARTY_SIZE,
+        hidden: false,
+        label: "shown",
+        controllable: canMoveParty(viewer, view.worldLive),
+        tone: "own",
+        status: null,
+        party: true,
+      },
+    ];
+  }
   return view.tokens.map((token) => {
     const controllable = canControlToken(viewer, token, view.controllableCharacterIds);
     const own = isGm ? token.characterId === null : controllable;

@@ -16,6 +16,7 @@ import type { ArenaCharactersTabProps } from "./ArenaCharactersTab.types";
 export const ArenaCharactersTab = memo(function ArenaCharactersTab({
   isGm,
   canPlace,
+  blockedHint,
   onOpenCharacter,
   onPlaceCharacter,
   onDropCharacter,
@@ -40,13 +41,15 @@ export const ArenaCharactersTab = memo(function ArenaCharactersTab({
             {ARENA_PLACEMENT_TEXTS.npcButton}
           </Button>
           <p id={ARENA_CHARACTERS_HINT_ID} className="font-sans text-xs text-muted-strong">
-            {canPlace ? ARENA_PLACEMENT_TEXTS.dragHint : ARENA_PLACEMENT_TEXTS.noScene}
+            {canPlace
+              ? ARENA_PLACEMENT_TEXTS.dragHint
+              : (blockedHint ?? ARENA_PLACEMENT_TEXTS.noScene)}
           </p>
         </div>
       ) : (
-        canPlace && (
+        (canPlace || blockedHint) && (
           <p className="font-sans text-xs text-muted-strong">
-            {ARENA_PLACEMENT_TEXTS.playerDragHint}
+            {canPlace ? ARENA_PLACEMENT_TEXTS.playerDragHint : blockedHint}
           </p>
         )
       )}

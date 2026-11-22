@@ -669,3 +669,92 @@ export const ARENA_STATUS_TEXTS = {
   initiativeBonusHint: "Somado ao 1d20 em Rolar iniciativa (menu do token).",
   imageFailed: "As configurações foram salvas, mas a imagem não.",
 } as const;
+
+/** Marker of the world map in the GM's preview (`viewSceneId`): the world map takes the place of a scene id. */
+export const ARENA_WORLD_VIEW = "world";
+
+/** The fixed world map image (preloaded with high priority by the Arena route). */
+export const WORLD_MAP_URL = "/arena/world-map.jpg";
+
+export const WORLD_MAP_THUMB_URL = "/arena/world-map-thumb.webp";
+
+/** Static files the Arena loads before showing itself (the loading screen counts them; add new ones here). */
+export const ARENA_ASSETS = [{ url: WORLD_MAP_URL, label: "Mapa Mundi" }] as const;
+
+export const ARENA_ASSET_TEXTS = {
+  title: "Preparando a mesa",
+  updating: (version: string) => `Atualizando para a versão ${version}`,
+  label: "Carregando os recursos da Arena",
+  maps: "Mapas da mesa",
+  effects: "Efeitos da mesa",
+  detail: (label: string | null, loaded: string, total: string | null) =>
+    label ? `${label} · ${total ? `${loaded} de ${total}` : loaded}` : "Pronto",
+  effectsDetail: (done: number, total: number) => `Efeitos da mesa · ${done} de ${total}`,
+  version: (version: string) => `v${version}`,
+} as const;
+
+/** Share of the loading bar for the files (the rest is warming the animations up). */
+export const ARENA_ASSET_FILES_SHARE = 0.75;
+
+/** Longest wait for the board to exist before warming the animations up (no live map: nothing to warm). */
+export const ARENA_ASSET_STAGE_WAIT_MS = 4000;
+
+/** How many files the loading screen downloads at the same time (the first ones, the most needed, go first). */
+export const ARENA_ASSET_CONCURRENCY = 3;
+
+/**
+ * Longest the files may hold the loading screen; past it the screen moves on and the scene maps keep warming the
+ * cache in the background.
+ */
+export const ARENA_ASSET_FILES_LIMIT_MS = 12_000;
+
+/** Longest the animation warm-up may hold the loading screen. */
+export const ARENA_ASSET_WARM_LIMIT_MS = 20_000;
+
+/** The loading screen always shows first and stays at least this long, even when everything is cached. */
+export const ARENA_ASSET_SCREEN_MIN_MS = 1000;
+
+/** How long the loading screen takes to fade out (the same as `overlay-out`). */
+export const ARENA_ASSET_SCREEN_FADE_MS = 260;
+
+/** Colors the party token cycles through: one per player. */
+export const WORLD_PARTY_COLORS = [
+  0x1e3a8a, 0x38bdf8, 0x22c55e, 0xf472b6, 0xa855f7, 0x9ca3af, 0x166534,
+] as const;
+
+export const WORLD_TEXTS = {
+  name: "Mapa Mundi",
+  party: "Grupo",
+  view: "Ver Mapa Mundi",
+  goLive: "Colocar no ar",
+  wentLive: "Mapa Mundi colocado no ar para a mesa.",
+  backToScene: "Voltar à cena",
+  menuLabel: "Ações do Mapa Mundi",
+  noTokens: "O Mapa Mundi tem só o token do grupo.",
+  stageLabel: "Mapa Mundi com o token do grupo",
+  partyMoved: "Grupo movido.",
+  tools: "Névoa do Mapa Mundi",
+  move: "Mover",
+  hide: "Esconder",
+  reveal: "Revelar",
+  brush: "Pincel",
+  hideAll: "Esconder tudo",
+  revealAll: "Revelar tudo",
+  playerView: "Ver como os jogadores",
+  confirmHideTitle: "Esconder o mapa inteiro?",
+  confirmHideMessage: "As nuvens cobrem todo o Mapa Mundi para os jogadores.",
+  confirmRevealTitle: "Revelar o mapa inteiro?",
+  confirmRevealMessage: "As nuvens somem de todo o Mapa Mundi para os jogadores.",
+} as const;
+
+/** Brush radius on the world map fog, in world pixels. */
+export const WORLD_BRUSH = { min: 10, max: 400, step: 10, default: 60 } as const;
+
+/** Opacity of the fog over the map as the GM sees it (the GM paints over it), unless seeing as the players. */
+export const WORLD_FOG_GM_ALPHA = 0.5;
+
+/**
+ * How often a fog brush batch is sent while painting (ms): the stroke shows locally at once, so this only paces the
+ * traffic (each answer carries the whole mask to the table).
+ */
+export const WORLD_PAINT_FLUSH_MS = 160;

@@ -19,3 +19,9 @@ export const ARENA_TURN_WINDOW_MS = 5000;
 
 export const ARENA_TURN_THROTTLED_ERROR =
   "Calma! Muitas mudanças na ordem de turnos seguidas. Espere alguns segundos.";
+
+export const ARENA_WORLD_PAINT_LIMIT = 24;
+
+export const ARENA_WORLD_PAINT_WINDOW_MS = 1000;
+
+export const ARENA_WORLD_PAINT_THROTTLED_ERROR = "Calma! Pincel rápido demais.";

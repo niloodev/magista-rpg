@@ -130,22 +130,30 @@ const findBoards: IArenaSceneModels["findBoards"] = async (ids) => {
 };
 
 /**
- * The live scene. Uses `findFirst`, not `findUnique`: Prisma batches concurrent `findUnique` calls into an
- * `in` filter, which a boolean key does not accept, so two tables loading the Arena at once would fail.
+ * The stored live state: the scene chosen for the table and whether the world map took its place. Uses
+ * `findFirst`, not `findUnique`: Prisma batches concurrent `findUnique` calls into an `in` filter, which a boolean
+ * key does not accept, so two tables loading the Arena at once would fail.
  */
-const findActiveSceneId: IArenaSceneModels["findActiveSceneId"] = async () => {
+const findLiveState: IArenaSceneModels["findLiveState"] = async () => {
   const row = await getDatabase().arenaState.findFirst({
     where: { singleton: true },
-    select: { activeSceneId: true },
+    select: { activeSceneId: true, worldMapLive: true },
   });
-  return row?.activeSceneId ?? null;
+  return { sceneId: row?.activeSceneId ?? null, worldMapLive: row?.worldMapLive ?? false };
 };
 
+/** The scene the players see: none while the world map is live (it then takes the scene's place). */
+const findActiveSceneId: IArenaSceneModels["findActiveSceneId"] = async () => {
+  const state = await findLiveState();
+  return state.worldMapLive ? null : state.sceneId;
+};
+
+/** Puts a scene live (or nothing); the world map leaves the air with it. */
 const setActiveScene: IArenaSceneModels["setActiveScene"] = async (id) => {
   await getDatabase().arenaState.upsert({
     where: { singleton: true },
-    create: { activeSceneId: id },
-    update: { activeSceneId: id },
+    create: { activeSceneId: id, worldMapLive: false },
+    update: { activeSceneId: id, worldMapLive: false },
   });
 };
 
@@ -161,5 +169,6 @@ export const arenaSceneModels: IArenaSceneModels = {
   findUnmeasuredMaps,
   findBoards,
   findActiveSceneId,
+  findLiveState,
   setActiveScene,
 };

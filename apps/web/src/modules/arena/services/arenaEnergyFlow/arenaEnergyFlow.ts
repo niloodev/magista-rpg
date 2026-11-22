@@ -6,6 +6,7 @@ import type {
   EnergyWidth,
   IEnergyFlowFrame,
   IEnergyFlowOptions,
+  IEnergyPalette,
 } from "./arenaEnergyFlow.types";
 import { buildRibbon, colorChannels, resamplePath } from "./arenaEnergyFlow.utils";
 
@@ -95,6 +96,13 @@ export class ArenaEnergyFlow {
     this.uniforms.uLength = Math.max(ribbon.length, 1);
     this.uniforms.uWidth =
       typeof width === "number" ? width : Math.max(width(0), width(0.5), width(1));
+  }
+
+  /** Swaps the colors of the energy (only its uniforms change, so it costs nothing per frame). */
+  setColors(palette: IEnergyPalette): void {
+    this.uniforms.uCore.set(colorChannels(palette.core));
+    this.uniforms.uMid.set(colorChannels(palette.mid));
+    this.uniforms.uDeep.set(colorChannels(palette.deep));
   }
 
   /** Runs the energy to `seconds` and shows the part from `tail` to `head` at `alpha`. */

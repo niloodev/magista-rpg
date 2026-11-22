@@ -1,4 +1,12 @@
+import { readFileSync } from "node:fs";
+
 import type { NextConfig } from "next";
+
+const APP_VERSION = (
+  JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+    version: string;
+  }
+).version;
 
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -10,7 +18,14 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   transpilePackages: ["@magista/shared"],
   poweredByHeader: false,
-  headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
+  env: { NEXT_PUBLIC_APP_VERSION: APP_VERSION },
+  headers: async () => [
+    { source: "/:path*", headers: SECURITY_HEADERS },
+    {
+      source: "/arena/:file([^/]+\\.(?:jpg|jpeg|png|webp))",
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    },
+  ],
 };
 
 export default nextConfig;

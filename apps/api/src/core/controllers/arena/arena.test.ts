@@ -1,5 +1,7 @@
 import {
   ARENA_MAP_MAX_BYTES,
+  emptyFogMask,
+  encodeFogMask,
   type IArenaFolder,
   type IArenaScene,
   type IArenaToken,
@@ -63,7 +65,11 @@ function token(id: string, sceneId: string, extra: Partial<IArenaToken> = {}): I
 }
 
 function build(
-  options: { active?: string | null; unmeasured?: { id: string; mapKey: string }[] } = {},
+  options: {
+    active?: string | null;
+    unmeasured?: { id: string; mapKey: string }[];
+    worldLive?: boolean;
+  } = {},
 ) {
   const sceneList: IArenaScene[] = [
     {
@@ -92,6 +98,7 @@ function build(
     },
   ];
   let active = options.active === undefined ? LIVE : options.active;
+  let worldLive = options.worldLive ?? false;
   let tokenList: IArenaToken[] = [
     token(T_ANA, LIVE, { characterId: ANA, name: "Ana" }),
     token(T_BRUNO, LIVE, { characterId: BRUNO, name: "Bruno" }),
@@ -207,9 +214,11 @@ function build(
             .map((scene) => [scene.id, { width: scene.width, height: scene.height }]),
         ),
     ),
-    findActiveSceneId: vi.fn(async () => active),
+    findActiveSceneId: vi.fn(async () => (worldLive ? null : active)),
+    findLiveState: vi.fn(async () => ({ sceneId: active, worldMapLive: worldLive })),
     setActiveScene: vi.fn(async (id) => {
       active = id;
+      worldLive = false;
     }),
   };
   const tokens: IArenaTokenModels = {
@@ -371,6 +380,15 @@ function build(
         async (ids: string[]) => ids.filter((id) => ["alice", "bob"].includes(id)).length,
       ),
     },
+    worlds: {
+      findWorld: vi.fn(async () => ({
+        live: worldLive,
+        activeSceneId: active,
+        party: { x: 640, y: 320 },
+        fog: emptyFogMask(),
+        fogVersion: 3,
+      })),
+    },
   });
   return {
     controller,
@@ -429,7 +447,49 @@ describe("arena controller: view", () => {
       controllableCharacterIds: [ANA],
       statuses: {},
       turnOrder: null,
+      worldLive: false,
+      world: null,
     });
+  });
+
+  it("shows the players the world map in place of the live scene", async () => {
+    const { controller } = build({ worldLive: true });
+    const result = await controller.getView(alice);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload).toMatchObject({
+      activeSceneId: null,
+      scene: null,
+      tokens: [],
+      turnOrder: null,
+      worldLive: true,
+      world: { party: { x: 640, y: 320 }, fog: encodeFogMask(emptyFogMask()), fogVersion: 3 },
+    });
+  });
+
+  it("lets the GM preview the world map and still open scenes while it is live", async () => {
+    const { controller } = build();
+    const preview = await controller.getView(gm, undefined, "1");
+    if ("error" in preview) throw new Error(preview.error);
+    expect(preview.payload).toMatchObject({ activeSceneId: LIVE, worldLive: false, scene: null });
+    expect(preview.payload.world?.fogVersion).toBe(3);
+
+    const live = build({ worldLive: true });
+    const scene = await live.controller.getView(gm, PREP);
+    if ("error" in scene) throw new Error(scene.error);
+    expect(scene.payload).toMatchObject({ activeSceneId: LIVE, worldLive: true, world: null });
+    expect(scene.payload.scene?.id).toBe(PREP);
+    const world = await live.controller.getView(gm);
+    if ("error" in world) throw new Error(world.error);
+    expect(world.payload.world).not.toBeNull();
+  });
+
+  it("takes the world map off the air when a scene goes live", async () => {
+    const { controller, scenes } = build({ worldLive: true });
+    await controller.setActiveScene(gm, { sceneId: PREP });
+    expect(await scenes.findLiveState()).toEqual({ sceneId: PREP, worldMapLive: false });
+    const result = await controller.getView(alice);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.payload.scene?.id).toBe(PREP);
   });
 });
 
@@ -501,6 +561,37 @@ describe("arena controller: movement", () => {
     });
     expect(await controller.move(gm, { moves: [] })).toEqual({ error: arenaErrors.invalidMove });
     expect(await controller.move(gm, one(MISSING))).toEqual({ error: arenaErrors.tokenNotFound });
+  });
+});
+
+describe("arena controller: maps for the cache", () => {
+  it("gives any account the map URL of every scene, once each", async () => {
+    const { controller, scenes } = build();
+    const [first] = await scenes.list();
+    if (!first) throw new Error("no scene");
+    vi.mocked(scenes.list).mockResolvedValueOnce([
+      { ...first, mapUrl: "/media/a/full.webp" },
+      { ...first, id: PREP, mapUrl: "/media/a/full.webp" },
+      { ...first, id: MISSING, mapUrl: null },
+    ]);
+    expect(await controller.listMapUrls(alice)).toEqual({
+      message: "Mapas carregados",
+      payload: ["/media/a/full.webp"],
+    });
+  });
+
+  it("lists the map of the live scene first, so it reaches the cache before the others", async () => {
+    const { controller, scenes } = build({ active: PREP });
+    const [first] = await scenes.list();
+    if (!first) throw new Error("no scene");
+    vi.mocked(scenes.list).mockResolvedValueOnce([
+      { ...first, id: LIVE, mapUrl: "/media/a/full.webp" },
+      { ...first, id: PREP, mapUrl: "/media/b/full.webp" },
+    ]);
+    expect(await controller.listMapUrls(alice)).toEqual({
+      message: "Mapas carregados",
+      payload: ["/media/b/full.webp", "/media/a/full.webp"],
+    });
   });
 });
 

@@ -29,6 +29,10 @@ import type {
   IArenaTurnOrder,
   IArenaTurnPendingEvent,
   IMoveArenaTokensInput,
+  IArenaWorldFogEvent,
+  IMoveWorldPartyInput,
+  IPaintWorldFogInput,
+  IWorldPoint,
 } from "../schemas/arena";
 import type { ICharacter, ICharacterImages } from "../schemas/character";
 import type { ControllerResult } from "./envelope";
@@ -87,6 +91,10 @@ export interface ServerToClientEvents {
   "arena:turns": (order: IArenaTurnOrder) => void;
   /** Initiatives being rolled (their lines in the turn order spin until the values show). */
   "arena:turn-pending": (event: IArenaTurnPendingEvent) => void;
+  /** New position of the party token on the world map. */
+  "arena:world-party": (party: IWorldPoint) => void;
+  /** The world map fog after a change (the whole mask, so a lost event fixes itself on the next one). */
+  "arena:world-fog": (event: IArenaWorldFogEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -123,6 +131,14 @@ export interface ClientToServerEvents {
   "arena:turn": (
     request: IArenaTurnCommand,
     ack: (result: ControllerResult<IArenaTurnOrder>) => void,
+  ) => void;
+  "arena:world-move": (
+    request: IMoveWorldPartyInput,
+    ack: (result: ControllerResult<IWorldPoint>) => void,
+  ) => void;
+  "arena:world-paint": (
+    request: IPaintWorldFogInput,
+    ack: (result: ControllerResult<IArenaWorldFogEvent>) => void,
   ) => void;
 }
 

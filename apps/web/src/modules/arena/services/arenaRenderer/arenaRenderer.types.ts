@@ -4,7 +4,9 @@ import type {
   IArenaPoint,
   IArenaTokenStatus,
   IMoveArenaTokenInput,
+  IWorldFogStroke,
   TokenStyle,
+  WorldFogMode,
 } from "@magista/shared";
 
 import type { ArenaSelectionMode, IArenaSizeUpdate } from "@/modules/arena/arena.types";
@@ -48,10 +50,16 @@ export interface IArenaRenderToken {
   tone: ArenaTokenTone;
   /** Health and sanity, when the viewer may see them (bars above the token). */
   status: IArenaTokenStatus | null;
+  /** The party token of the world map (the Othala rune cycling the players' colors, no portrait). */
+  party?: boolean;
 }
+
+export type ArenaSceneKind = "scene" | "world";
 
 export interface IArenaRenderScene {
   id: string;
+  /** A scene of the library or the world map (clouds around it, fog, the party token and the cloud passage). */
+  kind: ArenaSceneKind;
   mapUrl: string | null;
   /** Board size in world pixels; the map image is stretched to it. */
   width: number;
@@ -66,6 +74,14 @@ export interface IArenaRendererCallbacks {
   onMapError: (failed: boolean) => void;
   /** Right click without dragging, on a token or on the empty map (null), at that page point. */
   onTokenMenu: (tokenId: string | null, client: IArenaPoint) => void;
+  /** A brush batch painted over the world map fog (already shown locally). */
+  onFogStroke: (stroke: IWorldFogStroke) => void;
+}
+
+/** The fog brush of the world map: covering or clearing, and its radius in world pixels. */
+export interface IArenaWorldBrush {
+  mode: WorldFogMode;
+  radius: number;
 }
 
 export interface IArenaRendererOptions {
@@ -85,6 +101,14 @@ export interface IArenaRenderer {
   /** Marks the token whose turn it is (it floats over a soft energy ring); null clears it. */
   setTurnToken: (tokenId: string | null) => void;
   setResizable: (resizable: boolean) => void;
+  /** The world map fog and how strongly it shows over the map (the GM sees it translucent). */
+  setWorldFog: (fog: Uint8Array | null, alpha: number) => void;
+  /** Plays every animation once out of sight so the session never stalls on a first blow (once per renderer). */
+  warmEffects: (onProgress: (ratio: number) => void) => Promise<void>;
+  /** Whether scene switches fly through the clouds (on for the players; the GM switches at once). */
+  setPassages: (enabled: boolean) => void;
+  /** Turns the fog brush on (the left button paints instead of selecting) or off. */
+  setBrush: (brush: IArenaWorldBrush | null) => void;
   /** Widths covered by the side panels, left out when fitting or centering. */
   setSideInsets: (left: number, right: number) => void;
   zoomBy: (factor: number) => void;

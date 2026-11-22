@@ -35,6 +35,15 @@ import type {
   ARENA_RESOURCE_KEYS,
   sheetEffectsSchema,
 } from "./arena.effects";
+import type {
+  arenaWorldFogEventSchema,
+  arenaWorldSchema,
+  moveWorldPartyInputSchema,
+  paintWorldFogInputSchema,
+  setWorldLiveInputSchema,
+  worldFogModeSchema,
+  worldPointSchema,
+} from "./arena.world";
 
 export type IArenaScene = z.infer<typeof arenaSceneSchema>;
 
@@ -165,3 +174,20 @@ export interface IArenaTurnPendingEvent {
   /** How long until the values show, in ms (relative, so clocks out of sync do not matter). */
   revealInMs: number;
 }
+
+export type IArenaWorld = z.infer<typeof arenaWorldSchema>;
+
+export type WorldFogMode = z.infer<typeof worldFogModeSchema>;
+
+export type IWorldPoint = z.infer<typeof worldPointSchema>;
+
+export type ISetWorldLiveInput = z.infer<typeof setWorldLiveInputSchema>;
+
+export type IMoveWorldPartyInput = z.infer<typeof moveWorldPartyInputSchema>;
+
+export type IPaintWorldFogInput = z.infer<typeof paintWorldFogInputSchema>;
+
+export type IArenaWorldFogEvent = z.infer<typeof arenaWorldFogEventSchema>;
+
+/** A brush batch over the fog (the fill variant of `IPaintWorldFogInput` excluded). */
+export type IWorldFogStroke = Extract<IPaintWorldFogInput, { points: unknown }>;

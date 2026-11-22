@@ -25,6 +25,7 @@ import {
   ArenaPanelToggle,
   ArenaZoomControls,
   SceneLibrarySkeleton,
+  WorldMapRow,
 } from "../../molecules";
 import { ArenaMobileNotice } from "../ArenaMobileNotice";
 import { ARENA_ROLLS_PANEL_CLASSES, ARENA_ROLLS_TAB_KEY } from "../ArenaRollsPanel";
@@ -38,7 +39,7 @@ import {
 } from "./ArenaSkeleton.constants";
 import { useArenaSkeleton } from "./ArenaSkeleton.hook";
 import type { ArenaSkeletonProps } from "./ArenaSkeleton.types";
-import { ignoreTab } from "./ArenaSkeleton.utils";
+import { ignoreAction, ignoreTab } from "./ArenaSkeleton.utils";
 
 /**
  * Placeholder of `ArenaPage` while the session or the Arena loads: the same top bar (fixed labels real, scene
@@ -214,6 +215,15 @@ export function ArenaSkeleton({ gm = false }: ArenaSkeletonProps) {
                         className="flex-1"
                       />
                     </div>
+                    <WorldMapRow
+                      inert
+                      live={false}
+                      viewing={false}
+                      canReturn={false}
+                      onPreview={ignoreAction}
+                      onGoLive={ignoreAction}
+                      onReturn={ignoreAction}
+                    />
                     <SceneLibrarySkeleton announce={false} />
                   </div>
                 ) : (

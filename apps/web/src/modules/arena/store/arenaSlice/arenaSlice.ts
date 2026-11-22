@@ -1,3 +1,4 @@
+import { WORLD_PARTY_ID } from "@magista/shared";
 import type { StateCreator } from "zustand";
 
 import { applyTreeMove, reuseUnchanged } from "@/modules/library/library.utils";
@@ -32,6 +33,7 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
   finishArenaLoad: (view) =>
     set((state) => {
       const present = new Set(view.tokens.map((token) => token.id));
+      if (view.world) present.add(WORLD_PARTY_ID);
       return {
         arena: {
           ...state.arena,
@@ -183,6 +185,20 @@ export const createArenaSlice: StateCreator<AppStore, [], [], ArenaSlice> = (set
         selectedTokenIds: nextSelection(state.arena.selectedTokenIds, tokenIds, mode),
       },
     })),
+  applyWorldParty: (party) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (!view?.world) return state;
+      return { arena: { ...state.arena, view: { ...view, world: { ...view.world, party } } } };
+    }),
+  applyWorldFog: ({ fog, fogVersion }) =>
+    set((state) => {
+      const view = state.arena.view;
+      if (!view?.world || fogVersion <= view.world.fogVersion) return state;
+      return {
+        arena: { ...state.arena, view: { ...view, world: { ...view.world, fog, fogVersion } } },
+      };
+    }),
   setArenaViewScene: (sceneId) =>
     set((state) => ({ arena: { ...state.arena, viewSceneId: sceneId } })),
   startArenaLibraryLoad: () =>

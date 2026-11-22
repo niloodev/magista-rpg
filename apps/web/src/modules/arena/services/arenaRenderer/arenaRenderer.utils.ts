@@ -237,3 +237,26 @@ export function groupOffsets(
     y: (target.y - from.y) / unit,
   }));
 }
+
+/**
+ * The camera `t` (0 to 1) of the way from `from` to `to`: the zoom moves evenly in scale (log), and the world point
+ * at `anchor` (a screen point) glides from where it was to where it ends, so a zoom in or out reads as one move.
+ */
+export function tweenCamera(
+  from: IArenaCamera,
+  to: IArenaCamera,
+  t: number,
+  anchor: IArenaPoint,
+): IArenaCamera {
+  const clamped = Math.min(Math.max(t, 0), 1);
+  const scale = Math.exp(
+    Math.log(from.scale) + (Math.log(to.scale) - Math.log(from.scale)) * clamped,
+  );
+  const fromPoint = screenToWorld(from, anchor);
+  const toPoint = screenToWorld(to, anchor);
+  const world = {
+    x: fromPoint.x + (toPoint.x - fromPoint.x) * clamped,
+    y: fromPoint.y + (toPoint.y - fromPoint.y) * clamped,
+  };
+  return { scale, x: anchor.x - world.x * scale, y: anchor.y - world.y * scale };
+}

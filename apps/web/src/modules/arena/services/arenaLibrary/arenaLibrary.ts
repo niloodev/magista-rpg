@@ -8,13 +8,22 @@ import {
   type IMoveArenaLibraryItemInput,
 } from "@magista/shared";
 
-import { apiRequest } from "@/core/services/http";
+import { apiRequest, toMediaUrl } from "@/core/services/http";
 
 /**
  * Scenes and scene folders of the GM library.
  */
 export function fetchArenaLibrary(): Promise<ControllerResult<IArenaLibrary>> {
   return apiRequest<IArenaLibrary>("/arena/library");
+}
+
+/**
+ * The map URL of every scene (absolute and versioned), for the loading screen to put them all in the browser cache.
+ */
+export async function fetchArenaMapUrls(): Promise<string[]> {
+  const result = await apiRequest<string[]>("/arena/maps");
+  if ("error" in result) return [];
+  return result.payload.flatMap((path) => toMediaUrl(path) ?? []);
 }
 
 /**

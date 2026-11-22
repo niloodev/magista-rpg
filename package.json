@@ -30,7 +30,8 @@
     "test:e2e": "npm run e2e -w @magista/e2e",
     "storage:dump": "npm run storage:dump -w @magista/api --",
     "storage:restore": "npm run storage:restore -w @magista/api --",
-    "media:migrate-local": "npm run media:migrate-local -w @magista/api --"
+    "media:migrate-local": "npm run media:migrate-local -w @magista/api --",
+    "version:bump": "npm version patch -w @magista/web --no-git-tag-version"
   },
   "devDependencies": {
     "concurrently": "^10.0.7",

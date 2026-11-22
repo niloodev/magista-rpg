@@ -70,6 +70,9 @@ export async function openArena(page: Page): Promise<void> {
   await page.waitForURL("**/arena");
   await expect(page.getByText("Mesa conectada")).toBeVisible();
   await expect(page.locator("[data-skeleton-region]")).toHaveCount(0, { timeout: 20_000 });
+  await expect(
+    page.getByRole("progressbar", { name: "Carregando os recursos da Arena" }),
+  ).toHaveCount(0, { timeout: 40_000 });
 }
 
 /**

@@ -20,6 +20,8 @@ import {
   ARENA_MOVE_WINDOW_MS,
   ARENA_TURN_LIMIT,
   ARENA_TURN_WINDOW_MS,
+  ARENA_WORLD_PAINT_LIMIT,
+  ARENA_WORLD_PAINT_WINDOW_MS,
   ROLL_BURST_LIMIT,
   ROLL_BURST_WINDOW_MS,
 } from "./realtime.constants";
@@ -81,6 +83,14 @@ export const arenaMoveGateFor = createGateRegistry(ARENA_MOVE_LIMIT, ARENA_MOVE_
  * Per-account window for damage and healing applied in the Arena (same pace as the rolls, its own budget).
  */
 export const arenaChangeGateFor = createGateRegistry(ROLL_BURST_LIMIT, ROLL_BURST_WINDOW_MS);
+
+/**
+ * Per-account window for fog brush batches on the world map (the client sends one every ~80 ms while painting).
+ */
+export const arenaWorldPaintGateFor = createGateRegistry(
+  ARENA_WORLD_PAINT_LIMIT,
+  ARENA_WORLD_PAINT_WINDOW_MS,
+);
 
 /**
  * Per-account window for turn order commands (passing turns, editing the order).
