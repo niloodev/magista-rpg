@@ -116,6 +116,22 @@ describe("importer controller", () => {
     });
   });
 
+  it("gives the character to the chosen player account instead of one named after it", async () => {
+    const deps = buildDeps();
+    const result = await createImporterController(deps).importCharacter({
+      ...input,
+      login: " Izábi Ferros ",
+    });
+    expect(result).toMatchObject({ payload: { status: "created", password: "senha-gerada" } });
+    expect(deps.accounts.findCredentialsByLogin).toHaveBeenCalledWith("Izábi Ferros");
+    expect(deps.accounts.upsertAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ login: "Izábi Ferros", role: "PLAYER" }),
+    );
+    expect(deps.characters.upsertCharacter).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Talis", accountIds: ["acc-1"] }),
+    );
+  });
+
   it("refuses names too long to be a login", async () => {
     const result = await createImporterController(buildDeps()).importCharacter({
       ...input,

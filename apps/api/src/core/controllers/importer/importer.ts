@@ -10,9 +10,10 @@ import { importerErrors } from "./importer.errors";
 import type { IImporterController, IImporterControllerDeps } from "./importer.types";
 
 /**
- * Builds the Roll20 importer. New players get an account (login = character name) with a generated password
- * and access to the imported character; a character with the same name already granted to that account is
- * only overwritten when force is set.
+ * Builds the Roll20 importer. The character goes to a player account (by default the login is the character
+ * name; `login` picks another, like the player's own name), created with a generated password when missing, with
+ * access to the imported character; a character with the same name already granted to that account is only
+ * overwritten when force is set.
  */
 export function createImporterController(deps: IImporterControllerDeps): IImporterController {
   const importCharacter: IImporterController["importCharacter"] = async (input) => {
@@ -22,9 +23,10 @@ export function createImporterController(deps: IImporterControllerDeps): IImport
     } catch {
       return { error: importerErrors.invalidExport };
     }
-    if (parsed.name.length > LOGIN_MAX_LENGTH) return { error: importerErrors.nameTooLong };
+    const login = input.login?.trim() || parsed.name;
+    if (login.length > LOGIN_MAX_LENGTH) return { error: importerErrors.nameTooLong };
     try {
-      const existing = await deps.accounts.findCredentialsByLogin(parsed.name);
+      const existing = await deps.accounts.findCredentialsByLogin(login);
       if (existing?.account.role === "GM") return { error: importerErrors.loginTaken };
       const current = existing
         ? await deps.characters.findByAccountAndName(existing.account.id, parsed.name)
@@ -45,7 +47,7 @@ export function createImporterController(deps: IImporterControllerDeps): IImport
       const account = existing
         ? existing.account
         : await deps.accounts.upsertAccount({
-            login: parsed.name,
+            login,
             passwordHash: await deps.hashPassword(password ?? ""),
             role: "PLAYER",
           });

@@ -9,6 +9,7 @@ import {
   worldFogSchema,
 } from "../../schemas/arena";
 import {
+  brushReach,
   canMoveParty,
   clampToWorld,
   decodeFogMask,
@@ -19,6 +20,7 @@ import {
   isFogCovered,
   paintFog,
 } from "./worldMap";
+import { WORLD_FOG_BRUSH_EDGE } from "./worldMap.constants";
 
 const cellCenter = (column: number) => (column + 0.5) * WORLD_FOG_CELL;
 
@@ -37,17 +39,52 @@ describe("world map fog", () => {
     expect(isFogCovered(hidden, WORLD_FOG_COLUMNS, 0)).toBe(false);
   });
 
-  it("paints a disc around a single point without touching the original", () => {
+  it("paints an irregular blot around a single point without touching the original", () => {
     const mask = emptyFogMask();
+    const radius = 120;
+    const center = { column: 80, row: 60 };
     const painted = paintFog(mask, {
       mode: "hide",
-      radius: 25,
-      points: [{ x: cellCenter(50), y: cellCenter(40) }],
+      radius,
+      points: [{ x: cellCenter(center.column), y: cellCenter(center.row) }],
     });
-    expect(isFogCovered(painted, 50, 40)).toBe(true);
-    expect(isFogCovered(painted, 52, 40)).toBe(true);
-    expect(isFogCovered(painted, 53, 40)).toBe(false);
-    expect(isFogCovered(mask, 50, 40)).toBe(false);
+    const { roughness } = WORLD_FOG_BRUSH_EDGE;
+    const inner = (radius * (1 - roughness)) / WORLD_FOG_CELL;
+    const outer = (radius * (1 + roughness)) / WORLD_FOG_CELL;
+    const edges: number[] = [];
+    for (let step = 0; step < 16; step += 1) {
+      const angle = (step / 16) * Math.PI * 2;
+      let reach = 0;
+      for (let cells = 0; cells <= Math.ceil(outer) + 1; cells += 1) {
+        const column = center.column + Math.round(Math.cos(angle) * cells);
+        const row = center.row + Math.round(Math.sin(angle) * cells);
+        if (isFogCovered(painted, column, row)) reach = cells;
+      }
+      edges.push(reach);
+    }
+    expect(Math.min(...edges)).toBeGreaterThanOrEqual(Math.floor(inner) - 1);
+    expect(Math.max(...edges)).toBeLessThanOrEqual(Math.ceil(outer));
+    expect(Math.max(...edges) - Math.min(...edges)).toBeGreaterThanOrEqual(2);
+    expect(isFogCovered(painted, center.column, center.row)).toBe(true);
+    expect(isFogCovered(mask, center.column, center.row)).toBe(false);
+  });
+
+  it("bends the brush the same way every time, on the server and on the screen", () => {
+    const stroke = {
+      mode: "hide" as const,
+      radius: 90,
+      points: [
+        { x: 400, y: 300 },
+        { x: 700, y: 420 },
+      ],
+    };
+    expect(paintFog(emptyFogMask(), stroke)).toEqual(paintFog(emptyFogMask(), stroke));
+    expect(brushReach(512, 256, 100)).toBe(brushReach(512, 256, 100));
+    for (let x = 0; x < 2000; x += 37) {
+      const reach = brushReach(x, x * 0.7, 100);
+      expect(reach).toBeGreaterThanOrEqual(100 * (1 - WORLD_FOG_BRUSH_EDGE.roughness));
+      expect(reach).toBeLessThanOrEqual(100 * (1 + WORLD_FOG_BRUSH_EDGE.roughness));
+    }
   });
 
   it("paints a capsule between consecutive points", () => {

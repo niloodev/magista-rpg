@@ -1,0 +1,120 @@
+name: magista-prod
+
+x-api-env: &api-env
+  NODE_ENV: production
+  PORT: 3333
+  WEB_ORIGIN: ${WEB_ORIGIN:?Defina WEB_ORIGIN no .env.production}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-magista}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-magista}
+  JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET}
+  COOKIE_SECURE: "true"
+  S3_ENDPOINT: http://storage:8333
+  S3_REGION: us-east-1
+  S3_BUCKET: magista-media
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Defina S3_ACCESS_KEY}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?Defina S3_SECRET_KEY}
+  TRUST_PROXY: ${TRUST_PROXY:-1}
+  DEV_QUICK_LOGIN: "false"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-magista}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-magista}
+    ports:
+      - "127.0.0.1:${PROD_DB_PORT:-5435}:5432"
+    volumes:
+      - magista-prod-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  storage:
+    image: chrislusf/seaweedfs:4.52
+    restart: unless-stopped
+    command: server -dir=/data -s3 -s3.port=8333 -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?Defina S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?Defina S3_SECRET_KEY}
+    ports:
+      - "127.0.0.1:${PROD_STORAGE_PORT:-8334}:8333"
+    volumes:
+      - magista-prod-storage:/data
+
+  migrate:
+    image: magista-prod-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-env
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: magista-prod-api
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3333/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    image: magista-prod-web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Defina SITE_DOMAIN no .env.production}
+    ports:
+      - "127.0.0.1:${PROD_HTTPS_PORT:-443}:443"
+      - "127.0.0.1:${PROD_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - web
+
+  playit:
+    image: ghcr.io/playit-cloud/playit-agent:1.0
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      SECRET_KEY: ${PLAYIT_SECRET_KEY:?Defina PLAYIT_SECRET_KEY no .env.production (agente Docker do playit)}
+    depends_on:
+      - caddy
+
+volumes:
+  magista-prod-db:
+  magista-prod-storage:
+  caddy-data:
+  caddy-config:
