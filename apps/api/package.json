@@ -20,6 +20,7 @@
     "media:assets": "tsx --env-file-if-exists=.env src/cli/mediaAssets/mediaAssets.ts",
     "import:roll20-pages": "tsx --env-file-if-exists=.env src/cli/importRoll20Pages/importRoll20Pages.ts",
     "account:password": "tsx --env-file-if-exists=.env src/cli/setPassword/setPassword.ts",
+    "account:create-gm": "tsx --env-file-if-exists=.env src/cli/createGm/createGm.ts",
     "storage:dump": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts dump",
     "storage:restore": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts restore",
     "media:migrate-local": "tsx --env-file-if-exists=.env src/cli/storage/storage.ts migrate-local"

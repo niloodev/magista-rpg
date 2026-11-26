@@ -8,9 +8,11 @@ next-env.d.ts
 .env
 .env.*
 !.env.example
+!.env.production.example
 apps/api/src/generated
 .DS_Store
 apps/api/storage
 e2e/test-results
 e2e/playwright-report
 .claude/.review-state
+backups

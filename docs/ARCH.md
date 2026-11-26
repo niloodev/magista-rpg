@@ -32,6 +32,8 @@ middlewares/         requireAuth (sessão + papel lidos do banco), rateLimit (lo
 
 Fluxo: `route → controller → model → services/database`. Routes e handlers nunca tocam Prisma.
 
+Produção (`docs/DEPLOY.md`): um Caddy na frente põe a API em `/api` (tirando o prefixo) e a web no resto, na mesma origem; a web é compilada com `NEXT_PUBLIC_API_URL=/api` e o socket conecta na própria origem em `/api/socket.io` (`socketTarget` em `core/services/socket`; no dev a URL absoluta segue igual). A web sai como Next `standalone`.
+
 Rotas HTTP atuais:
 
 | Rota                                                                                                                                 | Quem                                                                                                                                                                                                                                                                                                                                                                                                                               | Controller                                                                                 |

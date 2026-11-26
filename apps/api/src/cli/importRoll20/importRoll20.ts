@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 
 import { isErrorResult } from "@magista/shared";
 
@@ -7,21 +7,20 @@ import { importerController } from "@/core/controllers/importer";
 import { disconnectDatabase } from "@/core/services/database";
 import { ensureBucket } from "@/core/services/media";
 
-import { readImage } from "./importRoll20.utils";
-
-const USAGE = "Uso: npm run import:roll20 -- <pasta-dos-jogadores> [--force]";
+import { IMPORT_USAGE } from "./importRoll20.constants";
+import { isWantedFolder, parseImportArgs, readImage } from "./importRoll20.utils";
 
 async function run(): Promise<void> {
-  const args = process.argv.slice(2);
-  const force = args.includes("--force");
-  const folderArg = args.find((arg) => !arg.startsWith("--"));
-  if (!folderArg) throw new Error(USAGE);
-  const root = resolve(process.env.INIT_CWD ?? ".", folderArg);
+  const args = parseImportArgs(process.argv.slice(2));
+  if (!args) throw new Error(IMPORT_USAGE);
+  const { force, only, account } = args;
+  const root = resolve(process.env.INIT_CWD ?? ".", args.folder);
   await ensureBucket();
   const entries = await readdir(root, { withFileTypes: true });
   const folders = entries
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && isWantedFolder(entry.name, only))
     .map((entry) => join(root, entry.name));
+  if (folders.length === 0) console.warn("Nenhuma pasta de personagem encontrada com esses nomes.");
   const created: { name: string; password: string }[] = [];
   let failures = 0;
 
@@ -42,16 +41,23 @@ async function run(): Promise<void> {
       console.error(`x ${folder}: ${error instanceof Error ? error.message : error}`);
       continue;
     }
-    const result = await importerController.importCharacter({ raw, ...images, force });
+    const result = await importerController.importCharacter({
+      raw,
+      ...images,
+      force,
+      login: account ?? undefined,
+    });
     if (isErrorResult(result)) {
       failures += 1;
       console.error(`x ${folder}: ${result.error}`);
       continue;
     }
     const { name, status, password, mediaWarning } = result.payload;
-    console.log(`${status === "skipped" ? "=" : "+"} ${name}: ${status}`);
+    console.log(
+      `${status === "skipped" ? "=" : "+"} ${name}: ${status}${account ? ` (conta ${account})` : ""} [${basename(folder)}]`,
+    );
     if (mediaWarning) console.warn(`  ! ${mediaWarning}`);
-    if (password) created.push({ name, password });
+    if (password) created.push({ name: account ?? name, password });
   }
 
   if (created.length > 0) {

@@ -1,6 +1,6 @@
-import { ACCOUNT_PASSWORD_MIN_LENGTH } from "@magista/shared";
+import { ACCOUNT_PASSWORD_MIN_LENGTH, SESSION_COOKIE_NAME } from "@magista/shared";
 
-export const SESSION_COOKIE_NAME = "magista_session";
+export { SESSION_COOKIE_NAME };
 
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 

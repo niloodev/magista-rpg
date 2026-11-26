@@ -24,4 +24,6 @@ export interface IAccountController {
     viewer: IViewer,
     input: unknown,
   ) => Promise<ControllerResult<ICreatedAccount, AccountError>>;
+  /** Creates a GM account from the command line (the production table has no seed). */
+  createGm: (input: unknown) => Promise<ControllerResult<ICreatedAccount, AccountError>>;
 }

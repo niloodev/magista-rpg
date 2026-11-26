@@ -15,7 +15,9 @@ Monorepo npm workspaces, Node 24 (`nvm use`):
 - `npm run dev` sobe api (:3333) e web (:3000)
 - `npm run version:bump` sobe a versão do app (web): todos os assets e mídias são baixados de novo pelos aparelhos na próxima abertura
 - `npm run lint` · `npm run typecheck` · `npm test` (unitários: shared, api, web) · `npm run test:e2e` (precisa de `npm run dev` e do seed) · `npm run format`
-- `npm run import:roll20 -- "<pasta>" [--force]` importa exports do Roll20 · `npm run import:roll20-pages -- "<pasta-pages>" [--only 2,12] [--folders nomes.json] [--folders-template] [--force]` importa as páginas (mapas, tamanho e pastas) como cenas da Arena · `npm run account:password -- "<login>" [senha]` define/gera senha
+- `npm run import:roll20 -- "<pasta>" [--force] [--only "<nome>"] [--account "<login>"]` importa exports do Roll20 (`--only` só os personagens com esse nome, `--account` liga as fichas a essa conta de jogador em vez de uma conta com o nome do personagem) · `npm run import:roll20-pages -- "<pasta-pages>" [--only 2,12] [--folders nomes.json] [--folders-template] [--force]` importa as páginas (mapas, tamanho e pastas) como cenas da Arena · `npm run account:password -- "<login>" [senha]` define/gera senha
+- Produção no PC do Mestre (Docker, túnel HTTPS do playit, dados separados do dev; ver `docs/DEPLOY.md`): `npm run prod:init -- <https://endereço>` · `prod:up` · `prod:down` · `prod:status` · `prod:logs` · `prod:backup` · `prod:restore -- <pasta>` · `prod:update` · `prod:cli -- <comando>` (ex.: `account:create-gm "Mestre"`, `import:roll20`)
+- `npm run account:create-gm -- "<login>" [senha]` cria uma conta de Mestre (o seed só existe no dev)
 - `npm run storage:dump -- "<pasta>"` · `npm run storage:restore -- "<pasta>"` backup das imagens · `npm run media:migrate-local -- "<pasta>"` sobe a antiga `MEDIA_DIR` uma vez · `npm run media:assets` move as imagens antigas para assets (WebP, miniatura, sem duplicatas) e apaga as sem uso
 - Antes de concluir qualquer tarefa: lint + typecheck + test verdes; mudou fluxo de usuário, rode também `npm run test:e2e`.
 
@@ -30,4 +32,4 @@ Um hook `Stop` (`.claude/hooks/review-gate.sh`, registrado em `.claude/settings.
 @docs/DOMAIN.md
 @docs/DESIGN.md
 
-Ler sob demanda: `docs/MIGRATION.md` (mapa Roll20 → schema) ao mexer na ficha ou em importação; `docs/SECURITY.md` ao mexer em auth, sessão, permissões, API pública ou socket; `docs/VFX.md` (boas práticas de animação, o kit de energia e fluido e as receitas de visual) ao criar ou ajustar qualquer animação da Arena.
+Ler sob demanda: `docs/MIGRATION.md` (mapa Roll20 → schema) ao mexer na ficha ou em importação; `docs/SECURITY.md` ao mexer em auth, sessão, permissões, API pública ou socket; `docs/VFX.md` (boas práticas de animação, o kit de energia e fluido e as receitas de visual) ao criar ou ajustar qualquer animação da Arena; `docs/DEPLOY.md` ao mexer no deploy, no Docker de produção, no proxy ou nas variáveis.

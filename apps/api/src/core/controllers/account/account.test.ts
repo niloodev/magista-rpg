@@ -81,4 +81,26 @@ describe("account controller", () => {
       error: accountErrors.loginTaken,
     });
   });
+
+  it("creates a GM account from the command line, with a generated password", async () => {
+    const { controller, deps } = build(null);
+    expect(await controller.createGm({ login: " Mestre " })).toEqual({
+      message: "Conta do Mestre criada",
+      payload: { account: { id: "new", login: "Mestre", role: "GM" }, password: "gerada1234" },
+    });
+    expect(deps.accounts.createAccount).toHaveBeenCalledWith({
+      login: "Mestre",
+      passwordHash: "hash",
+      role: "GM",
+    });
+  });
+
+  it("refuses a GM account with a taken login or an invalid input", async () => {
+    expect(await build().controller.createGm({ login: "Kael Magnus" })).toEqual({
+      error: accountErrors.loginTaken,
+    });
+    expect(await build(null).controller.createGm({ login: "M", password: "curta" })).toEqual({
+      error: accountErrors.invalidNewAccount,
+    });
+  });
 });

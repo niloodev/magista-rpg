@@ -13,6 +13,8 @@ export interface IImportCharacterInput {
   /** Full-body artwork (Roll20 "avatar"). */
   art: Buffer | null;
   force: boolean;
+  /** Login of the player account that owns the character (created if missing); defaults to the character name. */
+  login?: string;
 }
 
 export interface IImportCharacterPayload {

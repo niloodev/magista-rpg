@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import type { NextConfig } from "next";
 
@@ -15,7 +16,11 @@ const SECURITY_HEADERS = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+const MONOREPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: MONOREPO_ROOT,
   transpilePackages: ["@magista/shared"],
   poweredByHeader: false,
   env: { NEXT_PUBLIC_APP_VERSION: APP_VERSION },

@@ -13,8 +13,8 @@ const setPasswordSchema = z.object({
 });
 
 /**
- * Builds the account controller used by GM tooling: password resets (CLI), listing and creating
- * player accounts (library screen).
+ * Builds the account controller used by GM tooling: password resets and GM accounts (CLI), listing and
+ * creating player accounts (library screen).
  */
 export function createAccountController(deps: IAccountControllerDeps): IAccountController {
   const setPassword: IAccountController["setPassword"] = async (input) => {
@@ -63,7 +63,27 @@ export function createAccountController(deps: IAccountControllerDeps): IAccountC
     }
   };
 
-  return { setPassword, listAccounts, createAccount };
+  const createGm: IAccountController["createGm"] = async (input) => {
+    const parsed = createAccountInputSchema.safeParse(input);
+    if (!parsed.success) return { error: accountErrors.invalidNewAccount };
+    try {
+      if (await deps.accounts.findCredentialsByLogin(parsed.data.login))
+        return { error: accountErrors.loginTaken };
+      const password = parsed.data.password ?? deps.generatePassword();
+      const account = await deps.accounts.createAccount({
+        login: parsed.data.login,
+        passwordHash: await deps.hashPassword(password),
+        role: "GM",
+      });
+      if (!account) return { error: accountErrors.loginTaken };
+      return { message: "Conta do Mestre criada", payload: { account, password } };
+    } catch (error) {
+      console.error("createGm failed:", error);
+      return { error: accountErrors.unexpected };
+    }
+  };
+
+  return { setPassword, listAccounts, createAccount, createGm };
 }
 
 export const accountController = createAccountController({
